@@ -1,0 +1,159 @@
+{
+  "file": "industrial_boiler_room.ply",
+  "sha256": "117195366421b07aa6738415e94609d96cd41993a0c5b8e8b730849f6b7f1b03",
+  "file_bytes": 355449599,
+  "header_bytes": 1503,
+  "declared_vertex_count": 1506136,
+  "properties": 59,
+  "record_stride_bytes": 236,
+  "expected_file_bytes": 355449599,
+  "size_matches_header": true,
+  "complete_records": 1506136,
+  "plausible_records_total": 502570,
+  "first_implausible_record": 502483,
+  "contiguous_valid_records": 502483,
+  "contiguous_valid_fraction": 0.3336,
+  "tail_records": 1003653,
+  "tail_plausible_fraction": 0.0001,
+  "tail_interpretation": "Records after the first invalid record are statistically random bytes (only a tiny fraction pass plausibility checks by chance, consistent with noise). They are excluded, not repaired.",
+  "valid_bounds_min": [
+    -6.078999996185303,
+    -4.473999977111816,
+    -7.559999942779541
+  ],
+  "valid_bounds_max": [
+    5.993000030517578,
+    3.9110000133514404,
+    -0.7379999756813049
+  ],
+  "valid_bounds_p0.5": [
+    -4.818999767303467,
+    -1.5080000162124634,
+    -5.171999931335449
+  ],
+  "valid_bounds_p99.5": [
+    3.88100004196167,
+    1.1629999876022339,
+    -0.7649999856948853
+  ],
+  "blocks": [
+    {
+      "start": 0,
+      "end": 100000,
+      "plausible_fraction": 1.0
+    },
+    {
+      "start": 100000,
+      "end": 200000,
+      "plausible_fraction": 1.0
+    },
+    {
+      "start": 200000,
+      "end": 300000,
+      "plausible_fraction": 1.0
+    },
+    {
+      "start": 300000,
+      "end": 400000,
+      "plausible_fraction": 1.0
+    },
+    {
+      "start": 400000,
+      "end": 500000,
+      "plausible_fraction": 1.0
+    },
+    {
+      "start": 500000,
+      "end": 600000,
+      "plausible_fraction": 0.0249
+    },
+    {
+      "start": 600000,
+      "end": 700000,
+      "plausible_fraction": 0.0001
+    },
+    {
+      "start": 700000,
+      "end": 800000,
+      "plausible_fraction": 0.0001
+    },
+    {
+      "start": 800000,
+      "end": 900000,
+      "plausible_fraction": 0.0001
+    },
+    {
+      "start": 900000,
+      "end": 1000000,
+      "plausible_fraction": 0.0001
+    },
+    {
+      "start": 1000000,
+      "end": 1100000,
+      "plausible_fraction": 0.0001
+    },
+    {
+      "start": 1100000,
+      "end": 1200000,
+      "plausible_fraction": 0.0001
+    },
+    {
+      "start": 1200000,
+      "end": 1300000,
+      "plausible_fraction": 0.0001
+    },
+    {
+      "start": 1300000,
+      "end": 1400000,
+      "plausible_fraction": 0.0001
+    },
+    {
+      "start": 1400000,
+      "end": 1500000,
+      "plausible_fraction": 0.0001
+    },
+    {
+      "start": 1500000,
+      "end": 1506136,
+      "plausible_fraction": 0.0
+    }
+  ],
+  "canonical_transform": [
+    [
+      0.9999617259748649,
+      0.0006213806429303511,
+      -0.008726996703682407,
+      -0.5388804664200079
+    ],
+    [
+      0.0006343589243498241,
+      -0.9999986969939948,
+      0.0014844524471174102,
+      1.073075502187862
+    ],
+    [
+      -0.008726062922337303,
+      -0.0014899316793888897,
+      -0.9999608171970871,
+      -2.3545770416940752
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "canonical_yaw_deg": 0.5,
+  "canonical_bounds_p1": [
+    -5.288775796067735,
+    -0.010155864852545536,
+    -1.553312871413903
+  ],
+  "canonical_bounds_p99": [
+    3.3300579450033583,
+    2.4222206467563074,
+    2.001599355544455
+  ],
+  "scale_note": "Valid region spans \u22488.6 \u00d7 2.4 \u00d7 3.6 units (W\u00d7H\u00d7D). Ceiling height and the standard-size door in the scan are consistent with 1 unit \u2248 1 metre; scale is therefore treated as approximately metric (not surveyed)."
+}

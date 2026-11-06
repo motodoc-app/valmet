@@ -1,0 +1,7778 @@
+{
+ "frame": {
+  "up": "+Y",
+  "floor_y": 0.0,
+  "units": "approx. metres (see integrity report)"
+ },
+ "bounds": {
+  "min": [
+   -5.488775796067735,
+   -0.1,
+   -1.753312871413903
+  ],
+  "max": [
+   3.5300579450033585,
+   2.6222206467563076,
+   2.201599355544455
+  ]
+ },
+ "ceiling_y": 2.043777478205703,
+ "planes": [
+  {
+   "label": "floor",
+   "normal": [
+    0,
+    1,
+    0
+   ],
+   "offset": 0.0,
+   "n_points": 5983
+  },
+  {
+   "label": "ceiling",
+   "normal": [
+    0,
+    -1,
+    0
+   ],
+   "offset": 2.043777478205703,
+   "n_points": 3388
+  },
+  {
+   "label": "wall",
+   "normal": [
+    -0.0181,
+    0.0049,
+    0.9998
+   ],
+   "offset": -0.7969376348623213,
+   "n_points": 3580,
+   "width": 6.532710435694909,
+   "height": 1.9888437708616256,
+   "t_range": [
+    -2.9434078437661326,
+    3.5893025919287767
+   ],
+   "y_range": [
+    0.34109349167346953,
+    2.329937262535095
+   ]
+  }
+ ],
+ "objects": [
+  {
+   "id": "S-WALL-01",
+   "kind": "structure",
+   "label": "wall",
+   "label_source": "plane-fit",
+   "confidence": 0.9,
+   "center": [
+    -0.337,
+    1.336,
+    0.791
+   ],
+   "size": [
+    6.532710435694909,
+    1.9888437708616256,
+    0.08
+   ],
+   "yaw": -3.1234910102435784,
+   "n_points": 3580,
+   "color_rgb": [
+    0.6,
+    0.6,
+    0.6
+   ],
+   "descriptors": {},
+   "alt_labels": [],
+   "category": "structure"
+  },
+  {
+   "id": "OBJ-002",
+   "kind": "object",
+   "label": "pump-motor unit",
+   "label_source": "vlm+geometry",
+   "confidence": 0.72,
+   "center": [
+    2.934,
+    1.317,
+    -0.256
+   ],
+   "size": [
+    0.823,
+    1.337,
+    0.56
+   ],
+   "yaw": 1.5708,
+   "n_points": 6568,
+   "color_rgb": [
+    0.337,
+    0.313,
+    0.264
+   ],
+   "descriptors": {
+    "elongation": 1.625310405320812,
+    "flatness": 0.6804848744729758,
+    "height": 1.3374279463291168,
+    "max_extent": 1.3374279463291168,
+    "min_extent": 0.5599542617797852,
+    "volume_m3": 0.6162501333018848,
+    "density_pts_m3": 3029.613949122516,
+    "bottom_y": 0.6479888331890106,
+    "top_y": 1.9854167795181275,
+    "saturation": 0.09502504214675965,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "rotating",
+   "vlm_rationale": "Visible blue motor and coupled pump assembly within the box."
+  },
+  {
+   "id": "OBJ-003",
+   "kind": "object",
+   "label": "wire mesh cage",
+   "label_source": "vlm+geometry",
+   "confidence": 0.97,
+   "center": [
+    -2.522,
+    0.701,
+    -1.361
+   ],
+   "size": [
+    0.611,
+    1.189,
+    0.446
+   ],
+   "yaw": 3.1416,
+   "n_points": 10393,
+   "color_rgb": [
+    0.57,
+    0.532,
+    0.455
+   ],
+   "descriptors": {
+    "elongation": 1.9454455195397036,
+    "flatness": 0.7301456297763648,
+    "height": 1.1890001181335677,
+    "max_extent": 1.1890001181335677,
+    "min_extent": 0.4462439227104187,
+    "volume_m3": 0.3242776647720946,
+    "density_pts_m3": 5193.080445992267,
+    "bottom_y": 0.10674098044633866,
+    "top_y": 1.2957410985799063,
+    "saturation": 0.11554964433745137,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "structure",
+   "vlm_rationale": "Tall rectangular protective cage-like frame with mesh sides, standing on the floor."
+  },
+  {
+   "id": "OBJ-004",
+   "kind": "object",
+   "label": "heat exchanger",
+   "label_source": "vlm+geometry",
+   "confidence": 0.6,
+   "center": [
+    2.158,
+    0.76,
+    -0.264
+   ],
+   "size": [
+    1.119,
+    0.286,
+    0.776
+   ],
+   "yaw": 1.0637,
+   "n_points": 6028,
+   "color_rgb": [
+    0.607,
+    0.572,
+    0.518
+   ],
+   "descriptors": {
+    "elongation": 1.4420721147072078,
+    "flatness": 0.36914097092941217,
+    "height": 0.2863373937606809,
+    "max_extent": 1.1185948010609061,
+    "min_extent": 0.2863373937606809,
+    "volume_m3": 0.2484486731504823,
+    "density_pts_m3": 5212.344198013223,
+    "bottom_y": 0.616931848526001,
+    "top_y": 0.9032692422866819,
+    "saturation": 0.10465884528020396,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "vessel",
+   "vlm_rationale": "Box encloses large horizontal insulated unit with connected piping, typical heat exchanger."
+  },
+  {
+   "id": "OBJ-005",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.27,
+   "center": [
+    -3.827,
+    0.568,
+    -0.998
+   ],
+   "size": [
+    1.105,
+    0.694,
+    0.243
+   ],
+   "yaw": 1.5708,
+   "n_points": 2146,
+   "color_rgb": [
+    0.354,
+    0.299,
+    0.262
+   ],
+   "descriptors": {
+    "elongation": 1.592593516203353,
+    "flatness": 0.35021627212437834,
+    "height": 0.6941413176059723,
+    "max_extent": 1.105484961748124,
+    "min_extent": 0.24309958457946773,
+    "volume_m3": 0.18654557497030397,
+    "density_pts_m3": 4304.5781178558045,
+    "bottom_y": 0.22081784725189207,
+    "top_y": 0.9149591648578643,
+    "saturation": 0.10295299007339834,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Box covers cluttered machinery fragments; no clear identifiable object."
+  },
+  {
+   "id": "OBJ-006",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.19,
+   "center": [
+    2.7,
+    1.33,
+    0.082
+   ],
+   "size": [
+    1.166,
+    1.323,
+    0.614
+   ],
+   "yaw": -2.3767,
+   "n_points": 1937,
+   "color_rgb": [
+    0.281,
+    0.251,
+    0.205
+   ],
+   "descriptors": {
+    "elongation": 1.134774694553036,
+    "flatness": 0.5261848650785306,
+    "height": 1.323455511132876,
+    "max_extent": 1.323455511132876,
+    "min_extent": 0.6136744702763931,
+    "volume_m3": 0.9472118169792552,
+    "density_pts_m3": 763.2928422554028,
+    "bottom_y": 0.668731182217598,
+    "top_y": 1.992186693350474,
+    "saturation": 0.0890480279234622,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Box covers a cluttered pipe/manifold area, not a single identifiable device."
+  },
+  {
+   "id": "OBJ-007",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.93,
+   "center": [
+    2.73,
+    1.865,
+    -1.034
+   ],
+   "size": [
+    1.223,
+    0.24,
+    0.63
+   ],
+   "yaw": -3.1416,
+   "n_points": 2111,
+   "color_rgb": [
+    0.334,
+    0.295,
+    0.247
+   ],
+   "descriptors": {
+    "elongation": 1.9425024527816952,
+    "flatness": 0.38070637190388623,
+    "height": 0.23977438449859623,
+    "max_extent": 1.223416166305542,
+    "min_extent": 0.23977438449859623,
+    "volume_m3": 0.1847522086624342,
+    "density_pts_m3": 3729.3194218797717,
+    "bottom_y": 1.7446707582473755,
+    "top_y": 1.9844451427459717,
+    "saturation": 0.08775141678967834,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "light",
+    "pipe bracket"
+   ],
+   "heuristic_label": "ceiling fixture / duct",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated run near ceiling, matching pipe dimensions."
+  },
+  {
+   "id": "OBJ-008",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.34,
+   "center": [
+    -5.296,
+    1.211,
+    -0.387
+   ],
+   "size": [
+    0.793,
+    0.94,
+    0.259
+   ],
+   "yaw": 1.5708,
+   "n_points": 928,
+   "color_rgb": [
+    0.274,
+    0.263,
+    0.239
+   ],
+   "descriptors": {
+    "elongation": 1.1846173717749895,
+    "flatness": 0.3270345907402065,
+    "height": 0.9399415683746338,
+    "max_extent": 0.9399415683746338,
+    "min_extent": 0.25948750495910644,
+    "volume_m3": 0.19352633234152478,
+    "density_pts_m3": 3462.061167043771,
+    "bottom_y": 0.7412138628959656,
+    "top_y": 1.6811554312705994,
+    "saturation": 0.0364885841277193,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "notice board",
+    "wall panel"
+   ],
+   "heuristic_label": "electrical cabinet / panel",
+   "category": "other",
+   "vlm_rationale": "Unclear fragment of machinery behind frame; not enough detail for specific identification."
+  },
+  {
+   "id": "OBJ-009",
+   "kind": "object",
+   "label": "control valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.61,
+   "center": [
+    0.437,
+    0.934,
+    0.528
+   ],
+   "size": [
+    0.657,
+    0.691,
+    0.357
+   ],
+   "yaw": -3.1416,
+   "n_points": 2619,
+   "color_rgb": [
+    0.201,
+    0.191,
+    0.169
+   ],
+   "descriptors": {
+    "elongation": 1.0516237130355686,
+    "flatness": 0.5425541112500633,
+    "height": 0.6913350560267766,
+    "max_extent": 0.6913350560267766,
+    "min_extent": 0.35667384849654304,
+    "volume_m3": 0.1621018817762855,
+    "density_pts_m3": 4120.865178615861,
+    "bottom_y": 0.5881281822919846,
+    "top_y": 1.2794632383187612,
+    "saturation": 0.04539904138527961,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "valve",
+   "vlm_rationale": "Box encloses small valve assembly with handwheel/actuator on piping."
+  },
+  {
+   "id": "OBJ-010",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.41,
+   "center": [
+    -4.284,
+    0.553,
+    -1.194
+   ],
+   "size": [
+    0.755,
+    0.706,
+    0.401
+   ],
+   "yaw": 1.5708,
+   "n_points": 1032,
+   "color_rgb": [
+    0.156,
+    0.142,
+    0.122
+   ],
+   "descriptors": {
+    "elongation": 1.0699325132079225,
+    "flatness": 0.5688388542497707,
+    "height": 0.7058149382472039,
+    "max_extent": 0.7551743507385255,
+    "min_extent": 0.4014949607849121,
+    "volume_m3": 0.21400216913069886,
+    "density_pts_m3": 2817.7284484986976,
+    "bottom_y": 0.19979926615953444,
+    "top_y": 0.9056142044067383,
+    "saturation": 0.034905303414252395,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Unclear machinery fragment; no distinct pump, valve, or instrument features visible."
+  },
+  {
+   "id": "OBJ-011",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.88,
+   "center": [
+    2.212,
+    1.97,
+    0.001
+   ],
+   "size": [
+    1.517,
+    0.046,
+    0.293
+   ],
+   "yaw": 1.5708,
+   "n_points": 2443,
+   "color_rgb": [
+    0.537,
+    0.488,
+    0.415
+   ],
+   "descriptors": {
+    "elongation": 5.18016752154968,
+    "flatness": 0.15672310398281092,
+    "height": 0.04588348620278482,
+    "max_extent": 1.5165865080697196,
+    "min_extent": 0.04588348620278482,
+    "volume_m3": 0.020372624450633117,
+    "density_pts_m3": 28322.32054334407,
+    "bottom_y": 1.9473750591278076,
+    "top_y": 1.9932585453305924,
+    "saturation": 0.12122282984717572,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated pipe/duct segment across the ceiling area."
+  },
+  {
+   "id": "OBJ-012",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.41,
+   "center": [
+    -2.252,
+    1.103,
+    0.857
+   ],
+   "size": [
+    0.155,
+    1.649,
+    0.143
+   ],
+   "yaw": -2.883,
+   "n_points": 940,
+   "color_rgb": [
+    0.463,
+    0.43,
+    0.329
+   ],
+   "descriptors": {
+    "elongation": 10.651559233730858,
+    "flatness": 0.9244765905849572,
+    "height": 1.6485337913036346,
+    "max_extent": 1.6485337913036346,
+    "min_extent": 0.14308054486729493,
+    "volume_m3": 0.03650590386434303,
+    "density_pts_m3": 13175.950985555915,
+    "bottom_y": 0.2783034980297089,
+    "top_y": 1.9268372893333434,
+    "saturation": 0.15742946541403843,
+    "dominant_hue": "yellow",
+    "vertical": true
+   },
+   "alt_labels": [
+    "support column",
+    "conduit"
+   ],
+   "heuristic_label": "vertical pipe",
+   "category": "piping",
+   "vlm_rationale": "Slim vertical pipe segment with a small green fitting attached."
+  },
+  {
+   "id": "OBJ-013",
+   "kind": "object",
+   "label": "trolley / cart",
+   "label_source": "human-verified",
+   "confidence": 0.9,
+   "center": [
+    -3.402,
+    0.535,
+    -0.352
+   ],
+   "size": [
+    0.395,
+    0.959,
+    0.325
+   ],
+   "yaw": -2.3584,
+   "n_points": 1514,
+   "color_rgb": [
+    0.418,
+    0.312,
+    0.2
+   ],
+   "descriptors": {
+    "elongation": 2.4259537527173745,
+    "flatness": 0.8218523922125139,
+    "height": 0.9586307126283645,
+    "max_extent": 0.9586307126283645,
+    "min_extent": 0.3247600839626533,
+    "volume_m3": 0.12302200624430853,
+    "density_pts_m3": 3787.940176122424,
+    "bottom_y": 0.05531722158193588,
+    "top_y": 1.0139479342103004,
+    "saturation": 0.2182673784995185,
+    "dominant_hue": "red/orange",
+    "vertical": false
+   },
+   "alt_labels": [
+    "fire equipment",
+    "boiler shell"
+   ],
+   "heuristic_label": "expansion vessel / tank",
+   "category": "logistics",
+   "vlm_rationale": "Compact motorized pump assembly with connected piping and base-mounted equipment.",
+   "auto_label": "pump-motor unit",
+   "review_note": "Pink hand pallet truck; VLM proposed 'pump-motor unit' (0.79) \u2014 corrected in review."
+  },
+  {
+   "id": "OBJ-014",
+   "kind": "object",
+   "label": "insulated pipe (vertical)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.88,
+   "center": [
+    1.371,
+    1.598,
+    1.052
+   ],
+   "size": [
+    0.372,
+    0.716,
+    0.071
+   ],
+   "yaw": 3.1416,
+   "n_points": 851,
+   "color_rgb": [
+    0.222,
+    0.179,
+    0.145
+   ],
+   "descriptors": {
+    "elongation": 1.9268390850616506,
+    "flatness": 0.19161938334401168,
+    "height": 0.7159467291831969,
+    "max_extent": 0.7159467291831969,
+    "min_extent": 0.07119913220405577,
+    "volume_m3": 0.018940466520084645,
+    "density_pts_m3": 16895.043195513113,
+    "bottom_y": 1.2404988956451417,
+    "top_y": 1.9564456248283386,
+    "saturation": 0.07698847251062388,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "notice board",
+    "wall panel"
+   ],
+   "heuristic_label": "electrical cabinet / panel",
+   "category": "piping",
+   "vlm_rationale": "Tall narrow insulated run fixed vertically against wall."
+  },
+  {
+   "id": "OBJ-015",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.42,
+   "center": [
+    1.054,
+    1.975,
+    -0.425
+   ],
+   "size": [
+    2.292,
+    0.04,
+    0.082
+   ],
+   "yaw": 1.5708,
+   "n_points": 843,
+   "color_rgb": [
+    0.587,
+    0.531,
+    0.431
+   ],
+   "descriptors": {
+    "elongation": 28.003094319387145,
+    "flatness": 0.4887171878372385,
+    "height": 0.04,
+    "max_extent": 2.291967216730118,
+    "min_extent": 0.04,
+    "volume_m3": 0.007503618939609484,
+    "density_pts_m3": 42512.819822990896,
+    "bottom_y": 1.9579140293598174,
+    "top_y": 1.9929066324234008,
+    "saturation": 0.15681504906135843,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long thin horizontal pipe section; box encloses mostly insulated pipe/fitting."
+  },
+  {
+   "id": "OBJ-016",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.92,
+   "center": [
+    -3.096,
+    1.822,
+    -0.491
+   ],
+   "size": [
+    2.147,
+    0.07,
+    0.084
+   ],
+   "yaw": 1.5708,
+   "n_points": 492,
+   "color_rgb": [
+    0.451,
+    0.398,
+    0.298
+   ],
+   "descriptors": {
+    "elongation": 25.530090530758446,
+    "flatness": 0.8304933330675878,
+    "height": 0.06983988046646128,
+    "max_extent": 2.1469389337301257,
+    "min_extent": 0.06983988046646128,
+    "volume_m3": 0.012609286603063015,
+    "density_pts_m3": 24585.054631456755,
+    "bottom_y": 1.7871815967559814,
+    "top_y": 1.8570214772224427,
+    "saturation": 0.15325178992867286,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated pipe segment near ceiling; box spans its length."
+  },
+  {
+   "id": "OBJ-017",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.23,
+   "center": [
+    3.105,
+    1.21,
+    -1.165
+   ],
+   "size": [
+    0.483,
+    0.992,
+    0.08
+   ],
+   "yaw": 1.5708,
+   "n_points": 730,
+   "color_rgb": [
+    0.593,
+    0.552,
+    0.45
+   ],
+   "descriptors": {
+    "elongation": 2.0550314625592168,
+    "flatness": 0.16536784262850926,
+    "height": 0.9921063476800918,
+    "max_extent": 0.9921063476800918,
+    "min_extent": 0.0798345375061035,
+    "volume_m3": 0.03823743881453162,
+    "density_pts_m3": 7924.170901447744,
+    "bottom_y": 0.713735436797142,
+    "top_y": 1.7058417844772338,
+    "saturation": 0.1428858645382855,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "notice board",
+    "wall panel"
+   ],
+   "heuristic_label": "electrical cabinet / panel",
+   "category": "other",
+   "vlm_rationale": "Mostly an unrecognisable vertical panel/fragment; no clear equipment features."
+  },
+  {
+   "id": "OBJ-018",
+   "kind": "object",
+   "label": "control valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.79,
+   "center": [
+    1.385,
+    0.976,
+    0.701
+   ],
+   "size": [
+    0.186,
+    0.654,
+    0.155
+   ],
+   "yaw": 1.9801,
+   "n_points": 1212,
+   "color_rgb": [
+    0.445,
+    0.373,
+    0.33
+   ],
+   "descriptors": {
+    "elongation": 3.5086114786180733,
+    "flatness": 0.8312280664940411,
+    "height": 0.653747256596883,
+    "max_extent": 0.653747256596883,
+    "min_extent": 0.1548798068376734,
+    "volume_m3": 0.018865975983744437,
+    "density_pts_m3": 14258.472513257702,
+    "bottom_y": 0.6490326881408691,
+    "top_y": 1.3027799447377522,
+    "saturation": 0.12180016701820365,
+    "dominant_hue": "yellow",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "valve",
+   "vlm_rationale": "Red handwheel valve on a vertical pipe run, likely an isolation/control valve."
+  },
+  {
+   "id": "OBJ-019",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.21,
+   "center": [
+    1.389,
+    0.927,
+    0.958
+   ],
+   "size": [
+    0.34,
+    0.603,
+    0.219
+   ],
+   "yaw": 2.603,
+   "n_points": 477,
+   "color_rgb": [
+    0.223,
+    0.17,
+    0.124
+   ],
+   "descriptors": {
+    "elongation": 1.7761820739511947,
+    "flatness": 0.6436444449643512,
+    "height": 0.6032199573516845,
+    "max_extent": 0.6032199573516845,
+    "min_extent": 0.21859199027797027,
+    "volume_m3": 0.04478145136079543,
+    "density_pts_m3": 5471.015176039801,
+    "bottom_y": 0.625201473236084,
+    "top_y": 1.2284214305877685,
+    "saturation": 0.09893538177317503,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Box covers unclear wall-mounted fragment; no identifiable equipment features."
+  },
+  {
+   "id": "OBJ-020",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.86,
+   "center": [
+    1.362,
+    1.977,
+    -0.418
+   ],
+   "size": [
+    2.315,
+    0.04,
+    0.082
+   ],
+   "yaw": 1.5708,
+   "n_points": 469,
+   "color_rgb": [
+    0.552,
+    0.503,
+    0.409
+   ],
+   "descriptors": {
+    "elongation": 28.212443854947104,
+    "flatness": 0.48746506068991924,
+    "height": 0.04,
+    "max_extent": 2.31503310739994,
+    "min_extent": 0.04,
+    "volume_m3": 0.00759860197282136,
+    "density_pts_m3": 32111.170037954078,
+    "bottom_y": 1.9605366206169128,
+    "top_y": 1.993338544368744,
+    "saturation": 0.1435695691847015,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated pipe segment across the scene."
+  },
+  {
+   "id": "OBJ-021",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    -4.667,
+    1.129,
+    0.013
+   ],
+   "size": [
+    0.369,
+    1.234,
+    0.181
+   ],
+   "yaw": 1.5708,
+   "n_points": 273,
+   "color_rgb": [
+    0.491,
+    0.453,
+    0.377
+   ],
+   "descriptors": {
+    "elongation": 3.347085538986152,
+    "flatness": 0.4905755405973973,
+    "height": 1.2342098402976989,
+    "max_extent": 1.2342098402976989,
+    "min_extent": 0.18089563369750977,
+    "volume_m3": 0.08232642985437201,
+    "density_pts_m3": 2951.664494984721,
+    "bottom_y": 0.5115347981452942,
+    "top_y": 1.745744638442993,
+    "saturation": 0.11416315161642224,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Box covers an indistinct vertical fragment; no clear machine or instrument features."
+  },
+  {
+   "id": "OBJ-022",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.27,
+   "center": [
+    -5.041,
+    1.36,
+    -1.102
+   ],
+   "size": [
+    0.538,
+    0.476,
+    0.226
+   ],
+   "yaw": -3.1416,
+   "n_points": 359,
+   "color_rgb": [
+    0.183,
+    0.163,
+    0.134
+   ],
+   "descriptors": {
+    "elongation": 1.1302467560811482,
+    "flatness": 0.47534917284090034,
+    "height": 0.4763184742927551,
+    "max_extent": 0.5383574104309082,
+    "min_extent": 0.22641759276390078,
+    "volume_m3": 0.058060168298715346,
+    "density_pts_m3": 3789.172619481845,
+    "bottom_y": 1.1222599573135377,
+    "top_y": 1.5985784316062928,
+    "saturation": 0.04896464014971498,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Occluded small apparatus; no clear pump, valve, or instrument features visible."
+  },
+  {
+   "id": "OBJ-023",
+   "kind": "object",
+   "label": "control panel",
+   "label_source": "vlm+geometry",
+   "confidence": 0.81,
+   "center": [
+    -1.383,
+    1.412,
+    1.124
+   ],
+   "size": [
+    0.441,
+    0.76,
+    0.126
+   ],
+   "yaw": 3.1416,
+   "n_points": 427,
+   "color_rgb": [
+    0.339,
+    0.346,
+    0.341
+   ],
+   "descriptors": {
+    "elongation": 1.7251794309091035,
+    "flatness": 0.28692509260458743,
+    "height": 0.7600574922561645,
+    "max_extent": 0.7600574922561645,
+    "min_extent": 0.12640978813171386,
+    "volume_m3": 0.04232912789354672,
+    "density_pts_m3": 5173.742311695196,
+    "bottom_y": 1.0321647119522095,
+    "top_y": 1.792222204208374,
+    "saturation": 0.028317770621612184,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "notice board",
+    "wall panel"
+   ],
+   "heuristic_label": "electrical cabinet / panel",
+   "category": "electrical",
+   "vlm_rationale": "Wall-mounted rectangular enclosure with access door and visible controls."
+  },
+  {
+   "id": "OBJ-024",
+   "kind": "object",
+   "label": "flow meter",
+   "label_source": "vlm+geometry",
+   "confidence": 0.39,
+   "center": [
+    3.141,
+    1.668,
+    0.654
+   ],
+   "size": [
+    0.261,
+    0.588,
+    0.145
+   ],
+   "yaw": 1.8815,
+   "n_points": 516,
+   "color_rgb": [
+    0.277,
+    0.267,
+    0.226
+   ],
+   "descriptors": {
+    "elongation": 2.2522428462921216,
+    "flatness": 0.55583666572838,
+    "height": 0.5875320672988891,
+    "max_extent": 0.5875320672988891,
+    "min_extent": 0.14499851374089323,
+    "volume_m3": 0.022223450237585637,
+    "density_pts_m3": 9764.460409167094,
+    "bottom_y": 1.3739722871780395,
+    "top_y": 1.9615043544769286,
+    "saturation": 0.06178032121331861,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "instrument",
+   "vlm_rationale": "Small inline instrument on pipe with sensor-like body and connections."
+  },
+  {
+   "id": "OBJ-025",
+   "kind": "object",
+   "label": "pump-motor unit",
+   "label_source": "vlm+geometry",
+   "confidence": 0.61,
+   "center": [
+    0.505,
+    1.127,
+    0.952
+   ],
+   "size": [
+    0.471,
+    0.284,
+    0.217
+   ],
+   "yaw": 3.1416,
+   "n_points": 476,
+   "color_rgb": [
+    0.35,
+    0.281,
+    0.205
+   ],
+   "descriptors": {
+    "elongation": 1.6601423019541746,
+    "flatness": 0.7639049509025284,
+    "height": 0.28372987187825716,
+    "max_extent": 0.47103196263313285,
+    "min_extent": 0.2167426538467407,
+    "volume_m3": 0.0289667536922229,
+    "density_pts_m3": 7353.257540115274,
+    "bottom_y": 0.9849918520450592,
+    "top_y": 1.2687217239233164,
+    "saturation": 0.1448062396262809,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "rotating",
+   "vlm_rationale": "Compact coupled machinery; visible pump body and motor-like housing."
+  },
+  {
+   "id": "OBJ-026",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.95,
+   "center": [
+    -1.948,
+    1.952,
+    -1.333
+   ],
+   "size": [
+    1.823,
+    0.058,
+    0.113
+   ],
+   "yaw": 3.1416,
+   "n_points": 473,
+   "color_rgb": [
+    0.696,
+    0.659,
+    0.566
+   ],
+   "descriptors": {
+    "elongation": 16.162312908098897,
+    "flatness": 0.5139343998001832,
+    "height": 0.05797144174575797,
+    "max_extent": 1.82309762022712,
+    "min_extent": 0.05797144174575797,
+    "volume_m3": 0.011921487262570401,
+    "density_pts_m3": 17783.01610618762,
+    "bottom_y": 1.9232641458511353,
+    "top_y": 1.9812355875968932,
+    "saturation": 0.12984123018548005,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated pipe segment with supporting hangers."
+  },
+  {
+   "id": "OBJ-027",
+   "kind": "object",
+   "label": "control panel",
+   "label_source": "vlm+geometry",
+   "confidence": 0.56,
+   "center": [
+    -1.583,
+    1.224,
+    1.119
+   ],
+   "size": [
+    0.325,
+    0.493,
+    0.049
+   ],
+   "yaw": -3.1416,
+   "n_points": 1562,
+   "color_rgb": [
+    0.919,
+    0.913,
+    0.916
+   ],
+   "descriptors": {
+    "elongation": 1.5165644619771954,
+    "flatness": 0.15114775013639556,
+    "height": 0.49259800155957545,
+    "max_extent": 0.49259800155957545,
+    "min_extent": 0.049094569683074955,
+    "volume_m3": 0.00785521134255514,
+    "density_pts_m3": 26988.452729655106,
+    "bottom_y": 0.9773892597357432,
+    "top_y": 1.4699872612953186,
+    "saturation": 0.012345431795642736,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "electrical",
+   "vlm_rationale": "Wall-mounted rectangular enclosure with door; likely an electrical control panel."
+  },
+  {
+   "id": "OBJ-028",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.12,
+   "center": [
+    -2.988,
+    0.398,
+    0.602
+   ],
+   "size": [
+    0.226,
+    0.659,
+    0.178
+   ],
+   "yaw": 0.974,
+   "n_points": 428,
+   "color_rgb": [
+    0.956,
+    0.916,
+    0.843
+   ],
+   "descriptors": {
+    "elongation": 2.9117195196631926,
+    "flatness": 0.7856625937483719,
+    "height": 0.6592627442975838,
+    "max_extent": 0.6592627442975838,
+    "min_extent": 0.17788735286784185,
+    "volume_m3": 0.026552939286524014,
+    "density_pts_m3": 7871.068349336015,
+    "bottom_y": 0.06854265798131626,
+    "top_y": 0.7278054022789001,
+    "saturation": 0.11344157062822306,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "equipment skid",
+    "crate"
+   ],
+   "heuristic_label": "pump / motor unit",
+   "category": "other",
+   "vlm_rationale": "Box mostly covers an unrecognisable vertical structural fragment, not a distinct device."
+  },
+  {
+   "id": "OBJ-029",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    -0.092,
+    0.502,
+    1.085
+   ],
+   "size": [
+    0.443,
+    0.877,
+    0.172
+   ],
+   "yaw": 2.877,
+   "n_points": 359,
+   "color_rgb": [
+    0.647,
+    0.592,
+    0.497
+   ],
+   "descriptors": {
+    "elongation": 1.9785763861914936,
+    "flatness": 0.3870412442510638,
+    "height": 0.8774685643613337,
+    "max_extent": 0.8774685643613337,
+    "min_extent": 0.17164691103754837,
+    "volume_m3": 0.06679536140325017,
+    "density_pts_m3": 2904.393298043601,
+    "bottom_y": 0.06317116752266884,
+    "top_y": 0.9406397318840025,
+    "saturation": 0.15419196046011996,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "equipment skid",
+    "crate"
+   ],
+   "heuristic_label": "pump / motor unit",
+   "category": "other",
+   "vlm_rationale": "Box captures unrecognizable vertical fragments, likely pipe or structural edge."
+  },
+  {
+   "id": "OBJ-030",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.86,
+   "center": [
+    -3.275,
+    1.835,
+    -0.627
+   ],
+   "size": [
+    1.83,
+    0.077,
+    0.089
+   ],
+   "yaw": 1.5708,
+   "n_points": 384,
+   "color_rgb": [
+    0.471,
+    0.418,
+    0.32
+   ],
+   "descriptors": {
+    "elongation": 20.624881809188288,
+    "flatness": 0.8719633393363414,
+    "height": 0.07737640857696526,
+    "max_extent": 1.8302137368917464,
+    "min_extent": 0.07737640857696526,
+    "volume_m3": 0.012566684764679132,
+    "density_pts_m3": 15278.492585383348,
+    "bottom_y": 1.796009864807129,
+    "top_y": 1.8733862733840942,
+    "saturation": 0.15143844883620405,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated run near ceiling; matches measured dimensions."
+  },
+  {
+   "id": "OBJ-031",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.23,
+   "center": [
+    -5.228,
+    0.694,
+    -0.973
+   ],
+   "size": [
+    0.375,
+    0.64,
+    0.343
+   ],
+   "yaw": 1.5708,
+   "n_points": 229,
+   "color_rgb": [
+    0.418,
+    0.37,
+    0.302
+   ],
+   "descriptors": {
+    "elongation": 1.7056362171891883,
+    "flatness": 0.9145042199146661,
+    "height": 0.6395589554309846,
+    "max_extent": 0.6395589554309846,
+    "min_extent": 0.3429097938537598,
+    "volume_m3": 0.08223461226315719,
+    "density_pts_m3": 2298.3023181915814,
+    "bottom_y": 0.37397823691368104,
+    "top_y": 1.0135371923446657,
+    "saturation": 0.11565180583027514,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Boxed region is too obscured; no distinctive equipment features visible."
+  },
+  {
+   "id": "OBJ-032",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.67,
+   "center": [
+    2.239,
+    1.917,
+    0.965
+   ],
+   "size": [
+    0.807,
+    0.151,
+    0.176
+   ],
+   "yaw": -3.1416,
+   "n_points": 406,
+   "color_rgb": [
+    0.279,
+    0.258,
+    0.229
+   ],
+   "descriptors": {
+    "elongation": 4.586556057474213,
+    "flatness": 0.8565147350590173,
+    "height": 0.15072598377863566,
+    "max_extent": 0.8071235036849973,
+    "min_extent": 0.15072598377863566,
+    "volume_m3": 0.021408261936527884,
+    "density_pts_m3": 8641.52356452363,
+    "bottom_y": 1.8421362829208374,
+    "top_y": 1.992862266699473,
+    "saturation": 0.04995709354774679,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "light",
+    "pipe bracket"
+   ],
+   "heuristic_label": "ceiling fixture / duct",
+   "category": "piping",
+   "vlm_rationale": "Box covers small pipe connection/fitting beneath insulated horizontal pipe."
+  },
+  {
+   "id": "OBJ-033",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.94,
+   "center": [
+    1.956,
+    1.862,
+    -0.78
+   ],
+   "size": [
+    0.617,
+    0.155,
+    0.204
+   ],
+   "yaw": 1.5708,
+   "n_points": 473,
+   "color_rgb": [
+    0.973,
+    0.962,
+    0.947
+   ],
+   "descriptors": {
+    "elongation": 3.019916505031801,
+    "flatness": 0.7610319519936205,
+    "height": 0.15538012146949765,
+    "max_extent": 0.6165772569080195,
+    "min_extent": 0.15538012146949765,
+    "volume_m3": 0.01956030054627898,
+    "density_pts_m3": 9406.80842631546,
+    "bottom_y": 1.7838902735710145,
+    "top_y": 1.9392703950405121,
+    "saturation": 0.026747009976207183,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "light",
+    "pipe bracket"
+   ],
+   "heuristic_label": "ceiling fixture / duct",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated run above equipment, matching pipe dimensions."
+  },
+  {
+   "id": "OBJ-034",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.24,
+   "center": [
+    2.953,
+    1.843,
+    0.973
+   ],
+   "size": [
+    0.508,
+    0.291,
+    0.16
+   ],
+   "yaw": -3.1416,
+   "n_points": 304,
+   "color_rgb": [
+    0.202,
+    0.192,
+    0.175
+   ],
+   "descriptors": {
+    "elongation": 1.7438638899592238,
+    "flatness": 0.5499270401368949,
+    "height": 0.29103068113327035,
+    "max_extent": 0.5075178956985473,
+    "min_extent": 0.1600456410646438,
+    "volume_m3": 0.023639265954494684,
+    "density_pts_m3": 7360.634646395028,
+    "bottom_y": 1.6975674557685851,
+    "top_y": 1.9885981369018555,
+    "saturation": 0.027110543687224847,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "light",
+    "pipe bracket"
+   ],
+   "heuristic_label": "ceiling fixture / duct",
+   "category": "other",
+   "vlm_rationale": "Unclear fragmented structure; likely obscured pipe or support, not identifiable."
+  },
+  {
+   "id": "OBJ-035",
+   "kind": "object",
+   "label": "insulated pipe (vertical)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.96,
+   "center": [
+    -2.881,
+    1.252,
+    0.827
+   ],
+   "size": [
+    0.138,
+    0.916,
+    0.085
+   ],
+   "yaw": -3.1416,
+   "n_points": 241,
+   "color_rgb": [
+    0.559,
+    0.512,
+    0.421
+   ],
+   "descriptors": {
+    "elongation": 6.643543903420158,
+    "flatness": 0.6179378657860216,
+    "height": 0.9157987999916077,
+    "max_extent": 0.9157987999916077,
+    "min_extent": 0.08518145799636842,
+    "volume_m3": 0.010753390081708381,
+    "density_pts_m3": 16087.949817265036,
+    "bottom_y": 0.7943476462364196,
+    "top_y": 1.7101464462280274,
+    "saturation": 0.1385278043288716,
+    "dominant_hue": "yellow",
+    "vertical": true
+   },
+   "alt_labels": [
+    "support column",
+    "conduit"
+   ],
+   "heuristic_label": "vertical pipe",
+   "category": "piping",
+   "vlm_rationale": "Tall narrow insulated run extending vertically from near floor to overhead piping."
+  },
+  {
+   "id": "OBJ-036",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.58,
+   "center": [
+    0.997,
+    0.859,
+    -0.475
+   ],
+   "size": [
+    0.361,
+    0.475,
+    0.135
+   ],
+   "yaw": 2.885,
+   "n_points": 1787,
+   "color_rgb": [
+    0.521,
+    0.506,
+    0.401
+   ],
+   "descriptors": {
+    "elongation": 1.3145037926188907,
+    "flatness": 0.37343473320367987,
+    "height": 0.4745573826962046,
+    "max_extent": 0.4745573826962046,
+    "min_extent": 0.1348160504306536,
+    "volume_m3": 0.023097087767877725,
+    "density_pts_m3": 7360.235268986054,
+    "bottom_y": 0.6214620608091355,
+    "top_y": 1.09601944350534,
+    "saturation": 0.16002538723886944,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "piping",
+   "vlm_rationale": "Box surrounds small bent pipe/fitting, not a distinct instrument or valve."
+  },
+  {
+   "id": "OBJ-037",
+   "kind": "object",
+   "label": "control valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.62,
+   "center": [
+    2.193,
+    0.9,
+    0.942
+   ],
+   "size": [
+    0.193,
+    0.552,
+    0.175
+   ],
+   "yaw": 0.9808,
+   "n_points": 381,
+   "color_rgb": [
+    0.353,
+    0.304,
+    0.252
+   ],
+   "descriptors": {
+    "elongation": 2.8572580544611856,
+    "flatness": 0.9060107987431985,
+    "height": 0.5524261975288388,
+    "max_extent": 0.5524261975288388,
+    "min_extent": 0.17516937249973208,
+    "volume_m3": 0.01870928713256678,
+    "density_pts_m3": 9032.947049373464,
+    "bottom_y": 0.6235341477394104,
+    "top_y": 1.1759603452682492,
+    "saturation": 0.10088337040641848,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "valve",
+   "vlm_rationale": "Small inline valve body with actuator-like top on vertical piping."
+  },
+  {
+   "id": "OBJ-038",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.87,
+   "center": [
+    -3.486,
+    1.795,
+    -0.543
+   ],
+   "size": [
+    1.235,
+    0.065,
+    0.076
+   ],
+   "yaw": 1.5708,
+   "n_points": 275,
+   "color_rgb": [
+    0.412,
+    0.36,
+    0.267
+   ],
+   "descriptors": {
+    "elongation": 16.274578790584282,
+    "flatness": 0.8543058332778217,
+    "height": 0.06482468843460065,
+    "max_extent": 1.2349143110215661,
+    "min_extent": 0.06482468843460065,
+    "volume_m3": 0.0060744131633291365,
+    "density_pts_m3": 27327.742703135824,
+    "bottom_y": 1.7627713441848756,
+    "top_y": 1.8275960326194762,
+    "saturation": 0.14671068437487247,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long thin horizontal strip attached to pipe, matching a label/tag."
+  },
+  {
+   "id": "OBJ-039",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.41,
+   "center": [
+    3.229,
+    0.944,
+    -0.761
+   ],
+   "size": [
+    0.237,
+    0.608,
+    0.157
+   ],
+   "yaw": -2.8778,
+   "n_points": 440,
+   "color_rgb": [
+    0.3,
+    0.261,
+    0.212
+   ],
+   "descriptors": {
+    "elongation": 2.5634075105387257,
+    "flatness": 0.6606355141717236,
+    "height": 0.6084724583095974,
+    "max_extent": 0.6084724583095974,
+    "min_extent": 0.15681412873375478,
+    "volume_m3": 0.0226490185525046,
+    "density_pts_m3": 7020.17174083763,
+    "bottom_y": 0.6394678025775485,
+    "top_y": 1.247940260887146,
+    "saturation": 0.08814628755261418,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "piping",
+   "vlm_rationale": "Tall narrow pipe-like fragment with bends; not enough detail for a specific instrument."
+  },
+  {
+   "id": "OBJ-040",
+   "kind": "object",
+   "label": "insulated pipe (vertical)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.93,
+   "center": [
+    -4.139,
+    0.562,
+    0.475
+   ],
+   "size": [
+    0.182,
+    0.954,
+    0.181
+   ],
+   "yaw": -2.4668,
+   "n_points": 172,
+   "color_rgb": [
+    0.439,
+    0.404,
+    0.345
+   ],
+   "descriptors": {
+    "elongation": 5.252331238485702,
+    "flatness": 0.99741653814518,
+    "height": 0.9544019757211208,
+    "max_extent": 0.9544019757211208,
+    "min_extent": 0.181240723670949,
+    "volume_m3": 0.03143158921121051,
+    "density_pts_m3": 4835.899291588702,
+    "bottom_y": 0.08435692682862282,
+    "top_y": 1.0387589025497437,
+    "saturation": 0.09417701260954665,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "support column",
+    "conduit"
+   ],
+   "heuristic_label": "vertical pipe",
+   "category": "piping",
+   "vlm_rationale": "Tall narrow vertical pipe-like insulated column, mounted from floor upward."
+  },
+  {
+   "id": "OBJ-041",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    0.567,
+    0.528,
+    1.043
+   ],
+   "size": [
+    0.543,
+    0.665,
+    0.087
+   ],
+   "yaw": 3.1416,
+   "n_points": 221,
+   "color_rgb": [
+    0.592,
+    0.524,
+    0.433
+   ],
+   "descriptors": {
+    "elongation": 1.2246246571350616,
+    "flatness": 0.16114910823290438,
+    "height": 0.664553539454937,
+    "max_extent": 0.664553539454937,
+    "min_extent": 0.08744900703430172,
+    "volume_m3": 0.031536379555147806,
+    "density_pts_m3": 4692.9927305444735,
+    "bottom_y": 0.19550735920667647,
+    "top_y": 0.8600608986616135,
+    "saturation": 0.15959612003250703,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "notice board",
+    "wall panel"
+   ],
+   "heuristic_label": "electrical cabinet / panel",
+   "category": "other",
+   "vlm_rationale": "Unrecognisable fragment; appears to be structural frame or panel, not a listed asset."
+  },
+  {
+   "id": "OBJ-042",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    3.108,
+    1.032,
+    -0.988
+   ],
+   "size": [
+    0.156,
+    0.642,
+    0.06
+   ],
+   "yaw": 1.5708,
+   "n_points": 290,
+   "color_rgb": [
+    0.716,
+    0.672,
+    0.544
+   ],
+   "descriptors": {
+    "elongation": 4.110643385475768,
+    "flatness": 0.3830383657992653,
+    "height": 0.6424822203318278,
+    "max_extent": 0.6424822203318278,
+    "min_extent": 0.059867839813232446,
+    "volume_m3": 0.006011820622089108,
+    "density_pts_m3": 23620.13255655905,
+    "bottom_y": 0.7110876556237539,
+    "top_y": 1.3535698759555816,
+    "saturation": 0.17242752584550988,
+    "dominant_hue": "yellow",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Box mostly covers an indistinct vertical surface, not a recognizable asset."
+  },
+  {
+   "id": "OBJ-043",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.32,
+   "center": [
+    -4.145,
+    1.443,
+    0.47
+   ],
+   "size": [
+    0.199,
+    0.677,
+    0.197
+   ],
+   "yaw": 0.8034,
+   "n_points": 172,
+   "color_rgb": [
+    0.257,
+    0.239,
+    0.201
+   ],
+   "descriptors": {
+    "elongation": 3.4072055288102714,
+    "flatness": 0.9929531456878842,
+    "height": 0.6765693855285646,
+    "max_extent": 0.6765693855285646,
+    "min_extent": 0.19717087623747984,
+    "volume_m3": 0.026489216884757055,
+    "density_pts_m3": 5247.41824587446,
+    "bottom_y": 1.1043746948242188,
+    "top_y": 1.7809440803527834,
+    "saturation": 0.05846704162833379,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Box captures mostly indistinct structural fragment, not a recognizable device."
+  },
+  {
+   "id": "OBJ-044",
+   "kind": "object",
+   "label": "heat exchanger",
+   "label_source": "vlm+geometry",
+   "confidence": 0.78,
+   "center": [
+    0.253,
+    1.858,
+    1.006
+   ],
+   "size": [
+    0.537,
+    0.255,
+    0.207
+   ],
+   "yaw": 2.7165,
+   "n_points": 209,
+   "color_rgb": [
+    0.286,
+    0.256,
+    0.207
+   ],
+   "descriptors": {
+    "elongation": 2.107565493543488,
+    "flatness": 0.8108460453372419,
+    "height": 0.25495044708251946,
+    "max_extent": 0.537324764834603,
+    "min_extent": 0.20672556177382267,
+    "volume_m3": 0.028319580508862557,
+    "density_pts_m3": 4837.642279239487,
+    "bottom_y": 1.730695939064026,
+    "top_y": 1.9856463861465454,
+    "saturation": 0.0852345926773229,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "light",
+    "pipe bracket"
+   ],
+   "heuristic_label": "ceiling fixture / duct",
+   "category": "vessel",
+   "vlm_rationale": "Box encloses large rectangular insulated unit consistent with a heat exchanger."
+  },
+  {
+   "id": "OBJ-045",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.86,
+   "center": [
+    -3.643,
+    1.799,
+    -0.52
+   ],
+   "size": [
+    1.16,
+    0.073,
+    0.065
+   ],
+   "yaw": 1.5708,
+   "n_points": 220,
+   "color_rgb": [
+    0.38,
+    0.327,
+    0.241
+   ],
+   "descriptors": {
+    "elongation": 15.896795964582752,
+    "flatness": 0.8969424973553736,
+    "height": 0.07295563220977797,
+    "max_extent": 1.1597607997059818,
+    "min_extent": 0.06543700695037838,
+    "volume_m3": 0.00553669598412142,
+    "density_pts_m3": 24021.546492967656,
+    "bottom_y": 1.7628545093536376,
+    "top_y": 1.8358101415634156,
+    "saturation": 0.14030518344321047,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated pipe segment with uniform cylindrical form."
+  },
+  {
+   "id": "OBJ-046",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.57,
+   "center": [
+    3.341,
+    1.441,
+    -0.485
+   ],
+   "size": [
+    0.145,
+    1.006,
+    0.059
+   ],
+   "yaw": 1.5708,
+   "n_points": 294,
+   "color_rgb": [
+    0.067,
+    0.046,
+    0.035
+   ],
+   "descriptors": {
+    "elongation": 6.937955111864731,
+    "flatness": 0.4038317749113746,
+    "height": 1.0058993756771089,
+    "max_extent": 1.0058993756771089,
+    "min_extent": 0.05854954719543455,
+    "volume_m3": 0.008538884364041148,
+    "density_pts_m3": 15341.582625438248,
+    "bottom_y": 0.9379038155078888,
+    "top_y": 1.9438031911849976,
+    "saturation": 0.03236318293461926,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "support column",
+    "conduit"
+   ],
+   "heuristic_label": "vertical pipe",
+   "category": "piping",
+   "vlm_rationale": "Tall narrow marked strip attached to piping, likely an identification tag."
+  },
+  {
+   "id": "OBJ-047",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.83,
+   "center": [
+    1.89,
+    1.623,
+    1.041
+   ],
+   "size": [
+    0.283,
+    0.718,
+    0.067
+   ],
+   "yaw": -3.1416,
+   "n_points": 341,
+   "color_rgb": [
+    0.164,
+    0.119,
+    0.087
+   ],
+   "descriptors": {
+    "elongation": 2.5386318224585698,
+    "flatness": 0.23722900411425246,
+    "height": 0.7181564199924468,
+    "max_extent": 0.7181564199924468,
+    "min_extent": 0.06710998058319084,
+    "volume_m3": 0.013634069009147116,
+    "density_pts_m3": 9094.863750272074,
+    "bottom_y": 1.2643251371383668,
+    "top_y": 1.9824815571308136,
+    "saturation": 0.07806295746280098,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "notice board",
+    "wall panel"
+   ],
+   "heuristic_label": "electrical cabinet / panel",
+   "category": "piping",
+   "vlm_rationale": "Tall thin marker attached to pipe, matching a vertical pipe tag."
+  },
+  {
+   "id": "OBJ-048",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    -3.769,
+    1.36,
+    0.225
+   ],
+   "size": [
+    0.197,
+    0.249,
+    0.14
+   ],
+   "yaw": 0.8959,
+   "n_points": 284,
+   "color_rgb": [
+    0.37,
+    0.377,
+    0.303
+   ],
+   "descriptors": {
+    "elongation": 1.2650560078117892,
+    "flatness": 0.7083689525533522,
+    "height": 0.2492072582244873,
+    "max_extent": 0.2492072582244873,
+    "min_extent": 0.13954376990985878,
+    "volume_m3": 0.00685049687342825,
+    "density_pts_m3": 17662.952372014875,
+    "bottom_y": 1.235875940322876,
+    "top_y": 1.4850831985473634,
+    "saturation": 0.09540735699346838,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Unclear small fragment on pipe or fitting; no distinct identifiable device."
+  },
+  {
+   "id": "OBJ-049",
+   "kind": "object",
+   "label": "manual valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.79,
+   "center": [
+    -1.901,
+    1.66,
+    1.027
+   ],
+   "size": [
+    0.221,
+    0.218,
+    0.168
+   ],
+   "yaw": 1.5708,
+   "n_points": 361,
+   "color_rgb": [
+    0.631,
+    0.602,
+    0.515
+   ],
+   "descriptors": {
+    "elongation": 1.0122314214475827,
+    "flatness": 0.7705451650560295,
+    "height": 0.2181646505991619,
+    "max_extent": 0.22083311438560488,
+    "min_extent": 0.16810571670532223,
+    "volume_m3": 0.008098993729665327,
+    "density_pts_m3": 14693.183372166583,
+    "bottom_y": 1.5512844117482503,
+    "top_y": 1.7694490623474122,
+    "saturation": 0.11653560139237687,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "valve",
+   "vlm_rationale": "Small yellow handwheel-like fitting on pipe; matches a manual valve."
+  },
+  {
+   "id": "OBJ-050",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.34,
+   "center": [
+    -3.738,
+    0.267,
+    -1.258
+   ],
+   "size": [
+    0.389,
+    0.172,
+    0.252
+   ],
+   "yaw": 1.8144,
+   "n_points": 265,
+   "color_rgb": [
+    0.656,
+    0.614,
+    0.531
+   ],
+   "descriptors": {
+    "elongation": 1.541984581977299,
+    "flatness": 0.6809848573606456,
+    "height": 0.17169148862361908,
+    "max_extent": 0.38876874493281677,
+    "min_extent": 0.17169148862361908,
+    "volume_m3": 0.016828732993433224,
+    "density_pts_m3": 6833.550692430285,
+    "bottom_y": 0.1815152484178543,
+    "top_y": 0.3532067370414734,
+    "saturation": 0.12499942784045301,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Box contains an indistinct low-mounted fragment, not a recognizable device."
+  },
+  {
+   "id": "OBJ-051",
+   "kind": "object",
+   "label": "electric motor",
+   "label_source": "vlm+geometry",
+   "confidence": 0.56,
+   "center": [
+    0.429,
+    1.2,
+    0.698
+   ],
+   "size": [
+    0.187,
+    0.146,
+    0.12
+   ],
+   "yaw": 2.897,
+   "n_points": 461,
+   "color_rgb": [
+    0.418,
+    0.321,
+    0.282
+   ],
+   "descriptors": {
+    "elongation": 1.286085946411814,
+    "flatness": 0.8243023421144061,
+    "height": 0.14555422010875896,
+    "max_extent": 0.18719523692280673,
+    "min_extent": 0.11998068454028579,
+    "volume_m3": 0.003269120516778445,
+    "density_pts_m3": 34871.7642604199,
+    "bottom_y": 1.1269891728673662,
+    "top_y": 1.2725433929761252,
+    "saturation": 0.13741663287623865,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "rotating",
+   "vlm_rationale": "Box encloses compact motor-like housing attached to equipment, not a valve or instrument."
+  },
+  {
+   "id": "OBJ-052",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.89,
+   "center": [
+    -1.347,
+    1.953,
+    -1.513
+   ],
+   "size": [
+    0.889,
+    0.052,
+    0.101
+   ],
+   "yaw": 3.1416,
+   "n_points": 296,
+   "color_rgb": [
+    0.781,
+    0.753,
+    0.68
+   ],
+   "descriptors": {
+    "elongation": 8.825102199952351,
+    "flatness": 0.512821674369711,
+    "height": 0.0516860127449037,
+    "max_extent": 0.8894599576791127,
+    "min_extent": 0.0516860127449037,
+    "volume_m3": 0.004633467166016967,
+    "density_pts_m3": 22877.037044188226,
+    "bottom_y": 1.9276262640953064,
+    "top_y": 1.97931227684021,
+    "saturation": 0.10023645289302514,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long narrow horizontal insulated pipe segment at low height."
+  },
+  {
+   "id": "OBJ-053",
+   "kind": "object",
+   "label": "control panel",
+   "label_source": "vlm+geometry",
+   "confidence": 0.58,
+   "center": [
+    1.997,
+    1.185,
+    0.909
+   ],
+   "size": [
+    0.433,
+    0.305,
+    0.093
+   ],
+   "yaw": -3.1416,
+   "n_points": 297,
+   "color_rgb": [
+    0.354,
+    0.288,
+    0.214
+   ],
+   "descriptors": {
+    "elongation": 1.4227672189841196,
+    "flatness": 0.3041061555788389,
+    "height": 0.304571944475174,
+    "max_extent": 0.433334978421529,
+    "min_extent": 0.09262220313151676,
+    "volume_m3": 0.012224433695523758,
+    "density_pts_m3": 8671.158324398635,
+    "bottom_y": 1.0323648989200591,
+    "top_y": 1.336936843395233,
+    "saturation": 0.13975702724005878,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "electrical",
+   "vlm_rationale": "Rectangular wall-mounted enclosure with apparent front access and internal components."
+  },
+  {
+   "id": "OBJ-054",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.86,
+   "center": [
+    -2.46,
+    1.906,
+    -0.224
+   ],
+   "size": [
+    0.742,
+    0.04,
+    0.117
+   ],
+   "yaw": -3.1416,
+   "n_points": 482,
+   "color_rgb": [
+    0.706,
+    0.664,
+    0.561
+   ],
+   "descriptors": {
+    "elongation": 6.331493713825385,
+    "flatness": 0.34137540912118275,
+    "height": 0.04,
+    "max_extent": 0.7418804687923853,
+    "min_extent": 0.04,
+    "volume_m3": 0.0034771360746914484,
+    "density_pts_m3": 30197.2651470988,
+    "bottom_y": 1.8877155494689941,
+    "top_y": 1.9238526678085328,
+    "saturation": 0.14572916441904787,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long thin marker attached to pipe; looks like a label strip."
+  },
+  {
+   "id": "OBJ-055",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.95,
+   "center": [
+    0.421,
+    1.964,
+    0.437
+   ],
+   "size": [
+    0.601,
+    0.051,
+    0.09
+   ],
+   "yaw": 1.5708,
+   "n_points": 205,
+   "color_rgb": [
+    0.595,
+    0.541,
+    0.431
+   ],
+   "descriptors": {
+    "elongation": 6.7074558555216734,
+    "flatness": 0.5708910211558637,
+    "height": 0.0511373901367187,
+    "max_extent": 0.6008183246850967,
+    "min_extent": 0.0511373901367187,
+    "volume_m3": 0.002752118161890342,
+    "density_pts_m3": 38152.431626656195,
+    "bottom_y": 1.9380846977233888,
+    "top_y": 1.9892220878601075,
+    "saturation": 0.1638646106452358,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated pipe running across the frame."
+  },
+  {
+   "id": "OBJ-056",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.82,
+   "center": [
+    -1.213,
+    0.437,
+    1.128
+   ],
+   "size": [
+    0.099,
+    0.758,
+    0.065
+   ],
+   "yaw": -3.1416,
+   "n_points": 192,
+   "color_rgb": [
+    0.405,
+    0.41,
+    0.389
+   ],
+   "descriptors": {
+    "elongation": 7.618474718096549,
+    "flatness": 0.6569940229096235,
+    "height": 0.7578514809161424,
+    "max_extent": 0.7578514809161424,
+    "min_extent": 0.06535480022430419,
+    "volume_m3": 0.004926944475245664,
+    "density_pts_m3": 21108.417300524667,
+    "bottom_y": 0.05789805583655834,
+    "top_y": 0.8157495367527008,
+    "saturation": 0.0296222451596688,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "support column",
+    "conduit"
+   ],
+   "heuristic_label": "vertical pipe",
+   "category": "piping",
+   "vlm_rationale": "Thin vertical tagged strip attached to pipework; matches label/tag more than equipment."
+  },
+  {
+   "id": "OBJ-057",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.74,
+   "center": [
+    3.254,
+    1.21,
+    -1.474
+   ],
+   "size": [
+    0.147,
+    0.416,
+    0.088
+   ],
+   "yaw": 2.1698,
+   "n_points": 281,
+   "color_rgb": [
+    0.427,
+    0.391,
+    0.34
+   ],
+   "descriptors": {
+    "elongation": 2.8320860268171315,
+    "flatness": 0.5964840089697937,
+    "height": 0.416145538687706,
+    "max_extent": 0.416145538687706,
+    "min_extent": 0.08764711130978832,
+    "volume_m3": 0.005359467628280451,
+    "density_pts_m3": 19404.91243033549,
+    "bottom_y": 1.0022356510162354,
+    "top_y": 1.4183811897039413,
+    "saturation": 0.08895283393352606,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "piping",
+   "vlm_rationale": "Thin vertical tagged strip beside piping, not a device or vessel."
+  },
+  {
+   "id": "OBJ-058",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.24,
+   "center": [
+    -5.265,
+    0.534,
+    -1.409
+   ],
+   "size": [
+    0.277,
+    0.279,
+    0.304
+   ],
+   "yaw": 3.1416,
+   "n_points": 155,
+   "color_rgb": [
+    0.244,
+    0.176,
+    0.162
+   ],
+   "descriptors": {
+    "elongation": 1.0887916327726623,
+    "flatness": 0.9923479887738363,
+    "height": 0.2793458092212676,
+    "max_extent": 0.3041493797302246,
+    "min_extent": 0.2772082519531247,
+    "volume_m3": 0.023552404405967994,
+    "density_pts_m3": 4373.226538769036,
+    "bottom_y": 0.3942592203617096,
+    "top_y": 0.6736050295829772,
+    "saturation": 0.08151483811606866,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box captures indistinct fragment; no clear machinery or instrument features visible."
+  },
+  {
+   "id": "OBJ-059",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.97,
+   "center": [
+    -2.914,
+    1.832,
+    -1.122
+   ],
+   "size": [
+    0.526,
+    0.077,
+    0.08
+   ],
+   "yaw": 1.5708,
+   "n_points": 162,
+   "color_rgb": [
+    0.429,
+    0.381,
+    0.275
+   ],
+   "descriptors": {
+    "elongation": 6.56660014421534,
+    "flatness": 0.9642043889566563,
+    "height": 0.07727455139160155,
+    "max_extent": 0.5262692081928253,
+    "min_extent": 0.07727455139160155,
+    "volume_m3": 0.0032592062264262304,
+    "density_pts_m3": 30682.317427225687,
+    "bottom_y": 1.7930691814422608,
+    "top_y": 1.8703437328338623,
+    "saturation": 0.15337373655537764,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated pipe section with consistent cylindrical form."
+  },
+  {
+   "id": "OBJ-060",
+   "kind": "object",
+   "label": "control valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.49,
+   "center": [
+    1.908,
+    0.678,
+    0.698
+   ],
+   "size": [
+    0.17,
+    0.113,
+    0.122
+   ],
+   "yaw": 1.8015,
+   "n_points": 285,
+   "color_rgb": [
+    0.306,
+    0.305,
+    0.281
+   ],
+   "descriptors": {
+    "elongation": 1.3937834905188424,
+    "flatness": 0.9266236052996423,
+    "height": 0.11283148725827541,
+    "max_extent": 0.1697157974951624,
+    "min_extent": 0.11283148725827541,
+    "volume_m3": 0.002331736844601644,
+    "density_pts_m3": 36882.378129034674,
+    "bottom_y": 0.6218161791563034,
+    "top_y": 0.7346476664145788,
+    "saturation": 0.05251815446766093,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "valve",
+   "vlm_rationale": "Small inline device with actuator-like top near piping, likely valve assembly."
+  },
+  {
+   "id": "OBJ-061",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.41,
+   "center": [
+    -3.794,
+    1.599,
+    0.237
+   ],
+   "size": [
+    0.201,
+    0.333,
+    0.162
+   ],
+   "yaw": 3.1416,
+   "n_points": 118,
+   "color_rgb": [
+    0.303,
+    0.269,
+    0.214
+   ],
+   "descriptors": {
+    "elongation": 1.6577251584518748,
+    "flatness": 0.8075053094443969,
+    "height": 0.33274464130401604,
+    "max_extent": 0.33274464130401604,
+    "min_extent": 0.1620854115486145,
+    "volume_m3": 0.010825638974421481,
+    "density_pts_m3": 7851.730526099719,
+    "bottom_y": 1.4331182765960693,
+    "top_y": 1.7658629179000853,
+    "saturation": 0.08944061901055131,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Box encloses a small pipe section/fitting above a larger vertical pipe."
+  },
+  {
+   "id": "OBJ-062",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.76,
+   "center": [
+    0.609,
+    0.785,
+    -0.088
+   ],
+   "size": [
+    0.359,
+    0.332,
+    0.122
+   ],
+   "yaw": 3.1416,
+   "n_points": 500,
+   "color_rgb": [
+    0.352,
+    0.26,
+    0.189
+   ],
+   "descriptors": {
+    "elongation": 1.0807569524014948,
+    "flatness": 0.36631378099632195,
+    "height": 0.3319588088989257,
+    "max_extent": 0.3587667906284332,
+    "min_extent": 0.12160108642280096,
+    "volume_m3": 0.014482178241512605,
+    "density_pts_m3": 5869.282823515511,
+    "bottom_y": 0.6193339157104493,
+    "top_y": 0.951292724609375,
+    "saturation": 0.16406368924740009,
+    "dominant_hue": "red/orange",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "piping",
+   "vlm_rationale": "Short angled pipe segment/fitting near floor, not a device or valve body."
+  },
+  {
+   "id": "OBJ-063",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.82,
+   "center": [
+    -2.621,
+    1.939,
+    -0.027
+   ],
+   "size": [
+    0.417,
+    0.101,
+    0.167
+   ],
+   "yaw": -3.1416,
+   "n_points": 195,
+   "color_rgb": [
+    0.618,
+    0.554,
+    0.434
+   ],
+   "descriptors": {
+    "elongation": 2.5040209748997135,
+    "flatness": 0.6056748947050893,
+    "height": 0.1008475542068481,
+    "max_extent": 0.41693058967590324,
+    "min_extent": 0.1008475542068481,
+    "volume_m3": 0.007000916977388148,
+    "density_pts_m3": 11569.912950205975,
+    "bottom_y": 1.888240396976471,
+    "top_y": 1.989087951183319,
+    "saturation": 0.18531135157285053,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "light",
+    "pipe bracket"
+   ],
+   "heuristic_label": "ceiling fixture / duct",
+   "category": "piping",
+   "vlm_rationale": "Box spans a horizontal insulated pipe section running across the boiler room."
+  },
+  {
+   "id": "OBJ-064",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.98,
+   "center": [
+    -0.052,
+    1.956,
+    0.393
+   ],
+   "size": [
+    0.558,
+    0.052,
+    0.077
+   ],
+   "yaw": 1.5708,
+   "n_points": 191,
+   "color_rgb": [
+    0.607,
+    0.553,
+    0.445
+   ],
+   "descriptors": {
+    "elongation": 7.208234795410869,
+    "flatness": 0.6753461177948341,
+    "height": 0.05224611759185782,
+    "max_extent": 0.5576433666050433,
+    "min_extent": 0.05224611759185782,
+    "volume_m3": 0.002253918353017265,
+    "density_pts_m3": 35493.743547944396,
+    "bottom_y": 1.929975039958954,
+    "top_y": 1.9822211575508117,
+    "saturation": 0.16186531192933518,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated pipe spanning between supports near ceiling."
+  },
+  {
+   "id": "OBJ-065",
+   "kind": "object",
+   "label": "control panel",
+   "label_source": "vlm+geometry",
+   "confidence": 0.24,
+   "center": [
+    -4.761,
+    0.479,
+    0.566
+   ],
+   "size": [
+    0.186,
+    0.293,
+    0.122
+   ],
+   "yaw": 1.0643,
+   "n_points": 98,
+   "color_rgb": [
+    0.705,
+    0.685,
+    0.637
+   ],
+   "descriptors": {
+    "elongation": 1.5767824813112599,
+    "flatness": 0.6572179539239621,
+    "height": 0.29345672011375423,
+    "max_extent": 0.29345672011375423,
+    "min_extent": 0.12231555553433782,
+    "volume_m3": 0.006680331659652183,
+    "density_pts_m3": 11825.760160553646,
+    "bottom_y": 0.3324014103412628,
+    "top_y": 0.625858130455017,
+    "saturation": 0.07218362934855974,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "electrical",
+   "vlm_rationale": "Small wall-mounted rectangular box-like equipment, likely a control panel."
+  },
+  {
+   "id": "OBJ-066",
+   "kind": "object",
+   "label": "pump-motor unit",
+   "label_source": "human-verified",
+   "confidence": 0.9,
+   "center": [
+    -4.096,
+    0.486,
+    -0.31
+   ],
+   "size": [
+    0.836,
+    0.333,
+    0.691
+   ],
+   "yaw": 0.0,
+   "n_points": 274,
+   "color_rgb": [
+    0.611,
+    0.464,
+    0.407
+   ],
+   "descriptors": {
+    "elongation": 1.2988462650496668,
+    "flatness": 0.18936327444234538,
+    "height": 0.05785238742828369,
+    "max_extent": 0.39681061471246654,
+    "min_extent": 0.05785238742828369,
+    "volume_m3": 0.007013424048564653,
+    "density_pts_m3": 10836.36173625548,
+    "bottom_y": 0.5935075283050537,
+    "top_y": 0.6513599157333374,
+    "saturation": 0.20333728106659754,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "rotating",
+   "vlm_rationale": "Boxy wall-mounted enclosure with cabinet-like dimensions and front access panel.",
+   "auto_label": "electrical cabinet",
+   "review_note": "Fragments merged after visual check against the boiler-room reference video (pump + motor on plinth behind the pink pallet truck).",
+   "merged_from": [
+    "OBJ-066",
+    "OBJ-098",
+    "OBJ-106",
+    "OBJ-120",
+    "OBJ-131"
+   ]
+  },
+  {
+   "id": "OBJ-067",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.34,
+   "center": [
+    -3.736,
+    0.117,
+    -0.742
+   ],
+   "size": [
+    0.163,
+    0.084,
+    0.14
+   ],
+   "yaw": -2.8471,
+   "n_points": 163,
+   "color_rgb": [
+    0.526,
+    0.503,
+    0.456
+   ],
+   "descriptors": {
+    "elongation": 1.1608382970398106,
+    "flatness": 0.5990430125982577,
+    "height": 0.08414593964815138,
+    "max_extent": 0.16305979241841645,
+    "min_extent": 0.08414593964815138,
+    "volume_m3": 0.001927326120562528,
+    "density_pts_m3": 35800.89496211518,
+    "bottom_y": 0.07533400803804398,
+    "top_y": 0.15947994768619536,
+    "saturation": 0.07409792689103929,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "small pump",
+    "drain"
+   ],
+   "heuristic_label": "floor item (box / bucket)",
+   "category": "other",
+   "vlm_rationale": "Box covers small unrecognizable component near floor; no clear device features visible."
+  },
+  {
+   "id": "OBJ-068",
+   "kind": "object",
+   "label": "manual valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.38,
+   "center": [
+    -4.335,
+    1.742,
+    -0.347
+   ],
+   "size": [
+    0.473,
+    0.129,
+    0.162
+   ],
+   "yaw": 2.7112,
+   "n_points": 100,
+   "color_rgb": [
+    0.434,
+    0.389,
+    0.311
+   ],
+   "descriptors": {
+    "elongation": 2.914389482963044,
+    "flatness": 0.7976224747115539,
+    "height": 0.1293573033809663,
+    "max_extent": 0.4726516321575348,
+    "min_extent": 0.1293573033809663,
+    "volume_m3": 0.009915752689585165,
+    "density_pts_m3": 6857.774909152645,
+    "bottom_y": 1.6769345545768737,
+    "top_y": 1.80629185795784,
+    "saturation": 0.12306978850095879,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "light",
+    "pipe bracket"
+   ],
+   "heuristic_label": "ceiling fixture / duct",
+   "category": "valve",
+   "vlm_rationale": "Small valve-like fitting on horizontal piping; no actuator visible."
+  },
+  {
+   "id": "OBJ-069",
+   "kind": "object",
+   "label": "control valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.67,
+   "center": [
+    -2.239,
+    0.596,
+    0.633
+   ],
+   "size": [
+    0.146,
+    0.129,
+    0.121
+   ],
+   "yaw": 1.5708,
+   "n_points": 337,
+   "color_rgb": [
+    0.34,
+    0.282,
+    0.257
+   ],
+   "descriptors": {
+    "elongation": 1.1310272548844742,
+    "flatness": 0.9412447787806829,
+    "height": 0.12879693746566778,
+    "max_extent": 0.1456728466193215,
+    "min_extent": 0.12122944491250193,
+    "volume_m3": 0.002274533093620387,
+    "density_pts_m3": 29896.245603428008,
+    "bottom_y": 0.5315990805625915,
+    "top_y": 0.6603960180282593,
+    "saturation": 0.08408632603920956,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "valve",
+   "vlm_rationale": "Small inline body with stem/handwheel-like top near piping, likely a valve."
+  },
+  {
+   "id": "OBJ-070",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.94,
+   "center": [
+    1.821,
+    1.828,
+    -1.439
+   ],
+   "size": [
+    0.353,
+    0.084,
+    0.125
+   ],
+   "yaw": 1.5708,
+   "n_points": 88,
+   "color_rgb": [
+    0.628,
+    0.605,
+    0.596
+   ],
+   "descriptors": {
+    "elongation": 2.824529830220331,
+    "flatness": 0.6678211882252665,
+    "height": 0.08357945442199699,
+    "max_extent": 0.3534968137741088,
+    "min_extent": 0.08357945442199699,
+    "volume_m3": 0.0036976378479751026,
+    "density_pts_m3": 18119.676062027134,
+    "bottom_y": 1.7864434909820557,
+    "top_y": 1.8700229454040527,
+    "saturation": 0.03277757719381532,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "light",
+    "pipe bracket"
+   ],
+   "heuristic_label": "ceiling fixture / duct",
+   "category": "piping",
+   "vlm_rationale": "Horizontal insulated pipe section with cylindrical form and pipe-support context."
+  },
+  {
+   "id": "OBJ-071",
+   "kind": "object",
+   "label": "insulated pipe (vertical)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.96,
+   "center": [
+    -3.725,
+    0.811,
+    0.246
+   ],
+   "size": [
+    0.131,
+    0.631,
+    0.069
+   ],
+   "yaw": 1.7865,
+   "n_points": 91,
+   "color_rgb": [
+    0.609,
+    0.568,
+    0.473
+   ],
+   "descriptors": {
+    "elongation": 4.808663857799752,
+    "flatness": 0.5252337818220563,
+    "height": 0.6309908911585806,
+    "max_extent": 0.6309908911585806,
+    "min_extent": 0.06892096055350684,
+    "volume_m3": 0.005706542840387411,
+    "density_pts_m3": 11565.6715188209,
+    "bottom_y": 0.49507575780153273,
+    "top_y": 1.1260666489601134,
+    "saturation": 0.1356447542255575,
+    "dominant_hue": "yellow",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "piping",
+   "vlm_rationale": "Tall vertical insulated pipe with small diameter and floor clearance."
+  },
+  {
+   "id": "OBJ-072",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.31,
+   "center": [
+    -2.019,
+    0.139,
+    0.648
+   ],
+   "size": [
+    0.207,
+    0.169,
+    0.134
+   ],
+   "yaw": -3.1416,
+   "n_points": 130,
+   "color_rgb": [
+    0.769,
+    0.164,
+    0.229
+   ],
+   "descriptors": {
+    "elongation": 1.2272568956263954,
+    "flatness": 0.7965110894382658,
+    "height": 0.1688476475328207,
+    "max_extent": 0.20721943974494933,
+    "min_extent": 0.13448902368545532,
+    "volume_m3": 0.004705571212333251,
+    "density_pts_m3": 14025.927357557508,
+    "bottom_y": 0.05409713737666607,
+    "top_y": 0.22294478490948677,
+    "saturation": 0.6095884003508486,
+    "dominant_hue": "red/orange",
+    "vertical": false
+   },
+   "alt_labels": [
+    "small pump",
+    "drain"
+   ],
+   "heuristic_label": "floor item (box / bucket)",
+   "category": "other",
+   "vlm_rationale": "Boxed object is too obscured and unrecognizable to identify confidently."
+  },
+  {
+   "id": "OBJ-073",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.58,
+   "center": [
+    -3.247,
+    1.856,
+    0.505
+   ],
+   "size": [
+    0.317,
+    0.096,
+    0.231
+   ],
+   "yaw": 1.3553,
+   "n_points": 114,
+   "color_rgb": [
+    0.26,
+    0.208,
+    0.152
+   ],
+   "descriptors": {
+    "elongation": 1.3744401803256505,
+    "flatness": 0.4141744811055383,
+    "height": 0.09562721014022824,
+    "max_extent": 0.31733939666766364,
+    "min_extent": 0.09562721014022824,
+    "volume_m3": 0.007006540332372112,
+    "density_pts_m3": 9134.322641989611,
+    "bottom_y": 1.8083420062065125,
+    "top_y": 1.9039692163467408,
+    "saturation": 0.1076596381486438,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small rectangular tag attached to horizontal pipe/beam; too thin for equipment."
+  },
+  {
+   "id": "OBJ-074",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.86,
+   "center": [
+    -2.54,
+    1.891,
+    0.641
+   ],
+   "size": [
+    0.29,
+    0.04,
+    0.104
+   ],
+   "yaw": 3.1416,
+   "n_points": 136,
+   "color_rgb": [
+    0.659,
+    0.604,
+    0.511
+   ],
+   "descriptors": {
+    "elongation": 2.778132886005437,
+    "flatness": 0.3828518271600403,
+    "height": 0.04,
+    "max_extent": 0.29025671958923344,
+    "min_extent": 0.04,
+    "volume_m3": 0.0012130299985446847,
+    "density_pts_m3": 51936.06100062105,
+    "bottom_y": 1.8851099967956544,
+    "top_y": 1.8971578764915467,
+    "saturation": 0.14852256314464346,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small flat rectangular tag attached to horizontal pipe."
+  },
+  {
+   "id": "OBJ-075",
+   "kind": "object",
+   "label": "temperature sensor",
+   "label_source": "vlm+geometry",
+   "confidence": 0.43,
+   "center": [
+    -3.541,
+    0.472,
+    1.047
+   ],
+   "size": [
+    0.04,
+    0.823,
+    0.04
+   ],
+   "yaw": 3.1416,
+   "n_points": 125,
+   "color_rgb": [
+    0.026,
+    0.006,
+    0.0
+   ],
+   "descriptors": {
+    "elongation": 20.57818269232909,
+    "flatness": 1.0,
+    "height": 0.8231273076931636,
+    "max_extent": 0.8231273076931636,
+    "min_extent": 0.04,
+    "volume_m3": 0.0013170036923090616,
+    "density_pts_m3": 44039.36020734339,
+    "bottom_y": 0.06031453430652618,
+    "top_y": 0.8834418419996898,
+    "saturation": 0.025895478405144026,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "support column",
+    "conduit"
+   ],
+   "heuristic_label": "vertical pipe",
+   "category": "instrument",
+   "vlm_rationale": "Slim probe-like vertical element mounted on piping; likely a sensor."
+  },
+  {
+   "id": "OBJ-076",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.55,
+   "center": [
+    -4.004,
+    1.772,
+    -1.33
+   ],
+   "size": [
+    0.484,
+    0.115,
+    0.203
+   ],
+   "yaw": 1.3055,
+   "n_points": 102,
+   "color_rgb": [
+    0.115,
+    0.054,
+    0.018
+   ],
+   "descriptors": {
+    "elongation": 2.3781845144084635,
+    "flatness": 0.5639183390665969,
+    "height": 0.11466226100921628,
+    "max_extent": 0.4835593997005584,
+    "min_extent": 0.11466226100921628,
+    "volume_m3": 0.011273911310277223,
+    "density_pts_m3": 5055.920561308583,
+    "bottom_y": 1.7149904155731202,
+    "top_y": 1.8296526765823364,
+    "saturation": 0.0978797956429727,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "light",
+    "pipe bracket"
+   ],
+   "heuristic_label": "ceiling fixture / duct",
+   "category": "piping",
+   "vlm_rationale": "Thin elongated object attached along pipe; box fits a tag or marker."
+  },
+  {
+   "id": "OBJ-077",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.41,
+   "center": [
+    -3.654,
+    1.81,
+    -1.416
+   ],
+   "size": [
+    0.311,
+    0.102,
+    0.08
+   ],
+   "yaw": 1.5708,
+   "n_points": 76,
+   "color_rgb": [
+    0.126,
+    0.107,
+    0.048
+   ],
+   "descriptors": {
+    "elongation": 3.038287218138342,
+    "flatness": 0.7804993796342065,
+    "height": 0.10248836278915396,
+    "max_extent": 0.31138908267021176,
+    "min_extent": 0.07999210357666016,
+    "volume_m3": 0.002552848577325127,
+    "density_pts_m3": 21936.279533930196,
+    "bottom_y": 1.7591514468193055,
+    "top_y": 1.8616398096084594,
+    "saturation": 0.10147914716175624,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small rectangular tag attached to pipework, not a device or vessel."
+  },
+  {
+   "id": "OBJ-078",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    -2.067,
+    0.208,
+    0.97
+   ],
+   "size": [
+    0.266,
+    0.276,
+    0.118
+   ],
+   "yaw": 2.7049,
+   "n_points": 101,
+   "color_rgb": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "descriptors": {
+    "elongation": 1.0357562434223575,
+    "flatness": 0.4424080242896493,
+    "height": 0.27597388401627543,
+    "max_extent": 0.27597388401627543,
+    "min_extent": 0.11787817988888964,
+    "volume_m3": 0.008667858904133045,
+    "density_pts_m3": 6460.649696697053,
+    "bottom_y": 0.0695499025285244,
+    "top_y": 0.3455237865447998,
+    "saturation": 0.0,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "small pump",
+    "drain"
+   ],
+   "heuristic_label": "floor item (box / bucket)",
+   "category": "other",
+   "vlm_rationale": "Object is too occluded and unrecognizable to match a specific equipment type."
+  },
+  {
+   "id": "OBJ-079",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.88,
+   "center": [
+    -2.644,
+    1.924,
+    -1.008
+   ],
+   "size": [
+    0.3,
+    0.073,
+    0.18
+   ],
+   "yaw": 2.7558,
+   "n_points": 101,
+   "color_rgb": [
+    0.932,
+    0.922,
+    0.905
+   ],
+   "descriptors": {
+    "elongation": 1.6619576444871853,
+    "flatness": 0.4025400940753988,
+    "height": 0.07256500720977788,
+    "max_extent": 0.29959740713919736,
+    "min_extent": 0.07256500720977788,
+    "volume_m3": 0.003919073352793832,
+    "density_pts_m3": 14033.92971983838,
+    "bottom_y": 1.8877976417541504,
+    "top_y": 1.9603626489639283,
+    "saturation": 0.02665027757485708,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated run with pipe supports, not a discrete instrument or valve."
+  },
+  {
+   "id": "OBJ-080",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.74,
+   "center": [
+    -1.532,
+    1.943,
+    -0.947
+   ],
+   "size": [
+    0.259,
+    0.083,
+    0.166
+   ],
+   "yaw": 2.0838,
+   "n_points": 152,
+   "color_rgb": [
+    0.906,
+    0.898,
+    0.879
+   ],
+   "descriptors": {
+    "elongation": 1.5643677048966784,
+    "flatness": 0.4992762941464177,
+    "height": 0.08270551300048834,
+    "max_extent": 0.25913874756676075,
+    "min_extent": 0.08270551300048834,
+    "volume_m3": 0.00355026138681807,
+    "density_pts_m3": 15491.817082599058,
+    "bottom_y": 1.9015500631332396,
+    "top_y": 1.984255576133728,
+    "saturation": 0.02705665563479131,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small curved pipe component between larger insulated runs; no instrument or motor features."
+  },
+  {
+   "id": "OBJ-081",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.24,
+   "center": [
+    3.141,
+    0.928,
+    0.531
+   ],
+   "size": [
+    0.235,
+    0.08,
+    0.067
+   ],
+   "yaw": 1.5708,
+   "n_points": 128,
+   "color_rgb": [
+    0.188,
+    0.117,
+    0.073
+   ],
+   "descriptors": {
+    "elongation": 2.9221147394667093,
+    "flatness": 0.8382494340271934,
+    "height": 0.08041396935780842,
+    "max_extent": 0.2349788451194763,
+    "min_extent": 0.06740696430206299,
+    "volume_m3": 0.001273693797827185,
+    "density_pts_m3": 43181.49314523271,
+    "bottom_y": 0.8878168368339538,
+    "top_y": 0.9682308061917623,
+    "saturation": 0.11504715085522202,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box contains indistinct small fragment, likely occluded pipe or equipment part."
+  },
+  {
+   "id": "OBJ-082",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.84,
+   "center": [
+    3.277,
+    1.97,
+    -1.512
+   ],
+   "size": [
+    0.245,
+    0.045,
+    0.147
+   ],
+   "yaw": 1.5708,
+   "n_points": 134,
+   "color_rgb": [
+    0.1,
+    0.09,
+    0.074
+   ],
+   "descriptors": {
+    "elongation": 1.6648870110366083,
+    "flatness": 0.30930580254364204,
+    "height": 0.04544629812240597,
+    "max_extent": 0.24462182998657228,
+    "min_extent": 0.04544629812240597,
+    "volume_m3": 0.001633443697288315,
+    "density_pts_m3": 33671.19423296051,
+    "bottom_y": 1.94682519197464,
+    "top_y": 1.992271490097046,
+    "saturation": 0.025735148787498476,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Thin rectangular tag attached to pipe; dimensions match a label plate."
+  },
+  {
+   "id": "OBJ-083",
+   "kind": "object",
+   "label": "insulated pipe (vertical)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.92,
+   "center": [
+    -3.807,
+    0.817,
+    0.187
+   ],
+   "size": [
+    0.144,
+    0.389,
+    0.11
+   ],
+   "yaw": 2.2088,
+   "n_points": 65,
+   "color_rgb": [
+    0.504,
+    0.47,
+    0.381
+   ],
+   "descriptors": {
+    "elongation": 2.695031063206477,
+    "flatness": 0.7622033621385311,
+    "height": 0.3888429892063141,
+    "max_extent": 0.3888429892063141,
+    "min_extent": 0.10997180617444427,
+    "volume_m3": 0.006169729573982684,
+    "density_pts_m3": 8590.327884628408,
+    "bottom_y": 0.6222458267211914,
+    "top_y": 1.0110888159275055,
+    "saturation": 0.12347400343080736,
+    "dominant_hue": "yellow",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "piping",
+   "vlm_rationale": "Tall vertical insulated cylindrical pipe section, matching measured dimensions and scene context."
+  },
+  {
+   "id": "OBJ-084",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.79,
+   "center": [
+    -2.19,
+    1.888,
+    0.642
+   ],
+   "size": [
+    0.336,
+    0.04,
+    0.053
+   ],
+   "yaw": -3.1416,
+   "n_points": 146,
+   "color_rgb": [
+    0.645,
+    0.599,
+    0.52
+   ],
+   "descriptors": {
+    "elongation": 6.341507844173841,
+    "flatness": 0.7560214761499913,
+    "height": 0.04,
+    "max_extent": 0.33551998424530016,
+    "min_extent": 0.04,
+    "volume_m3": 0.0007100750332203198,
+    "density_pts_m3": 74639.99932462817,
+    "bottom_y": 1.8782698458433151,
+    "top_y": 1.898482689857483,
+    "saturation": 0.12511671155615278,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated run at specified height, matching pipe dimensions."
+  },
+  {
+   "id": "OBJ-085",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.23,
+   "center": [
+    -2.716,
+    1.055,
+    1.046
+   ],
+   "size": [
+    0.302,
+    0.332,
+    0.057
+   ],
+   "yaw": -3.1416,
+   "n_points": 86,
+   "color_rgb": [
+    0.319,
+    0.267,
+    0.205
+   ],
+   "descriptors": {
+    "elongation": 1.0963689882440302,
+    "flatness": 0.1885790601141376,
+    "height": 0.331503460407257,
+    "max_extent": 0.331503460407257,
+    "min_extent": 0.05701968193054201,
+    "volume_m3": 0.005715367752015964,
+    "density_pts_m3": 9273.244050009813,
+    "bottom_y": 0.8897194695472718,
+    "top_y": 1.2212229299545287,
+    "saturation": 0.11446571954578724,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Mostly frames dark wall/background; no identifiable equipment features visible."
+  },
+  {
+   "id": "OBJ-086",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.84,
+   "center": [
+    0.4,
+    1.96,
+    -1.077
+   ],
+   "size": [
+    0.391,
+    0.049,
+    0.077
+   ],
+   "yaw": 1.5708,
+   "n_points": 105,
+   "color_rgb": [
+    0.645,
+    0.602,
+    0.497
+   ],
+   "descriptors": {
+    "elongation": 5.095148623816968,
+    "flatness": 0.6447005541513406,
+    "height": 0.049495904445648,
+    "max_extent": 0.3911722857952116,
+    "min_extent": 0.049495904445648,
+    "volume_m3": 0.0014864440382313091,
+    "density_pts_m3": 34982.81715460596,
+    "bottom_y": 1.9350348281860352,
+    "top_y": 1.9845307326316832,
+    "saturation": 0.14797391126498635,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated run at ceiling height, consistent with pipe insulation."
+  },
+  {
+   "id": "OBJ-087",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.56,
+   "center": [
+    2.158,
+    1.978,
+    -1.464
+   ],
+   "size": [
+    0.276,
+    0.04,
+    0.149
+   ],
+   "yaw": 1.5708,
+   "n_points": 105,
+   "color_rgb": [
+    0.662,
+    0.62,
+    0.565
+   ],
+   "descriptors": {
+    "elongation": 1.8577612567257684,
+    "flatness": 0.2692139106365741,
+    "height": 0.04,
+    "max_extent": 0.2760275280475617,
+    "min_extent": 0.04,
+    "volume_m3": 0.0016404948905938855,
+    "density_pts_m3": 29259.463272466048,
+    "bottom_y": 1.9625804662704467,
+    "top_y": 1.9932169932127,
+    "saturation": 0.09704011911526322,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Short horizontal pipe segment with joint-like form, not a distinct instrument or valve."
+  },
+  {
+   "id": "OBJ-088",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.21,
+   "center": [
+    -3.776,
+    0.117,
+    -0.008
+   ],
+   "size": [
+    0.145,
+    0.082,
+    0.138
+   ],
+   "yaw": 2.7291,
+   "n_points": 100,
+   "color_rgb": [
+    0.636,
+    0.618,
+    0.562
+   ],
+   "descriptors": {
+    "elongation": 1.0465224911396533,
+    "flatness": 0.5902768157821154,
+    "height": 0.08150790303945542,
+    "max_extent": 0.14450822301634547,
+    "min_extent": 0.08150790303945542,
+    "volume_m3": 0.0016264333657025419,
+    "density_pts_m3": 28897.58719361874,
+    "bottom_y": 0.0759765812754631,
+    "top_y": 0.15748448431491852,
+    "saturation": 0.07487138619659639,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "small pump",
+    "drain"
+   ],
+   "heuristic_label": "floor item (box / bucket)",
+   "category": "other",
+   "vlm_rationale": "Box frames an unrecognizable small fragment near piping; no clear equipment identity."
+  },
+  {
+   "id": "OBJ-089",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    -4.392,
+    1.726,
+    -0.625
+   ],
+   "size": [
+    0.243,
+    0.113,
+    0.161
+   ],
+   "yaw": 1.2753,
+   "n_points": 54,
+   "color_rgb": [
+    0.386,
+    0.334,
+    0.264
+   ],
+   "descriptors": {
+    "elongation": 1.5115423980608762,
+    "flatness": 0.7063141729014782,
+    "height": 0.11347155094146721,
+    "max_extent": 0.24283394954001108,
+    "min_extent": 0.11347155094146721,
+    "volume_m3": 0.004426754773984835,
+    "density_pts_m3": 10165.460319703301,
+    "bottom_y": 1.6695594310760498,
+    "top_y": 1.783030982017517,
+    "saturation": 0.12123319149017334,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box covers unclear piping/structure fragment; no distinct component identifiable."
+  },
+  {
+   "id": "OBJ-090",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.78,
+   "center": [
+    0.265,
+    1.953,
+    -1.53
+   ],
+   "size": [
+    0.266,
+    0.04,
+    0.084
+   ],
+   "yaw": -3.1416,
+   "n_points": 93,
+   "color_rgb": [
+    0.62,
+    0.574,
+    0.463
+   ],
+   "descriptors": {
+    "elongation": 3.1480990367036665,
+    "flatness": 0.47369475087638896,
+    "height": 0.04,
+    "max_extent": 0.26583355892201266,
+    "min_extent": 0.04,
+    "volume_m3": 0.0008979067078288386,
+    "density_pts_m3": 49002.863678781425,
+    "bottom_y": 1.9338125491142273,
+    "top_y": 1.972002239227295,
+    "saturation": 0.15657074753420822,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small thin marking on pipe; size and position match a tag."
+  },
+  {
+   "id": "OBJ-091",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.27,
+   "center": [
+    -3.856,
+    0.881,
+    0.951
+   ],
+   "size": [
+    0.339,
+    0.196,
+    0.102
+   ],
+   "yaw": -3.1416,
+   "n_points": 56,
+   "color_rgb": [
+    0.729,
+    0.694,
+    0.632
+   ],
+   "descriptors": {
+    "elongation": 1.7308812256959516,
+    "flatness": 0.5218583992176377,
+    "height": 0.19613559365272526,
+    "max_extent": 0.3394874167442322,
+    "min_extent": 0.10235500693321226,
+    "volume_m3": 0.006815366071706765,
+    "density_pts_m3": 6455.999507152097,
+    "bottom_y": 0.7831541740894318,
+    "top_y": 0.979289767742157,
+    "saturation": 0.09708242152224887,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box frames mostly indistinct background structure; no clear identifiable equipment."
+  },
+  {
+   "id": "OBJ-092",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.57,
+   "center": [
+    0.364,
+    1.535,
+    0.71
+   ],
+   "size": [
+    0.202,
+    0.255,
+    0.044
+   ],
+   "yaw": -2.8289,
+   "n_points": 291,
+   "color_rgb": [
+    0.681,
+    0.654,
+    0.546
+   ],
+   "descriptors": {
+    "elongation": 1.2639627438140544,
+    "flatness": 0.2168544389508562,
+    "height": 0.255110703657071,
+    "max_extent": 0.255110703657071,
+    "min_extent": 0.043768606932967365,
+    "volume_m3": 0.0022536465904784363,
+    "density_pts_m3": 19523.913015420512,
+    "bottom_y": 1.4075716551144917,
+    "top_y": 1.6626823587715627,
+    "saturation": 0.13525916057396442,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small flat tag attached to insulated piping, not a standalone device."
+  },
+  {
+   "id": "OBJ-093",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.92,
+   "center": [
+    -2.429,
+    1.875,
+    0.481
+   ],
+   "size": [
+    0.396,
+    0.04,
+    0.077
+   ],
+   "yaw": 3.1416,
+   "n_points": 132,
+   "color_rgb": [
+    0.618,
+    0.563,
+    0.441
+   ],
+   "descriptors": {
+    "elongation": 5.135744296125967,
+    "flatness": 0.51904801670966,
+    "height": 0.04,
+    "max_extent": 0.39578182601928713,
+    "min_extent": 0.04,
+    "volume_m3": 0.0012200237766924772,
+    "density_pts_m3": 35245.21474210474,
+    "bottom_y": 1.8552898168563843,
+    "top_y": 1.894983673095703,
+    "saturation": 0.1771208448344467,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated pipe segment at ceiling level."
+  },
+  {
+   "id": "OBJ-094",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.27,
+   "center": [
+    3.27,
+    0.783,
+    -1.575
+   ],
+   "size": [
+    0.135,
+    0.321,
+    0.051
+   ],
+   "yaw": 1.7918,
+   "n_points": 123,
+   "color_rgb": [
+    0.878,
+    0.839,
+    0.802
+   ],
+   "descriptors": {
+    "elongation": 2.382573093446892,
+    "flatness": 0.38054476295397494,
+    "height": 0.3212584233283997,
+    "max_extent": 0.3212584233283997,
+    "min_extent": 0.051311420786511394,
+    "volume_m3": 0.0022226795535835345,
+    "density_pts_m3": 19346.018606538615,
+    "bottom_y": 0.6219943833351135,
+    "top_y": 0.9432528066635132,
+    "saturation": 0.07613553025925807,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box covers unrecognizable vertical fragment near wall, not a distinct object."
+  },
+  {
+   "id": "OBJ-095",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.78,
+   "center": [
+    -0.029,
+    1.949,
+    -1.53
+   ],
+   "size": [
+    0.271,
+    0.04,
+    0.076
+   ],
+   "yaw": 3.1416,
+   "n_points": 145,
+   "color_rgb": [
+    0.704,
+    0.663,
+    0.563
+   ],
+   "descriptors": {
+    "elongation": 3.562726614828856,
+    "flatness": 0.5261665268593653,
+    "height": 0.04,
+    "max_extent": 0.27084403381525696,
+    "min_extent": 0.04,
+    "volume_m3": 0.0008235994347474669,
+    "density_pts_m3": 46138.93404583456,
+    "bottom_y": 1.9341812424226241,
+    "top_y": 1.9633299279212952,
+    "saturation": 0.14125194003874977,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Thin horizontal insulated run at consistent elevation along wall."
+  },
+  {
+   "id": "OBJ-096",
+   "kind": "object",
+   "label": "control valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.71,
+   "center": [
+    3.33,
+    1.38,
+    0.373
+   ],
+   "size": [
+    0.158,
+    0.187,
+    0.107
+   ],
+   "yaw": 1.2964,
+   "n_points": 50,
+   "color_rgb": [
+    0.095,
+    0.074,
+    0.053
+   ],
+   "descriptors": {
+    "elongation": 1.1859048993335022,
+    "flatness": 0.6801759201834465,
+    "height": 0.18700406312942497,
+    "max_extent": 0.18700406312942497,
+    "min_extent": 0.10725620645347361,
+    "volume_m3": 0.003162821297894585,
+    "density_pts_m3": 12014.589640361817,
+    "bottom_y": 1.2860175776481628,
+    "top_y": 1.4730216407775878,
+    "saturation": 0.04610805252664968,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "valve",
+   "vlm_rationale": "Box encloses a small inline valve body on insulated piping."
+  },
+  {
+   "id": "OBJ-097",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    1.13,
+    1.13,
+    0.888
+   ],
+   "size": [
+    0.187,
+    0.167,
+    0.083
+   ],
+   "yaw": -3.1416,
+   "n_points": 60,
+   "color_rgb": [
+    0.507,
+    0.437,
+    0.344
+   ],
+   "descriptors": {
+    "elongation": 1.1214732390415456,
+    "flatness": 0.49737166292924456,
+    "height": 0.16717185497283937,
+    "max_extent": 0.18747876167297367,
+    "min_extent": 0.08314654350280762,
+    "volume_m3": 0.00260591015080047,
+    "density_pts_m3": 14198.49413788673,
+    "bottom_y": 1.0462073516845702,
+    "top_y": 1.2133792066574096,
+    "saturation": 0.16246804769511694,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box frames unclear wall-mounted fragment, likely not a distinct identifiable device."
+  },
+  {
+   "id": "OBJ-099",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.41,
+   "center": [
+    -2.858,
+    1.821,
+    0.586
+   ],
+   "size": [
+    0.2,
+    0.108,
+    0.043
+   ],
+   "yaw": 1.5708,
+   "n_points": 55,
+   "color_rgb": [
+    0.525,
+    0.475,
+    0.379
+   ],
+   "descriptors": {
+    "elongation": 1.8520913274391506,
+    "flatness": 0.396801786824414,
+    "height": 0.10806880295276655,
+    "max_extent": 0.2001532927155494,
+    "min_extent": 0.042881894111633276,
+    "volume_m3": 0.0009275493813288683,
+    "density_pts_m3": 38811.949772877895,
+    "bottom_y": 1.7671602487564086,
+    "top_y": 1.8752290517091752,
+    "saturation": 0.14601715502363666,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small flat marker attached to horizontal pipe; likely identification tag."
+  },
+  {
+   "id": "OBJ-100",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.88,
+   "center": [
+    2.334,
+    0.79,
+    0.773
+   ],
+   "size": [
+    0.108,
+    0.315,
+    0.046
+   ],
+   "yaw": 2.5889,
+   "n_points": 151,
+   "color_rgb": [
+    0.808,
+    0.768,
+    0.696
+   ],
+   "descriptors": {
+    "elongation": 2.9175223383850084,
+    "flatness": 0.4295217263723006,
+    "height": 0.314637423356374,
+    "max_extent": 0.314637423356374,
+    "min_extent": 0.046321362302292016,
+    "volume_m3": 0.0015717659898737302,
+    "density_pts_m3": 22904.172906102965,
+    "bottom_y": 0.6323512128988902,
+    "top_y": 0.9469886362552642,
+    "saturation": 0.1125741876891228,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Box frames a small curved pipe fitting near the floor."
+  },
+  {
+   "id": "OBJ-101",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.7,
+   "center": [
+    -3.444,
+    1.916,
+    1.013
+   ],
+   "size": [
+    0.28,
+    0.074,
+    0.16
+   ],
+   "yaw": -3.1416,
+   "n_points": 43,
+   "color_rgb": [
+    0.02,
+    0.017,
+    0.014
+   ],
+   "descriptors": {
+    "elongation": 1.7523475123395433,
+    "flatness": 0.4653815860783617,
+    "height": 0.07425219535827643,
+    "max_extent": 0.27958916664123534,
+    "min_extent": 0.07425219535827643,
+    "volume_m3": 0.0033123005863086655,
+    "density_pts_m3": 10566.673853415317,
+    "bottom_y": 1.8786105108261109,
+    "top_y": 1.9528627061843873,
+    "saturation": 0.005570869360651288,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small thin rectangular object attached to pipe, likely identification tag."
+  },
+  {
+   "id": "OBJ-102",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.87,
+   "center": [
+    -2.083,
+    1.933,
+    0.977
+   ],
+   "size": [
+    0.212,
+    0.076,
+    0.046
+   ],
+   "yaw": 3.1416,
+   "n_points": 126,
+   "color_rgb": [
+    0.532,
+    0.489,
+    0.429
+   ],
+   "descriptors": {
+    "elongation": 2.8008222358292914,
+    "flatness": 0.6104564421421103,
+    "height": 0.0758649539947509,
+    "max_extent": 0.21248425006866456,
+    "min_extent": 0.04631224989891051,
+    "volume_m3": 0.0007465584634276295,
+    "density_pts_m3": 46881.79387761084,
+    "bottom_y": 1.8948801159858704,
+    "top_y": 1.9707450699806213,
+    "saturation": 0.1026780211570717,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Magenta box encloses a short horizontal insulated pipe segment near ceiling."
+  },
+  {
+   "id": "OBJ-103",
+   "kind": "object",
+   "label": "control valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.71,
+   "center": [
+    1.418,
+    1.51,
+    0.728
+   ],
+   "size": [
+    0.156,
+    0.169,
+    0.044
+   ],
+   "yaw": 2.7554,
+   "n_points": 335,
+   "color_rgb": [
+    0.519,
+    0.475,
+    0.407
+   ],
+   "descriptors": {
+    "elongation": 1.084054152652445,
+    "flatness": 0.2852298556583774,
+    "height": 0.1689952032339006,
+    "max_extent": 0.1689952032339006,
+    "min_extent": 0.044465008788926855,
+    "volume_m3": 0.0011714295107020933,
+    "density_pts_m3": 29878.024823723998,
+    "bottom_y": 1.4255776575633456,
+    "top_y": 1.5945728607972462,
+    "saturation": 0.11357361030723537,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "valve",
+   "vlm_rationale": "Small inline valve-like assembly on piping, with actuator/trim visible."
+  },
+  {
+   "id": "OBJ-104",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.26,
+   "center": [
+    -3.833,
+    0.402,
+    -1.487
+   ],
+   "size": [
+    0.197,
+    0.082,
+    0.134
+   ],
+   "yaw": 1.5708,
+   "n_points": 50,
+   "color_rgb": [
+    0.128,
+    0.098,
+    0.064
+   ],
+   "descriptors": {
+    "elongation": 1.4700949698689292,
+    "flatness": 0.6163696481593521,
+    "height": 0.08245542168617243,
+    "max_extent": 0.19666331887245167,
+    "min_extent": 0.08245542168617243,
+    "volume_m3": 0.002169304681409536,
+    "density_pts_m3": 15673.224831611955,
+    "bottom_y": 0.36065014362335207,
+    "top_y": 0.4431055653095245,
+    "saturation": 0.06475351356408175,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Unclear small component on machinery; resembles bracket or fragment, not identifiable equipment."
+  },
+  {
+   "id": "OBJ-105",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.24,
+   "center": [
+    -4.247,
+    1.939,
+    -1.31
+   ],
+   "size": [
+    0.281,
+    0.059,
+    0.093
+   ],
+   "yaw": -3.1416,
+   "n_points": 37,
+   "color_rgb": [
+    0.375,
+    0.325,
+    0.261
+   ],
+   "descriptors": {
+    "elongation": 3.0369419340374884,
+    "flatness": 0.6401408213667042,
+    "height": 0.05930871963500972,
+    "max_extent": 0.2813711166381836,
+    "min_extent": 0.05930871963500972,
+    "volume_m3": 0.001546112489444205,
+    "density_pts_m3": 21343.854490084876,
+    "bottom_y": 1.9088796186447143,
+    "top_y": 1.968188338279724,
+    "saturation": 0.11386540441802054,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box encloses indistinct fragment of pipework; no clear identifiable component."
+  },
+  {
+   "id": "OBJ-107",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.66,
+   "center": [
+    -2.117,
+    1.898,
+    -1.017
+   ],
+   "size": [
+    0.347,
+    0.04,
+    0.08
+   ],
+   "yaw": -3.1416,
+   "n_points": 45,
+   "color_rgb": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "descriptors": {
+    "elongation": 4.358390857723034,
+    "flatness": 0.5031318406771085,
+    "height": 0.04,
+    "max_extent": 0.34650089740753176,
+    "min_extent": 0.04,
+    "volume_m3": 0.0011019009154855802,
+    "density_pts_m3": 29948.2462862441,
+    "bottom_y": 1.8835419607162476,
+    "top_y": 1.9129150533676147,
+    "saturation": 0.0,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small flat strip attached to pipe; dimensions match a label/tag."
+  },
+  {
+   "id": "OBJ-108",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.96,
+   "center": [
+    -1.875,
+    1.911,
+    -0.923
+   ],
+   "size": [
+    0.262,
+    0.04,
+    0.189
+   ],
+   "yaw": 2.87,
+   "n_points": 56,
+   "color_rgb": [
+    0.972,
+    0.966,
+    0.962
+   ],
+   "descriptors": {
+    "elongation": 1.3853853837956338,
+    "flatness": 0.21117895999705066,
+    "height": 0.04,
+    "max_extent": 0.2624097369955761,
+    "min_extent": 0.04,
+    "volume_m3": 0.001988150614998699,
+    "density_pts_m3": 16598.340060881954,
+    "bottom_y": 1.8937743830680847,
+    "top_y": 1.9286934089660646,
+    "saturation": 0.00965748772476659,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated run with supports; dimensions match small pipe section."
+  },
+  {
+   "id": "OBJ-109",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.57,
+   "center": [
+    3.107,
+    1.013,
+    0.725
+   ],
+   "size": [
+    0.159,
+    0.192,
+    0.054
+   ],
+   "yaw": 1.5708,
+   "n_points": 58,
+   "color_rgb": [
+    0.755,
+    0.71,
+    0.622
+   ],
+   "descriptors": {
+    "elongation": 1.2009155596669303,
+    "flatness": 0.33667187338136073,
+    "height": 0.19150281429290772,
+    "max_extent": 0.19150281429290772,
+    "min_extent": 0.05368704795837402,
+    "volume_m3": 0.001639484722261197,
+    "density_pts_m3": 20128.275397703008,
+    "bottom_y": 0.9170169973373413,
+    "top_y": 1.108519811630249,
+    "saturation": 0.13319278277273988,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small flat rectangular tag attached to piping; no instrument body visible."
+  },
+  {
+   "id": "OBJ-110",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.67,
+   "center": [
+    -3.876,
+    1.828,
+    -0.36
+   ],
+   "size": [
+    0.303,
+    0.04,
+    0.08
+   ],
+   "yaw": -3.1416,
+   "n_points": 74,
+   "color_rgb": [
+    0.595,
+    0.545,
+    0.472
+   ],
+   "descriptors": {
+    "elongation": 3.7984035686946678,
+    "flatness": 0.5015942255040856,
+    "height": 0.04,
+    "max_extent": 0.3029064830144245,
+    "min_extent": 0.04,
+    "volume_m3": 0.0009662200005114127,
+    "density_pts_m3": 33118.75140554185,
+    "bottom_y": 1.8122989118099213,
+    "top_y": 1.8442377853393555,
+    "saturation": 0.12233316127787389,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Small flat rectangular tag attached to pipework, not a valve or instrument."
+  },
+  {
+   "id": "OBJ-111",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    -2.898,
+    1.803,
+    -0.652
+   ],
+   "size": [
+    0.139,
+    0.075,
+    0.096
+   ],
+   "yaw": 2.0325,
+   "n_points": 82,
+   "color_rgb": [
+    0.65,
+    0.6,
+    0.488
+   ],
+   "descriptors": {
+    "elongation": 1.4533506468423774,
+    "flatness": 0.7819557124360181,
+    "height": 0.07468161861101796,
+    "max_extent": 0.1388039974507375,
+    "min_extent": 0.07468161861101796,
+    "volume_m3": 0.0009900275067079905,
+    "density_pts_m3": 32322.334261605953,
+    "bottom_y": 1.7661460781097411,
+    "top_y": 1.840827696720759,
+    "saturation": 0.16186718754349397,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small flat object strapped to horizontal pipe; likely an identification tag."
+  },
+  {
+   "id": "OBJ-112",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.84,
+   "center": [
+    -0.828,
+    1.942,
+    1.014
+   ],
+   "size": [
+    0.168,
+    0.057,
+    0.087
+   ],
+   "yaw": -2.8595,
+   "n_points": 77,
+   "color_rgb": [
+    0.157,
+    0.111,
+    0.05
+   ],
+   "descriptors": {
+    "elongation": 1.9355119873979172,
+    "flatness": 0.6524393390958299,
+    "height": 0.05664345741271992,
+    "max_extent": 0.16803721704138358,
+    "min_extent": 0.05664345741271992,
+    "volume_m3": 0.0008263515561389523,
+    "density_pts_m3": 38724.4384817485,
+    "bottom_y": 1.9133701074123382,
+    "top_y": 1.970013564825058,
+    "saturation": 0.10724426701199263,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small rectangular tag attached to pipe; size and position match identification label."
+  },
+  {
+   "id": "OBJ-113",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.55,
+   "center": [
+    2.148,
+    1.962,
+    -0.517
+   ],
+   "size": [
+    0.184,
+    0.059,
+    0.137
+   ],
+   "yaw": -3.1416,
+   "n_points": 104,
+   "color_rgb": [
+    0.66,
+    0.607,
+    0.529
+   ],
+   "descriptors": {
+    "elongation": 1.3408666415729102,
+    "flatness": 0.4299742318610472,
+    "height": 0.058873202006022085,
+    "max_extent": 0.18359498500823973,
+    "min_extent": 0.058873202006022085,
+    "volume_m3": 0.0014799726804683366,
+    "density_pts_m3": 21622.020745594855,
+    "bottom_y": 1.9326094245910646,
+    "top_y": 1.9914826265970866,
+    "saturation": 0.13143347116937448,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small inline pipe fitting on insulated horizontal pipe near ceiling."
+  },
+  {
+   "id": "OBJ-114",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    -4.414,
+    1.194,
+    0.899
+   ],
+   "size": [
+    0.119,
+    0.33,
+    0.053
+   ],
+   "yaw": 2.209,
+   "n_points": 35,
+   "color_rgb": [
+    0.538,
+    0.513,
+    0.48
+   ],
+   "descriptors": {
+    "elongation": 2.7625537024374722,
+    "flatness": 0.44287922037820365,
+    "height": 0.32971296310424814,
+    "max_extent": 0.32971296310424814,
+    "min_extent": 0.052857984233702665,
+    "volume_m3": 0.00208004108171012,
+    "density_pts_m3": 14903.551796444875,
+    "bottom_y": 1.0287182331085205,
+    "top_y": 1.3584311962127686,
+    "saturation": 0.0586422513569555,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Mostly an unrecognizable vertical fragment; no clear equipment features visible."
+  },
+  {
+   "id": "OBJ-115",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.72,
+   "center": [
+    -2.818,
+    0.291,
+    0.82
+   ],
+   "size": [
+    0.129,
+    0.251,
+    0.073
+   ],
+   "yaw": -3.1416,
+   "n_points": 43,
+   "color_rgb": [
+    0.778,
+    0.713,
+    0.591
+   ],
+   "descriptors": {
+    "elongation": 1.9490286280575337,
+    "flatness": 0.564673106667531,
+    "height": 0.25086232423782345,
+    "max_extent": 0.25086232423782345,
+    "min_extent": 0.07267990112304687,
+    "volume_m3": 0.002346750899148444,
+    "density_pts_m3": 13209.753114933863,
+    "bottom_y": 0.16508859395980835,
+    "top_y": 0.4159509181976318,
+    "saturation": 0.18734205474135698,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small vertical marked object attached near piping, consistent with a tag."
+  },
+  {
+   "id": "OBJ-116",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    0.34,
+    1.429,
+    1.016
+   ],
+   "size": [
+    0.063,
+    0.36,
+    0.075
+   ],
+   "yaw": 3.1416,
+   "n_points": 151,
+   "color_rgb": [
+    0.879,
+    0.855,
+    0.807
+   ],
+   "descriptors": {
+    "elongation": 4.833438417572338,
+    "flatness": 0.8483453103913156,
+    "height": 0.36047937870025626,
+    "max_extent": 0.36047937870025626,
+    "min_extent": 0.06326986380985802,
+    "volume_m3": 0.0017009892215834762,
+    "density_pts_m3": 18224.68926119452,
+    "bottom_y": 1.2485337734222413,
+    "top_y": 1.6090131521224975,
+    "saturation": 0.07225963035097686,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "other",
+   "vlm_rationale": "Box encloses a thin indistinct wall-side fragment; no clear identifiable equipment."
+  },
+  {
+   "id": "OBJ-117",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.53,
+   "center": [
+    0.693,
+    1.948,
+    0.95
+   ],
+   "size": [
+    0.135,
+    0.074,
+    0.103
+   ],
+   "yaw": 1.5708,
+   "n_points": 79,
+   "color_rgb": [
+    0.712,
+    0.66,
+    0.582
+   ],
+   "descriptors": {
+    "elongation": 1.3036040749039495,
+    "flatness": 0.7172977221535632,
+    "height": 0.07411979039510075,
+    "max_extent": 0.13470398386319477,
+    "min_extent": 0.07411979039510075,
+    "volume_m3": 0.0010316903146024466,
+    "density_pts_m3": 30047.77650931578,
+    "bottom_y": 1.9113848606745403,
+    "top_y": 1.985504651069641,
+    "saturation": 0.12966908946846975,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small insulated pipe connection/fitting on overhead piping, not a distinct instrument or valve."
+  },
+  {
+   "id": "OBJ-118",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.56,
+   "center": [
+    3.314,
+    1.62,
+    0.293
+   ],
+   "size": [
+    0.117,
+    0.221,
+    0.081
+   ],
+   "yaw": 3.1416,
+   "n_points": 45,
+   "color_rgb": [
+    0.072,
+    0.012,
+    0.007
+   ],
+   "descriptors": {
+    "elongation": 1.8899610117975023,
+    "flatness": 0.68954790309185,
+    "height": 0.22128816962242137,
+    "max_extent": 0.22128816962242137,
+    "min_extent": 0.08073647677898407,
+    "volume_m3": 0.002091863496544764,
+    "density_pts_m3": 14341.279939896895,
+    "bottom_y": 1.5091863775253296,
+    "top_y": 1.730474547147751,
+    "saturation": 0.06574374958872795,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Thin vertical marker attached to piping; resembles a label tag."
+  },
+  {
+   "id": "OBJ-119",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.41,
+   "center": [
+    3.308,
+    1.956,
+    -0.266
+   ],
+   "size": [
+    0.295,
+    0.053,
+    0.089
+   ],
+   "yaw": 1.5708,
+   "n_points": 42,
+   "color_rgb": [
+    0.038,
+    0.028,
+    0.02
+   ],
+   "descriptors": {
+    "elongation": 3.311470228102064,
+    "flatness": 0.6003849754005857,
+    "height": 0.05344071626663216,
+    "max_extent": 0.2947564448416233,
+    "min_extent": 0.05344071626663216,
+    "volume_m3": 0.001402096918797741,
+    "density_pts_m3": 21396.523733697497,
+    "bottom_y": 1.9295194244384766,
+    "top_y": 1.9829601407051087,
+    "saturation": 0.01865205814441045,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small horizontal pipe segment/fitting near ceiling; no valve, gauge, or electrical features visible."
+  },
+  {
+   "id": "OBJ-121",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    -3.715,
+    0.161,
+    0.185
+   ],
+   "size": [
+    0.151,
+    0.187,
+    0.063
+   ],
+   "yaw": 1.5708,
+   "n_points": 36,
+   "color_rgb": [
+    0.789,
+    0.743,
+    0.635
+   ],
+   "descriptors": {
+    "elongation": 1.2392178522337387,
+    "flatness": 0.41526834355463027,
+    "height": 0.18676159620285032,
+    "max_extent": 0.18676159620285032,
+    "min_extent": 0.06258478164672848,
+    "volume_m3": 0.0017615551086642138,
+    "density_pts_m3": 16462.72651781566,
+    "bottom_y": 0.06758105754852295,
+    "top_y": 0.25434265375137327,
+    "saturation": 0.1543089747428894,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "small pump",
+    "drain"
+   ],
+   "heuristic_label": "floor item (box / bucket)",
+   "category": "other",
+   "vlm_rationale": "Box frames indistinct small fragment near floor; object not recognizable."
+  },
+  {
+   "id": "OBJ-122",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.14,
+   "center": [
+    -4.692,
+    1.703,
+    -0.577
+   ],
+   "size": [
+    0.183,
+    0.08,
+    0.166
+   ],
+   "yaw": 2.7621,
+   "n_points": 35,
+   "color_rgb": [
+    0.325,
+    0.292,
+    0.237
+   ],
+   "descriptors": {
+    "elongation": 1.1068816208162657,
+    "flatness": 0.4836106241874948,
+    "height": 0.08011296987533578,
+    "max_extent": 0.18336150925757375,
+    "min_extent": 0.08011296987533578,
+    "volume_m3": 0.0024334252243017143,
+    "density_pts_m3": 11917.358179075225,
+    "bottom_y": 1.6633194708824157,
+    "top_y": 1.7434324407577515,
+    "saturation": 0.08757480961837988,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box covers an unclear fragment near piping; no distinct equipment visible."
+  },
+  {
+   "id": "OBJ-123",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.25,
+   "center": [
+    0.693,
+    1.391,
+    1.045
+   ],
+   "size": [
+    0.186,
+    0.122,
+    0.056
+   ],
+   "yaw": 3.1416,
+   "n_points": 42,
+   "color_rgb": [
+    0.957,
+    0.897,
+    0.794
+   ],
+   "descriptors": {
+    "elongation": 1.519811563831046,
+    "flatness": 0.4559360785345139,
+    "height": 0.12208661079406746,
+    "max_extent": 0.18554864287376394,
+    "min_extent": 0.055663690567016574,
+    "volume_m3": 0.0012609498577214864,
+    "density_pts_m3": 22998.535447240127,
+    "bottom_y": 1.329507622718811,
+    "top_y": 1.4515942335128784,
+    "saturation": 0.16368534188160952,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box encloses an unrecognizable small fragment; no clear device features visible."
+  },
+  {
+   "id": "OBJ-124",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.42,
+   "center": [
+    3.108,
+    0.746,
+    -1.46
+   ],
+   "size": [
+    0.075,
+    0.247,
+    0.04
+   ],
+   "yaw": -2.8149,
+   "n_points": 212,
+   "color_rgb": [
+    0.694,
+    0.645,
+    0.577
+   ],
+   "descriptors": {
+    "elongation": 3.270386334471534,
+    "flatness": 0.5301605785077663,
+    "height": 0.24674685120320583,
+    "max_extent": 0.24674685120320583,
+    "min_extent": 0.04,
+    "volume_m3": 0.0007446705355504775,
+    "density_pts_m3": 38943.39659694275,
+    "bottom_y": 0.6222611314909798,
+    "top_y": 0.8690079826941857,
+    "saturation": 0.1170316998972819,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Thin vertical strip attached to piping; appears like a tag or marker."
+  },
+  {
+   "id": "OBJ-125",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    3.335,
+    0.92,
+    -0.897
+   ],
+   "size": [
+    0.079,
+    0.318,
+    0.054
+   ],
+   "yaw": 2.8136,
+   "n_points": 50,
+   "color_rgb": [
+    0.194,
+    0.146,
+    0.063
+   ],
+   "descriptors": {
+    "elongation": 4.039984081807138,
+    "flatness": 0.6916408441801414,
+    "height": 0.3175061694780984,
+    "max_extent": 0.3175061694780984,
+    "min_extent": 0.054356708007622864,
+    "volume_m3": 0.0013563689204094964,
+    "density_pts_m3": 21380.613757534873,
+    "bottom_y": 0.7612802028656006,
+    "top_y": 1.078786372343699,
+    "saturation": 0.13047872500858088,
+    "dominant_hue": "yellow",
+    "vertical": true
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Mostly a narrow unidentifiable vertical fragment; no clear equipment features."
+  },
+  {
+   "id": "OBJ-126",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    3.326,
+    1.914,
+    0.322
+   ],
+   "size": [
+    0.299,
+    0.104,
+    0.073
+   ],
+   "yaw": 1.5708,
+   "n_points": 38,
+   "color_rgb": [
+    0.004,
+    0.0,
+    0.0
+   ],
+   "descriptors": {
+    "elongation": 2.8841913270043684,
+    "flatness": 0.704699482315793,
+    "height": 0.10370534420013433,
+    "max_extent": 0.2991060543060302,
+    "min_extent": 0.07308110237121579,
+    "volume_m3": 0.0022668951369765925,
+    "density_pts_m3": 12792.828184667567,
+    "bottom_y": 1.8621360397338866,
+    "top_y": 1.965841383934021,
+    "saturation": 0.004412452722417897,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box captures unclear dark fragment; no distinctive equipment features visible."
+  },
+  {
+   "id": "OBJ-127",
+   "kind": "object",
+   "label": "temperature sensor",
+   "label_source": "vlm+geometry",
+   "confidence": 0.29,
+   "center": [
+    -5.385,
+    1.534,
+    -1.534
+   ],
+   "size": [
+    0.118,
+    0.432,
+    0.054
+   ],
+   "yaw": -3.1416,
+   "n_points": 33,
+   "color_rgb": [
+    0.003,
+    0.001,
+    0.0
+   ],
+   "descriptors": {
+    "elongation": 3.663671577528254,
+    "flatness": 0.45524737503719576,
+    "height": 0.43150887608528143,
+    "max_extent": 0.43150887608528143,
+    "min_extent": 0.05361923933029174,
+    "volume_m3": 0.0027251071319639875,
+    "density_pts_m3": 10274.825408357568,
+    "bottom_y": 1.3178250086307526,
+    "top_y": 1.749333884716034,
+    "saturation": 0.0033305383154324125,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [],
+   "heuristic_label": "equipment (unclassified)",
+   "category": "instrument",
+   "vlm_rationale": "Thin vertical probe-like object; size and placement fit a sensor or thermowell."
+  },
+  {
+   "id": "OBJ-128",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.58,
+   "center": [
+    -5.388,
+    1.036,
+    -1.118
+   ],
+   "size": [
+    0.059,
+    0.468,
+    0.05
+   ],
+   "yaw": 1.5708,
+   "n_points": 39,
+   "color_rgb": [
+    0.083,
+    0.068,
+    0.053
+   ],
+   "descriptors": {
+    "elongation": 7.918876157351907,
+    "flatness": 0.8476217470232267,
+    "height": 0.46830915093421954,
+    "max_extent": 0.46830915093421954,
+    "min_extent": 0.05012693881988526,
+    "volume_m3": 0.0013882667459239354,
+    "density_pts_m3": 20169.034576539623,
+    "bottom_y": 0.8015590977668762,
+    "top_y": 1.2698682487010957,
+    "saturation": 0.03014689577477319,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "support column",
+    "conduit"
+   ],
+   "heuristic_label": "vertical pipe",
+   "category": "piping",
+   "vlm_rationale": "Thin vertical tagged strip on piping, matching label dimensions and placement."
+  },
+  {
+   "id": "OBJ-129",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    -4.86,
+    0.535,
+    -0.058
+   ],
+   "size": [
+    0.202,
+    0.109,
+    0.11
+   ],
+   "yaw": 1.5708,
+   "n_points": 42,
+   "color_rgb": [
+    0.431,
+    0.372,
+    0.296
+   ],
+   "descriptors": {
+    "elongation": 1.8316740522194563,
+    "flatness": 0.9830214585293463,
+    "height": 0.10852407336235054,
+    "max_extent": 0.2022140284876029,
+    "min_extent": 0.10852407336235054,
+    "volume_m3": 0.002422704553619285,
+    "density_pts_m3": 11557.331643336669,
+    "bottom_y": 0.4810079765319824,
+    "top_y": 0.5895320498943329,
+    "saturation": 0.13413410394319467,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Too obscured to identify; appears as a small unrecognizable fragment."
+  },
+  {
+   "id": "OBJ-130",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.87,
+   "center": [
+    -2.591,
+    1.944,
+    -1.483
+   ],
+   "size": [
+    0.332,
+    0.045,
+    0.07
+   ],
+   "yaw": -3.1416,
+   "n_points": 42,
+   "color_rgb": [
+    0.573,
+    0.535,
+    0.429
+   ],
+   "descriptors": {
+    "elongation": 4.755722085608823,
+    "flatness": 0.650303917378809,
+    "height": 0.04543704032897944,
+    "max_extent": 0.33228453715642303,
+    "min_extent": 0.04543704032897944,
+    "volume_m3": 0.0010549061662959353,
+    "density_pts_m3": 26542.64511346604,
+    "bottom_y": 1.9208486676216125,
+    "top_y": 1.966285707950592,
+    "saturation": 0.14414703987893604,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated run with uniform cylindrical profile, matching pipe dimensions."
+  },
+  {
+   "id": "OBJ-132",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    -2.206,
+    0.205,
+    0.966
+   ],
+   "size": [
+    0.177,
+    0.143,
+    0.103
+   ],
+   "yaw": -2.7537,
+   "n_points": 37,
+   "color_rgb": [
+    0.007,
+    0.002,
+    0.0
+   ],
+   "descriptors": {
+    "elongation": 1.2393114858713983,
+    "flatness": 0.7212803944794476,
+    "height": 0.14320519611239435,
+    "max_extent": 0.17747584437855643,
+    "min_extent": 0.10329110034345446,
+    "volume_m3": 0.002625191149280029,
+    "density_pts_m3": 10665.889989640995,
+    "bottom_y": 0.13335707172751426,
+    "top_y": 0.2765622678399086,
+    "saturation": 0.006807228993801844,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "small pump",
+    "drain"
+   ],
+   "heuristic_label": "floor item (box / bucket)",
+   "category": "other",
+   "vlm_rationale": "Box mostly captures indistinct small fragment near pipework; object unrecognisable."
+  },
+  {
+   "id": "OBJ-133",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.64,
+   "center": [
+    -1.888,
+    0.157,
+    1.05
+   ],
+   "size": [
+    0.173,
+    0.197,
+    0.049
+   ],
+   "yaw": 2.55,
+   "n_points": 117,
+   "color_rgb": [
+    0.89,
+    0.876,
+    0.845
+   ],
+   "descriptors": {
+    "elongation": 1.141827981996812,
+    "flatness": 0.28341121699221217,
+    "height": 0.19740756598860024,
+    "max_extent": 0.19740756598860024,
+    "min_extent": 0.04899820235834423,
+    "volume_m3": 0.0016722725181315852,
+    "density_pts_m3": 16743.682441952787,
+    "bottom_y": 0.05869383122771979,
+    "top_y": 0.25610139721632,
+    "saturation": 0.04535026674384838,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "small pump",
+    "drain"
+   ],
+   "heuristic_label": "floor item (box / bucket)",
+   "category": "piping",
+   "vlm_rationale": "Small flat sign-like object beside piping; box mostly frames a label/tag."
+  },
+  {
+   "id": "OBJ-134",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.88,
+   "center": [
+    -3.499,
+    1.806,
+    -1.479
+   ],
+   "size": [
+    0.186,
+    0.072,
+    0.072
+   ],
+   "yaw": 1.5708,
+   "n_points": 46,
+   "color_rgb": [
+    0.117,
+    0.096,
+    0.04
+   ],
+   "descriptors": {
+    "elongation": 2.564172860780728,
+    "flatness": 0.9935263118787541,
+    "height": 0.0723669989903768,
+    "max_extent": 0.18556149482727052,
+    "min_extent": 0.07189851760864258,
+    "volume_m3": 0.0009654912934494022,
+    "density_pts_m3": 27965.037264642066,
+    "bottom_y": 1.7696601883570353,
+    "top_y": 1.842027187347412,
+    "saturation": 0.08708042518697298,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Box encloses a horizontal insulated pipe segment, not a discrete device."
+  },
+  {
+   "id": "OBJ-135",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.24,
+   "center": [
+    -0.162,
+    0.971,
+    0.873
+   ],
+   "size": [
+    0.118,
+    0.218,
+    0.094
+   ],
+   "yaw": -3.1416,
+   "n_points": 39,
+   "color_rgb": [
+    0.575,
+    0.515,
+    0.412
+   ],
+   "descriptors": {
+    "elongation": 1.8394304787680535,
+    "flatness": 0.7947350364754932,
+    "height": 0.21775701284408577,
+    "max_extent": 0.21775701284408577,
+    "min_extent": 0.09408299446105957,
+    "volume_m3": 0.002425336786005835,
+    "density_pts_m3": 11132.474531285588,
+    "bottom_y": 0.8619045615196228,
+    "top_y": 1.0796615743637086,
+    "saturation": 0.1629446478169641,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Mostly obscured vertical fragment; no clear equipment features visible."
+  },
+  {
+   "id": "OBJ-136",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.19,
+   "center": [
+    0.532,
+    1.458,
+    1.063
+   ],
+   "size": [
+    0.135,
+    0.106,
+    0.049
+   ],
+   "yaw": -3.1416,
+   "n_points": 92,
+   "color_rgb": [
+    0.233,
+    0.165,
+    0.117
+   ],
+   "descriptors": {
+    "elongation": 1.2774499789583385,
+    "flatness": 0.46325771979283387,
+    "height": 0.1058637534720559,
+    "max_extent": 0.13523564964532853,
+    "min_extent": 0.04904220104217531,
+    "volume_m3": 0.0007021152937366231,
+    "density_pts_m3": 38455.2227260388,
+    "bottom_y": 1.4053966099875312,
+    "top_y": 1.5112603634595871,
+    "saturation": 0.11672140829885409,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Too obscured; appears like a small structural fragment, not a recognizable device."
+  },
+  {
+   "id": "OBJ-137",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    -4.486,
+    1.643,
+    -1.133
+   ],
+   "size": [
+    0.136,
+    0.131,
+    0.078
+   ],
+   "yaw": -3.1416,
+   "n_points": 41,
+   "color_rgb": [
+    0.083,
+    0.074,
+    0.059
+   ],
+   "descriptors": {
+    "elongation": 1.0352977551846279,
+    "flatness": 0.5964472625256333,
+    "height": 0.13108789920806885,
+    "max_extent": 0.13571500778198242,
+    "min_extent": 0.0781870186328888,
+    "volume_m3": 0.0013909936031734672,
+    "density_pts_m3": 18691.674742919437,
+    "bottom_y": 1.5777780413627625,
+    "top_y": 1.7088659405708313,
+    "saturation": 0.023944505132161654,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box encloses unclear small fragment; no distinctive machine or instrument features visible."
+  },
+  {
+   "id": "OBJ-138",
+   "kind": "object",
+   "label": "control panel",
+   "label_source": "vlm+geometry",
+   "confidence": 0.41,
+   "center": [
+    1.065,
+    1.37,
+    1.048
+   ],
+   "size": [
+    0.146,
+    0.135,
+    0.04
+   ],
+   "yaw": 3.1416,
+   "n_points": 50,
+   "color_rgb": [
+    0.892,
+    0.817,
+    0.72
+   ],
+   "descriptors": {
+    "elongation": 1.0803744783266163,
+    "flatness": 0.2964658254510788,
+    "height": 0.1349228024482727,
+    "max_extent": 0.14576715230941772,
+    "min_extent": 0.04,
+    "volume_m3": 0.0007866925077796338,
+    "density_pts_m3": 33049.76181021804,
+    "bottom_y": 1.3020545840263367,
+    "top_y": 1.4369773864746094,
+    "saturation": 0.17247848441967598,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "electrical",
+   "vlm_rationale": "Small wall-mounted rectangular electrical box or panel; details obscured by scan noise."
+  },
+  {
+   "id": "OBJ-139",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.92,
+   "center": [
+    2.142,
+    1.981,
+    -0.712
+   ],
+   "size": [
+    0.181,
+    0.04,
+    0.123
+   ],
+   "yaw": 3.1416,
+   "n_points": 71,
+   "color_rgb": [
+    0.674,
+    0.641,
+    0.58
+   ],
+   "descriptors": {
+    "elongation": 1.4772890596923909,
+    "flatness": 0.3260179531521614,
+    "height": 0.04,
+    "max_extent": 0.18125247955322266,
+    "min_extent": 0.04,
+    "volume_m3": 0.0008895337342045195,
+    "density_pts_m3": 29228.795941337667,
+    "bottom_y": 1.967534565925598,
+    "top_y": 1.9934890270233154,
+    "saturation": 0.09404520926694586,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Box encloses a short horizontal insulated pipe section."
+  },
+  {
+   "id": "OBJ-140",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    -4.391,
+    1.772,
+    -1.424
+   ],
+   "size": [
+    0.219,
+    0.121,
+    0.069
+   ],
+   "yaw": 1.1758,
+   "n_points": 28,
+   "color_rgb": [
+    0.347,
+    0.295,
+    0.215
+   ],
+   "descriptors": {
+    "elongation": 1.8084770316404293,
+    "flatness": 0.5690504290677085,
+    "height": 0.12112050056457524,
+    "max_extent": 0.21904364333182597,
+    "min_extent": 0.06892367281516718,
+    "volume_m3": 0.0018285916132930282,
+    "density_pts_m3": 13671.72408440539,
+    "bottom_y": 1.7110708093643188,
+    "top_y": 1.832191309928894,
+    "saturation": 0.13162460267543794,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Too fragmented; likely wall-mounted object, not clearly identifiable."
+  },
+  {
+   "id": "OBJ-141",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    -3.721,
+    0.344,
+    0.164
+   ],
+   "size": [
+    0.117,
+    0.159,
+    0.081
+   ],
+   "yaw": 1.5708,
+   "n_points": 29,
+   "color_rgb": [
+    0.773,
+    0.726,
+    0.608
+   ],
+   "descriptors": {
+    "elongation": 1.3581455938289775,
+    "flatness": 0.6923012673603475,
+    "height": 0.1592105215787888,
+    "max_extent": 0.1592105215787888,
+    "min_extent": 0.08115598678588867,
+    "volume_m3": 0.0015146690940623575,
+    "density_pts_m3": 16505.25523891806,
+    "bottom_y": 0.2643457859754562,
+    "top_y": 0.423556307554245,
+    "saturation": 0.1654174256324768,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box encloses unclear vertical fragment, likely wall or pipe, no distinct equipment visible."
+  },
+  {
+   "id": "OBJ-142",
+   "kind": "object",
+   "label": "temperature sensor",
+   "label_source": "vlm+geometry",
+   "confidence": 0.36,
+   "center": [
+    -4.248,
+    1.531,
+    -1.14
+   ],
+   "size": [
+    0.04,
+    0.418,
+    0.04
+   ],
+   "yaw": 2.1244,
+   "n_points": 136,
+   "color_rgb": [
+    0.398,
+    0.359,
+    0.3
+   ],
+   "descriptors": {
+    "elongation": 10.449753040359132,
+    "flatness": 1.0,
+    "height": 0.41799012161436533,
+    "max_extent": 0.41799012161436533,
+    "min_extent": 0.04,
+    "volume_m3": 0.0006687841945829846,
+    "density_pts_m3": 37381.26618794956,
+    "bottom_y": 1.3217670951570784,
+    "top_y": 1.7397572167714437,
+    "saturation": 0.09828910423507764,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "support column",
+    "conduit"
+   ],
+   "heuristic_label": "vertical pipe",
+   "category": "instrument",
+   "vlm_rationale": "Thin vertical probe-like element mounted on piping, likely a sensor or thermowell."
+  },
+  {
+   "id": "OBJ-143",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.84,
+   "center": [
+    -2.327,
+    1.412,
+    1.066
+   ],
+   "size": [
+    0.285,
+    0.086,
+    0.04
+   ],
+   "yaw": 3.1416,
+   "n_points": 84,
+   "color_rgb": [
+    0.271,
+    0.205,
+    0.143
+   ],
+   "descriptors": {
+    "elongation": 3.329248089132707,
+    "flatness": 0.46743051208460984,
+    "height": 0.08557421684265143,
+    "max_extent": 0.2848977979024252,
+    "min_extent": 0.04,
+    "volume_m3": 0.0009751962374278407,
+    "density_pts_m3": 25635.86593190672,
+    "bottom_y": 1.3692165422439575,
+    "top_y": 1.454790759086609,
+    "saturation": 0.1280000722975958,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small rectangular tag mounted on piping, not a functional component."
+  },
+  {
+   "id": "OBJ-144",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.9,
+   "center": [
+    -1.892,
+    1.908,
+    1.021
+   ],
+   "size": [
+    0.148,
+    0.09,
+    0.061
+   ],
+   "yaw": 2.752,
+   "n_points": 63,
+   "color_rgb": [
+    0.145,
+    0.092,
+    0.058
+   ],
+   "descriptors": {
+    "elongation": 1.6428529036608208,
+    "flatness": 0.6806963575933918,
+    "height": 0.09009101390838614,
+    "max_extent": 0.14800628379313957,
+    "min_extent": 0.06132462501933404,
+    "volume_m3": 0.000817704768225964,
+    "density_pts_m3": 30573.381703812585,
+    "bottom_y": 1.8630206871032715,
+    "top_y": 1.9531117010116577,
+    "saturation": 0.08740934031350271,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small rectangular marker attached to pipe, consistent with labeling tag."
+  },
+  {
+   "id": "OBJ-145",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.63,
+   "center": [
+    1.182,
+    1.962,
+    0.915
+   ],
+   "size": [
+    0.138,
+    0.06,
+    0.07
+   ],
+   "yaw": 2.5089,
+   "n_points": 86,
+   "color_rgb": [
+    0.804,
+    0.763,
+    0.705
+   ],
+   "descriptors": {
+    "elongation": 1.9764583091353152,
+    "flatness": 0.8584724105159321,
+    "height": 0.060027211507161615,
+    "max_extent": 0.13820045875003778,
+    "min_extent": 0.060027211507161615,
+    "volume_m3": 0.0005800687650129367,
+    "density_pts_m3": 43098.33852102423,
+    "bottom_y": 1.9322840269406636,
+    "top_y": 1.9923112384478252,
+    "saturation": 0.09907576423788828,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small insulated pipe connector/fitting at the pipe junction, not an instrument or valve."
+  },
+  {
+   "id": "OBJ-146",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.93,
+   "center": [
+    2.04,
+    1.798,
+    -0.906
+   ],
+   "size": [
+    0.355,
+    0.04,
+    0.043
+   ],
+   "yaw": 1.5708,
+   "n_points": 58,
+   "color_rgb": [
+    0.997,
+    0.996,
+    0.995
+   ],
+   "descriptors": {
+    "elongation": 8.330688214286274,
+    "flatness": 0.9374927217705842,
+    "height": 0.04,
+    "max_extent": 0.35544545662403104,
+    "min_extent": 0.04,
+    "volume_m3": 0.0006066316221894047,
+    "density_pts_m3": 39562.7249258474,
+    "bottom_y": 1.79039315700531,
+    "top_y": 1.805556881427765,
+    "saturation": 0.0012543795837296385,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Long horizontal insulated run matching size and location."
+  },
+  {
+   "id": "OBJ-147",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.74,
+   "center": [
+    -2.84,
+    1.856,
+    0.837
+   ],
+   "size": [
+    0.107,
+    0.236,
+    0.04
+   ],
+   "yaw": 1.5708,
+   "n_points": 31,
+   "color_rgb": [
+    0.459,
+    0.414,
+    0.342
+   ],
+   "descriptors": {
+    "elongation": 2.2038320875995305,
+    "flatness": 0.3735512800462551,
+    "height": 0.2359871006011962,
+    "max_extent": 0.2359871006011962,
+    "min_extent": 0.04,
+    "volume_m3": 0.0010107832073689056,
+    "density_pts_m3": 22754.632083638968,
+    "bottom_y": 1.7375307703018188,
+    "top_y": 1.973517870903015,
+    "saturation": 0.11788035583668863,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Small thin rectangular tag attached to piping; fits measured dimensions."
+  },
+  {
+   "id": "OBJ-148",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.28,
+   "center": [
+    -0.357,
+    1.828,
+    1.065
+   ],
+   "size": [
+    0.164,
+    0.12,
+    0.068
+   ],
+   "yaw": -3.1416,
+   "n_points": 39,
+   "color_rgb": [
+    0.53,
+    0.494,
+    0.428
+   ],
+   "descriptors": {
+    "elongation": 1.365397265770142,
+    "flatness": 0.5630640793999846,
+    "height": 0.12008275508880595,
+    "max_extent": 0.16396066546440125,
+    "min_extent": 0.06761428594589233,
+    "volume_m3": 0.0013312474280401982,
+    "density_pts_m3": 17277.028684186495,
+    "bottom_y": 1.7678549766540528,
+    "top_y": 1.8879377317428587,
+    "saturation": 0.10190506171489107,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box frames an indistinct fragment of the overhead structure, not a clear device."
+  },
+  {
+   "id": "OBJ-149",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    -0.169,
+    1.362,
+    1.056
+   ],
+   "size": [
+    0.139,
+    0.196,
+    0.04
+   ],
+   "yaw": -3.1416,
+   "n_points": 30,
+   "color_rgb": [
+    0.83,
+    0.77,
+    0.676
+   ],
+   "descriptors": {
+    "elongation": 1.4056480346112807,
+    "flatness": 0.2870159569138945,
+    "height": 0.1958982419967652,
+    "max_extent": 0.1958982419967652,
+    "min_extent": 0.04,
+    "volume_m3": 0.0010920549176604013,
+    "density_pts_m3": 21061.21187501704,
+    "bottom_y": 1.2639407920837402,
+    "top_y": 1.4598390340805054,
+    "saturation": 0.15441431040349213,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box encloses unrecognizable wall-mounted fragment, not a distinct device."
+  },
+  {
+   "id": "OBJ-150",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.42,
+   "center": [
+    0.228,
+    1.668,
+    1.064
+   ],
+   "size": [
+    0.105,
+    0.243,
+    0.05
+   ],
+   "yaw": -3.1416,
+   "n_points": 25,
+   "color_rgb": [
+    0.647,
+    0.599,
+    0.513
+   ],
+   "descriptors": {
+    "elongation": 2.3137261667226894,
+    "flatness": 0.4731098552914056,
+    "height": 0.24285931587219234,
+    "max_extent": 0.24285931587219234,
+    "min_extent": 0.049659781455993646,
+    "volume_m3": 0.0012659086876703615,
+    "density_pts_m3": 18168.76700824817,
+    "bottom_y": 1.5464292716979982,
+    "top_y": 1.7892885875701905,
+    "saturation": 0.13362818956375122,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box encloses an indistinct slim fragment; no clear identifiable industrial component."
+  },
+  {
+   "id": "OBJ-151",
+   "kind": "object",
+   "label": "temperature sensor",
+   "label_source": "vlm+geometry",
+   "confidence": 0.34,
+   "center": [
+    3.361,
+    1.883,
+    0.603
+   ],
+   "size": [
+    0.136,
+    0.12,
+    0.047
+   ],
+   "yaw": 1.5708,
+   "n_points": 40,
+   "color_rgb": [
+    0.785,
+    0.752,
+    0.7
+   ],
+   "descriptors": {
+    "elongation": 1.1312138003611218,
+    "flatness": 0.3920452474815396,
+    "height": 0.11978745857874551,
+    "max_extent": 0.13550522625446318,
+    "min_extent": 0.04696210384368896,
+    "volume_m3": 0.0007622807299855508,
+    "density_pts_m3": 30172.611080482082,
+    "bottom_y": 1.823265159924825,
+    "top_y": 1.9430526185035706,
+    "saturation": 0.08487764389618584,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "instrument",
+   "vlm_rationale": "Small protruding probe-like fitting on piping; looks like sensor rather than valve."
+  },
+  {
+   "id": "OBJ-152",
+   "kind": "object",
+   "label": "control valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.72,
+   "center": [
+    -2.296,
+    1.426,
+    0.837
+   ],
+   "size": [
+    0.108,
+    0.099,
+    0.063
+   ],
+   "yaw": 2.2674,
+   "n_points": 80,
+   "color_rgb": [
+    0.067,
+    0.218,
+    0.041
+   ],
+   "descriptors": {
+    "elongation": 1.0871079068484606,
+    "flatness": 0.6344727433847929,
+    "height": 0.09900385491053254,
+    "max_extent": 0.1076278734817177,
+    "min_extent": 0.06281524743075557,
+    "volume_m3": 0.0006693325406006,
+    "density_pts_m3": 32868.56482468212,
+    "bottom_y": 1.3769439002672832,
+    "top_y": 1.4759477551778157,
+    "saturation": 0.19554966206634752,
+    "dominant_hue": "green",
+    "vertical": false
+   },
+   "alt_labels": [
+    "valve handle"
+   ],
+   "heuristic_label": "pipe label / tag",
+   "category": "valve",
+   "vlm_rationale": "Small inline valve body with actuator-like top on insulated vertical pipe."
+  },
+  {
+   "id": "OBJ-153",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.36,
+   "center": [
+    0.124,
+    0.979,
+    0.866
+   ],
+   "size": [
+    0.179,
+    0.04,
+    0.073
+   ],
+   "yaw": 3.1416,
+   "n_points": 41,
+   "color_rgb": [
+    0.067,
+    0.049,
+    0.078
+   ],
+   "descriptors": {
+    "elongation": 2.4582682431377285,
+    "flatness": 0.5501494196194278,
+    "height": 0.04,
+    "max_extent": 0.17873458776623008,
+    "min_extent": 0.04,
+    "volume_m3": 0.0005198139454982883,
+    "density_pts_m3": 42322.835296215504,
+    "bottom_y": 0.9611848640441895,
+    "top_y": 0.9962225329875946,
+    "saturation": 0.03261412499528942,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Boxed object is too occluded and unrecognisable; appears like small fragment."
+  },
+  {
+   "id": "OBJ-154",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.24,
+   "center": [
+    1.079,
+    1.873,
+    1.052
+   ],
+   "size": [
+    0.112,
+    0.205,
+    0.076
+   ],
+   "yaw": 2.4974,
+   "n_points": 36,
+   "color_rgb": [
+    0.12,
+    0.071,
+    0.053
+   ],
+   "descriptors": {
+    "elongation": 1.8342342794414044,
+    "flatness": 0.6793556027194516,
+    "height": 0.20532039880752562,
+    "max_extent": 0.20532039880752562,
+    "min_extent": 0.07604566376600677,
+    "volume_m3": 0.0017477682581723303,
+    "density_pts_m3": 12587.481147532544,
+    "bottom_y": 1.7699286842346191,
+    "top_y": 1.9752490830421447,
+    "saturation": 0.06717134005192554,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Small indistinct object; appears to be a mounted fragment, not identifiable machinery."
+  },
+  {
+   "id": "OBJ-155",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.69,
+   "center": [
+    -0.215,
+    0.175,
+    0.718
+   ],
+   "size": [
+    0.067,
+    0.208,
+    0.04
+   ],
+   "yaw": 1.5708,
+   "n_points": 62,
+   "color_rgb": [
+    0.965,
+    0.95,
+    0.917
+   ],
+   "descriptors": {
+    "elongation": 3.09024126188649,
+    "flatness": 0.5955883471446909,
+    "height": 0.20754209021727243,
+    "max_extent": 0.20754209021727243,
+    "min_extent": 0.04,
+    "volume_m3": 0.0005575450660504012,
+    "density_pts_m3": 39458.69372649284,
+    "bottom_y": 0.07169620712598164,
+    "top_y": 0.27923829734325406,
+    "saturation": 0.04813441507744066,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "small pump",
+    "drain"
+   ],
+   "heuristic_label": "floor item (box / bucket)",
+   "category": "piping",
+   "vlm_rationale": "Small vertical pipe segment/fitting beside larger insulated pipe."
+  },
+  {
+   "id": "OBJ-156",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.74,
+   "center": [
+    -3.826,
+    0.174,
+    -0.868
+   ],
+   "size": [
+    0.052,
+    0.218,
+    0.04
+   ],
+   "yaw": -2.8246,
+   "n_points": 70,
+   "color_rgb": [
+    0.666,
+    0.646,
+    0.602
+   ],
+   "descriptors": {
+    "elongation": 4.214543257945613,
+    "flatness": 0.7718488503715025,
+    "height": 0.21841287997861705,
+    "max_extent": 0.21841287997861705,
+    "min_extent": 0.04,
+    "volume_m3": 0.00045275782661020566,
+    "density_pts_m3": 46382.411889435105,
+    "bottom_y": 0.06529127396643161,
+    "top_y": 0.28370415394504866,
+    "saturation": 0.07434021579615563,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "small pump",
+    "drain"
+   ],
+   "heuristic_label": "floor item (box / bucket)",
+   "category": "piping",
+   "vlm_rationale": "Slim vertical tagged strip attached to piping, matching a label or marker."
+  },
+  {
+   "id": "OBJ-157",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.96,
+   "center": [
+    -0.046,
+    1.956,
+    -0.453
+   ],
+   "size": [
+    0.129,
+    0.051,
+    0.071
+   ],
+   "yaw": 1.9012,
+   "n_points": 43,
+   "color_rgb": [
+    0.62,
+    0.565,
+    0.448
+   ],
+   "descriptors": {
+    "elongation": 1.8131316294987079,
+    "flatness": 0.7248074708087423,
+    "height": 0.05145747661590572,
+    "max_extent": 0.12872270524803683,
+    "min_extent": 0.05145747661590572,
+    "volume_m3": 0.00047025071871334846,
+    "density_pts_m3": 44657.02903646386,
+    "bottom_y": 1.9300027370452881,
+    "top_y": 1.9814602136611938,
+    "saturation": 0.1725476213390865,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Magenta box encloses a horizontal insulated pipe run near ceiling."
+  },
+  {
+   "id": "OBJ-158",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.78,
+   "center": [
+    2.911,
+    1.972,
+    0.702
+   ],
+   "size": [
+    0.215,
+    0.04,
+    0.091
+   ],
+   "yaw": 2.9221,
+   "n_points": 36,
+   "color_rgb": [
+    0.374,
+    0.342,
+    0.291
+   ],
+   "descriptors": {
+    "elongation": 2.3536365941558235,
+    "flatness": 0.4399795569068332,
+    "height": 0.040245127677917436,
+    "max_extent": 0.2152881963542628,
+    "min_extent": 0.040245127677917436,
+    "volume_m3": 0.0007925274992707912,
+    "density_pts_m3": 26497.503265592946,
+    "bottom_y": 1.9518960237503051,
+    "top_y": 1.9921411514282226,
+    "saturation": 0.08313155621290207,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small rectangular tag attached to piping, not an instrument or valve."
+  },
+  {
+   "id": "OBJ-159",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.83,
+   "center": [
+    -3.675,
+    1.812,
+    0.461
+   ],
+   "size": [
+    0.267,
+    0.04,
+    0.048
+   ],
+   "yaw": 3.1416,
+   "n_points": 51,
+   "color_rgb": [
+    0.524,
+    0.469,
+    0.367
+   ],
+   "descriptors": {
+    "elongation": 5.590937660811915,
+    "flatness": 0.8381722938463739,
+    "height": 0.04,
+    "max_extent": 0.26681567509969073,
+    "min_extent": 0.04,
+    "volume_m3": 0.0005093285512939556,
+    "density_pts_m3": 39267.38438124026,
+    "bottom_y": 1.7929287642240523,
+    "top_y": 1.8312270013491312,
+    "saturation": 0.15728333140767756,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "cable tray",
+    "duct"
+   ],
+   "heuristic_label": "overhead pipe run",
+   "category": "piping",
+   "vlm_rationale": "Box encloses a short horizontal insulated pipe segment near overhead piping."
+  },
+  {
+   "id": "OBJ-160",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.27,
+   "center": [
+    -2.069,
+    1.276,
+    1.054
+   ],
+   "size": [
+    0.085,
+    0.161,
+    0.04
+   ],
+   "yaw": -3.1416,
+   "n_points": 51,
+   "color_rgb": [
+    0.902,
+    0.853,
+    0.769
+   ],
+   "descriptors": {
+    "elongation": 1.8930426233197053,
+    "flatness": 0.4690138964183406,
+    "height": 0.16144874493281036,
+    "max_extent": 0.16144874493281036,
+    "min_extent": 0.04,
+    "volume_m3": 0.000550768311696436,
+    "density_pts_m3": 36312.90975763924,
+    "bottom_y": 1.1951683819293977,
+    "top_y": 1.356617126862208,
+    "saturation": 0.13329451019565267,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box frames only wall/pipe insulation fragment, no distinct identifiable equipment."
+  },
+  {
+   "id": "OBJ-161",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    0.512,
+    1.751,
+    1.049
+   ],
+   "size": [
+    0.04,
+    0.234,
+    0.04
+   ],
+   "yaw": 1.8366,
+   "n_points": 41,
+   "color_rgb": [
+    0.239,
+    0.205,
+    0.149
+   ],
+   "descriptors": {
+    "elongation": 5.857658336559934,
+    "flatness": 1.0,
+    "height": 0.23430633346239738,
+    "max_extent": 0.23430633346239738,
+    "min_extent": 0.04,
+    "volume_m3": 0.00037489013353983583,
+    "density_pts_m3": 53348.96336468882,
+    "bottom_y": 1.6334652745723723,
+    "top_y": 1.8677716080347697,
+    "saturation": 0.09859249517321586,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "support column",
+    "conduit"
+   ],
+   "heuristic_label": "vertical pipe",
+   "category": "other",
+   "vlm_rationale": "Thin unrecognizable vertical fragment, likely background structure or pipe detail."
+  },
+  {
+   "id": "OBJ-162",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.74,
+   "center": [
+    -4.777,
+    1.701,
+    -1.437
+   ],
+   "size": [
+    0.263,
+    0.05,
+    0.1
+   ],
+   "yaw": 1.5708,
+   "n_points": 19,
+   "color_rgb": [
+    0.306,
+    0.27,
+    0.21
+   ],
+   "descriptors": {
+    "elongation": 2.6368107699477905,
+    "flatness": 0.5035667113072031,
+    "height": 0.050160522460937385,
+    "max_extent": 0.26265398979187016,
+    "min_extent": 0.050160522460937385,
+    "volume_m3": 0.0013123542800756254,
+    "density_pts_m3": 14477.797869417633,
+    "bottom_y": 1.6759913158416748,
+    "top_y": 1.7261518383026122,
+    "saturation": 0.09631450238980745,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small flat rectangular tag attached to pipe, not a device."
+  },
+  {
+   "id": "OBJ-163",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.62,
+   "center": [
+    -3.028,
+    1.876,
+    0.646
+   ],
+   "size": [
+    0.113,
+    0.053,
+    0.09
+   ],
+   "yaw": 2.0079,
+   "n_points": 42,
+   "color_rgb": [
+    0.652,
+    0.599,
+    0.493
+   ],
+   "descriptors": {
+    "elongation": 1.25216718700369,
+    "flatness": 0.590415286126562,
+    "height": 0.053344411849975515,
+    "max_extent": 0.11313413405463836,
+    "min_extent": 0.053344411849975515,
+    "volume_m3": 0.0005452729156920266,
+    "density_pts_m3": 34844.93627541793,
+    "bottom_y": 1.8497978496551515,
+    "top_y": 1.903142261505127,
+    "saturation": 0.1593271691286773,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small uninsulated pipe junction on horizontal run, not a distinct device."
+  },
+  {
+   "id": "OBJ-164",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.74,
+   "center": [
+    -2.891,
+    1.805,
+    -0.531
+   ],
+   "size": [
+    0.105,
+    0.048,
+    0.085
+   ],
+   "yaw": 1.346,
+   "n_points": 24,
+   "color_rgb": [
+    0.6,
+    0.54,
+    0.427
+   ],
+   "descriptors": {
+    "elongation": 1.2298601551097892,
+    "flatness": 0.5605540726529932,
+    "height": 0.047801811695098895,
+    "max_extent": 0.10487756028178301,
+    "min_extent": 0.047801811695098895,
+    "volume_m3": 0.00042751738228097015,
+    "density_pts_m3": 44442.63739319246,
+    "bottom_y": 1.781029188632965,
+    "top_y": 1.828831000328064,
+    "saturation": 0.17249833204244314,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small rectangular tag attached to pipework; dimensions match a label."
+  },
+  {
+   "id": "OBJ-165",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.89,
+   "center": [
+    -0.044,
+    1.955,
+    -0.091
+   ],
+   "size": [
+    0.131,
+    0.056,
+    0.051
+   ],
+   "yaw": 1.5708,
+   "n_points": 40,
+   "color_rgb": [
+    0.623,
+    0.557,
+    0.445
+   ],
+   "descriptors": {
+    "elongation": 2.351657921442591,
+    "flatness": 0.9166502643512843,
+    "height": 0.055777590274810995,
+    "max_extent": 0.1311698120087385,
+    "min_extent": 0.05112854287028312,
+    "volume_m3": 0.0003740736003963526,
+    "density_pts_m3": 50792.14352434495,
+    "bottom_y": 1.926673367023468,
+    "top_y": 1.982450957298279,
+    "saturation": 0.17838320868057117,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Box outlines a horizontal insulated pipe section near ceiling."
+  },
+  {
+   "id": "OBJ-166",
+   "kind": "object",
+   "label": "pipe elbow / fitting",
+   "label_source": "vlm+geometry",
+   "confidence": 0.61,
+   "center": [
+    -0.627,
+    1.954,
+    1.0
+   ],
+   "size": [
+    0.136,
+    0.04,
+    0.07
+   ],
+   "yaw": -2.6084,
+   "n_points": 50,
+   "color_rgb": [
+    0.223,
+    0.179,
+    0.126
+   ],
+   "descriptors": {
+    "elongation": 1.9512606977086204,
+    "flatness": 0.5729298034559853,
+    "height": 0.04,
+    "max_extent": 0.13623035045049975,
+    "min_extent": 0.04,
+    "volume_m3": 0.0003804454915872513,
+    "density_pts_m3": 49941.45132520921,
+    "bottom_y": 1.9438087058067322,
+    "top_y": 1.9637971329689026,
+    "saturation": 0.09788511089588466,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Small uninsulated pipe fitting on top of horizontal pipe."
+  },
+  {
+   "id": "OBJ-167",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.18,
+   "center": [
+    -1.37,
+    1.257,
+    1.12
+   ],
+   "size": [
+    0.101,
+    0.23,
+    0.04
+   ],
+   "yaw": 2.7965,
+   "n_points": 26,
+   "color_rgb": [
+    0.456,
+    0.478,
+    0.488
+   ],
+   "descriptors": {
+    "elongation": 2.273653602355752,
+    "flatness": 0.3961427033010598,
+    "height": 0.22957924842834476,
+    "max_extent": 0.22957924842834476,
+    "min_extent": 0.04,
+    "volume_m3": 0.0009272587742356857,
+    "density_pts_m3": 20490.50440710166,
+    "bottom_y": 1.1426930904388428,
+    "top_y": 1.3722723388671876,
+    "saturation": 0.03536546178031386,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box covers unclear dark fragment beside cabinet; object not identifiable."
+  },
+  {
+   "id": "OBJ-168",
+   "kind": "object",
+   "label": "electrical cabinet",
+   "label_source": "vlm+geometry",
+   "confidence": 0.41,
+   "center": [
+    3.334,
+    0.822,
+    0.393
+   ],
+   "size": [
+    0.098,
+    0.117,
+    0.08
+   ],
+   "yaw": 1.234,
+   "n_points": 27,
+   "color_rgb": [
+    0.281,
+    0.224,
+    0.178
+   ],
+   "descriptors": {
+    "elongation": 1.1981497451784118,
+    "flatness": 0.8155269274693003,
+    "height": 0.11747728586196893,
+    "max_extent": 0.11747728586196893,
+    "min_extent": 0.07996153266483241,
+    "volume_m3": 0.0009210385726711129,
+    "density_pts_m3": 20628.886307006574,
+    "bottom_y": 0.7628629183769227,
+    "top_y": 0.8803402042388916,
+    "saturation": 0.10295163617845167,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "electrical",
+   "vlm_rationale": "Small rectangular box-like unit mounted near piping; resembles cabinet or enclosure."
+  },
+  {
+   "id": "OBJ-169",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.22,
+   "center": [
+    3.341,
+    0.781,
+    0.719
+   ],
+   "size": [
+    0.194,
+    0.099,
+    0.091
+   ],
+   "yaw": 1.5708,
+   "n_points": 21,
+   "color_rgb": [
+    0.204,
+    0.161,
+    0.13
+   ],
+   "descriptors": {
+    "elongation": 1.9521428709471154,
+    "flatness": 0.9169700302361262,
+    "height": 0.09931043386459348,
+    "max_extent": 0.19386815547943115,
+    "min_extent": 0.0910646915435791,
+    "volume_m3": 0.0017532804023597517,
+    "density_pts_m3": 10836.829051660974,
+    "bottom_y": 0.730931031703949,
+    "top_y": 0.8302414655685425,
+    "saturation": 0.07584929230966066,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Box encloses an unrecognizable small fragment; no clear equipment features visible."
+  },
+  {
+   "id": "OBJ-170",
+   "kind": "object",
+   "label": "control valve",
+   "label_source": "vlm+geometry",
+   "confidence": 0.43,
+   "center": [
+    -2.87,
+    1.833,
+    -0.386
+   ],
+   "size": [
+    0.107,
+    0.095,
+    0.04
+   ],
+   "yaw": 1.5708,
+   "n_points": 24,
+   "color_rgb": [
+    0.566,
+    0.512,
+    0.408
+   ],
+   "descriptors": {
+    "elongation": 1.1199055407166294,
+    "flatness": 0.41950604742800235,
+    "height": 0.09535023450851443,
+    "max_extent": 0.10678325593471527,
+    "min_extent": 0.04,
+    "volume_m3": 0.00040727233979831267,
+    "density_pts_m3": 44196.470619423526,
+    "bottom_y": 1.7856775164604186,
+    "top_y": 1.881027750968933,
+    "saturation": 0.15790676049612185,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "valve",
+   "vlm_rationale": "Small inline component on horizontal pipe; likely valve body or actuator."
+  },
+  {
+   "id": "OBJ-171",
+   "kind": "object",
+   "label": "pipe label / tag",
+   "label_source": "vlm+geometry",
+   "confidence": 0.62,
+   "center": [
+    -1.667,
+    1.915,
+    -1.034
+   ],
+   "size": [
+    0.174,
+    0.041,
+    0.097
+   ],
+   "yaw": -2.8196,
+   "n_points": 22,
+   "color_rgb": [
+    0.984,
+    0.982,
+    0.979
+   ],
+   "descriptors": {
+    "elongation": 1.8009509632680634,
+    "flatness": 0.4248868951130653,
+    "height": 0.04101243972778312,
+    "max_extent": 0.17383777584872176,
+    "min_extent": 0.04101243972778312,
+    "volume_m3": 0.0006881799745382938,
+    "density_pts_m3": 26155.948539590045,
+    "bottom_y": 1.8949683594703675,
+    "top_y": 1.9359807991981506,
+    "saturation": 0.004651079575220744,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Small rectangular tag attached to piping, not a mechanical device."
+  },
+  {
+   "id": "OBJ-172",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.89,
+   "center": [
+    -1.573,
+    1.954,
+    0.926
+   ],
+   "size": [
+    0.119,
+    0.048,
+    0.055
+   ],
+   "yaw": -2.8124,
+   "n_points": 33,
+   "color_rgb": [
+    0.591,
+    0.546,
+    0.479
+   ],
+   "descriptors": {
+    "elongation": 2.1766116895997922,
+    "flatness": 0.8743402361515262,
+    "height": 0.04772227644920335,
+    "max_extent": 0.11880142360924968,
+    "min_extent": 0.04772227644920335,
+    "volume_m3": 0.0003094450106480437,
+    "density_pts_m3": 58168.65478717582,
+    "bottom_y": 1.930403528213501,
+    "top_y": 1.9781258046627044,
+    "saturation": 0.11151779456822959,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Box encloses a horizontal insulated pipe section under the ceiling."
+  },
+  {
+   "id": "OBJ-173",
+   "kind": "object",
+   "label": "insulated pipe (horizontal)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.91,
+   "center": [
+    -1.236,
+    1.963,
+    0.947
+   ],
+   "size": [
+    0.086,
+    0.04,
+    0.061
+   ],
+   "yaw": -3.1416,
+   "n_points": 33,
+   "color_rgb": [
+    0.598,
+    0.554,
+    0.492
+   ],
+   "descriptors": {
+    "elongation": 1.4138202828245225,
+    "flatness": 0.655636802943283,
+    "height": 0.04,
+    "max_extent": 0.08625630998611453,
+    "min_extent": 0.04,
+    "volume_m3": 0.00021049778682073473,
+    "density_pts_m3": 85511.58789773527,
+    "bottom_y": 1.9437005559603373,
+    "top_y": 1.9815073251724242,
+    "saturation": 0.10590906899284433,
+    "dominant_hue": "neutral",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Box covers a small horizontal insulated pipe segment near ceiling."
+  },
+  {
+   "id": "OBJ-174",
+   "kind": "object",
+   "label": "other equipment",
+   "label_source": "vlm+geometry",
+   "confidence": 0.28,
+   "center": [
+    2.163,
+    1.48,
+    1.028
+   ],
+   "size": [
+    0.098,
+    0.172,
+    0.044
+   ],
+   "yaw": -3.1416,
+   "n_points": 41,
+   "color_rgb": [
+    0.282,
+    0.221,
+    0.146
+   ],
+   "descriptors": {
+    "elongation": 1.7606433539091608,
+    "flatness": 0.4516429518184446,
+    "height": 0.17243577559789025,
+    "max_extent": 0.17243577559789025,
+    "min_extent": 0.044233491420745855,
+    "volume_m3": 0.0007470240401784237,
+    "density_pts_m3": 24095.610090005634,
+    "bottom_y": 1.3938765215873719,
+    "top_y": 1.566312297185262,
+    "saturation": 0.1361689472364055,
+    "dominant_hue": "yellow",
+    "vertical": false
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "other",
+   "vlm_rationale": "Small unrecognizable vertical component; likely minor pipe or support fragment."
+  },
+  {
+   "id": "OBJ-175",
+   "kind": "object",
+   "label": "insulated pipe (vertical)",
+   "label_source": "vlm+geometry",
+   "confidence": 0.92,
+   "center": [
+    -0.197,
+    0.677,
+    0.873
+   ],
+   "size": [
+    0.08,
+    0.265,
+    0.04
+   ],
+   "yaw": 1.5708,
+   "n_points": 48,
+   "color_rgb": [
+    0.856,
+    0.824,
+    0.775
+   ],
+   "descriptors": {
+    "elongation": 3.304935375518712,
+    "flatness": 0.4994391782091184,
+    "height": 0.2646917198101679,
+    "max_extent": 0.2646917198101679,
+    "min_extent": 0.04,
+    "volume_m3": 0.0008479646174632774,
+    "density_pts_m3": 21227.30079687496,
+    "bottom_y": 0.5449263521035512,
+    "top_y": 0.8096180719137192,
+    "saturation": 0.08082569801302814,
+    "dominant_hue": "neutral",
+    "vertical": true
+   },
+   "alt_labels": [
+    "gauge",
+    "sensor",
+    "junction box"
+   ],
+   "heuristic_label": "valve / fitting",
+   "category": "piping",
+   "vlm_rationale": "Tall narrow vertical pipe-like insulated run with no fittings or instrument features."
+  }
+ ],
+ "stats": {
+  "n_objects": 170,
+  "n_structures": 1,
+  "labels": {
+   "wall": 1,
+   "pump-motor unit": 3,
+   "wire mesh cage": 1,
+   "heat exchanger": 2,
+   "other equipment": 54,
+   "insulated pipe (horizontal)": 30,
+   "control valve": 9,
+   "pipe elbow / fitting": 17,
+   "trolley / cart": 1,
+   "insulated pipe (vertical)": 6,
+   "control panel": 5,
+   "flow meter": 1,
+   "pipe label / tag": 33,
+   "manual valve": 2,
+   "electric motor": 1,
+   "temperature sensor": 4,
+   "electrical cabinet": 1
+  }
+ },
+ "partial_scan": {
+  "used_splats": 502483,
+  "declared_splats": 1506136,
+  "fraction": 0.3336
+ }
+}

@@ -1,0 +1,21 @@
+{
+  "_doc": "Human review layer (DOC-3D-MAPPING: 'never silently guess identity'). Applied after automatic extraction + VLM labelling. Regions are in the canonical scene frame (metres, +Y up), so they survive pipeline re-runs. Every change is tagged label_source='human-verified' in the output.",
+  "merge_regions": [
+    {
+      "name": "Pump set on concrete plinth (behind pallet truck)",
+      "region_min": [-4.5, 0.25, -0.75],
+      "region_max": [-3.75, 0.95, 0.05],
+      "label": "pump-motor unit",
+      "category": "rotating",
+      "note": "Fragments merged after visual check against the boiler-room reference video (pump + motor on plinth behind the pink pallet truck)."
+    }
+  ],
+  "relabel_near": [
+    {
+      "point": [-3.4, 0.54, -0.35],
+      "label": "trolley / cart",
+      "category": "logistics",
+      "note": "Pink hand pallet truck; VLM proposed 'pump-motor unit' (0.79) — corrected in review."
+    }
+  ]
+}

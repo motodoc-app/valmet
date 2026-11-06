@@ -1,0 +1,1394 @@
+{
+ "OBJ-002": {
+  "label": "pump-motor unit",
+  "category": "rotating",
+  "confidence": 0.72,
+  "rationale": "Visible blue motor and coupled pump assembly within the box.",
+  "geometry_signature": "2.93,1.32,-0.26|6568",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-003": {
+  "label": "wire mesh cage",
+  "category": "structure",
+  "confidence": 0.97,
+  "rationale": "Tall rectangular protective cage-like frame with mesh sides, standing on the floor.",
+  "geometry_signature": "-2.52,0.70,-1.36|10393",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-004": {
+  "label": "heat exchanger",
+  "category": "vessel",
+  "confidence": 0.6,
+  "rationale": "Box encloses large horizontal insulated unit with connected piping, typical heat exchanger.",
+  "geometry_signature": "2.16,0.76,-0.26|6028",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-005": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.27,
+  "rationale": "Box covers cluttered machinery fragments; no clear identifiable object.",
+  "geometry_signature": "-3.83,0.57,-1.00|2146",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-006": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.19,
+  "rationale": "Box covers a cluttered pipe/manifold area, not a single identifiable device.",
+  "geometry_signature": "2.70,1.33,0.08|1937",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-007": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.93,
+  "rationale": "Long horizontal insulated run near ceiling, matching pipe dimensions.",
+  "geometry_signature": "2.73,1.86,-1.03|2111",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-008": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.34,
+  "rationale": "Unclear fragment of machinery behind frame; not enough detail for specific identification.",
+  "geometry_signature": "-5.30,1.21,-0.39|928",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-009": {
+  "label": "control valve",
+  "category": "valve",
+  "confidence": 0.61,
+  "rationale": "Box encloses small valve assembly with handwheel/actuator on piping.",
+  "geometry_signature": "0.44,0.93,0.53|2619",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-010": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.41,
+  "rationale": "Unclear machinery fragment; no distinct pump, valve, or instrument features visible.",
+  "geometry_signature": "-4.28,0.55,-1.19|1032",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-011": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.88,
+  "rationale": "Long horizontal insulated pipe/duct segment across the ceiling area.",
+  "geometry_signature": "2.21,1.97,0.00|2443",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-012": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.41,
+  "rationale": "Slim vertical pipe segment with a small green fitting attached.",
+  "geometry_signature": "-2.25,1.10,0.86|940",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-013": {
+  "label": "pump-motor unit",
+  "category": "rotating",
+  "confidence": 0.79,
+  "rationale": "Compact motorized pump assembly with connected piping and base-mounted equipment.",
+  "geometry_signature": "-3.40,0.54,-0.35|1514",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-014": {
+  "label": "insulated pipe (vertical)",
+  "category": "piping",
+  "confidence": 0.88,
+  "rationale": "Tall narrow insulated run fixed vertically against wall.",
+  "geometry_signature": "1.37,1.60,1.05|851",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-015": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.42,
+  "rationale": "Long thin horizontal pipe section; box encloses mostly insulated pipe/fitting.",
+  "geometry_signature": "1.05,1.98,-0.42|843",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-016": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.92,
+  "rationale": "Long horizontal insulated pipe segment near ceiling; box spans its length.",
+  "geometry_signature": "-3.10,1.82,-0.49|492",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-017": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.23,
+  "rationale": "Mostly an unrecognisable vertical panel/fragment; no clear equipment features.",
+  "geometry_signature": "3.10,1.21,-1.17|730",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-018": {
+  "label": "control valve",
+  "category": "valve",
+  "confidence": 0.79,
+  "rationale": "Red handwheel valve on a vertical pipe run, likely an isolation/control valve.",
+  "geometry_signature": "1.39,0.98,0.70|1212",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-019": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.21,
+  "rationale": "Box covers unclear wall-mounted fragment; no identifiable equipment features.",
+  "geometry_signature": "1.39,0.93,0.96|477",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-020": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.86,
+  "rationale": "Long horizontal insulated pipe segment across the scene.",
+  "geometry_signature": "1.36,1.98,-0.42|469",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-021": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box covers an indistinct vertical fragment; no clear machine or instrument features.",
+  "geometry_signature": "-4.67,1.13,0.01|273",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-022": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.27,
+  "rationale": "Occluded small apparatus; no clear pump, valve, or instrument features visible.",
+  "geometry_signature": "-5.04,1.36,-1.10|359",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-023": {
+  "label": "control panel",
+  "category": "electrical",
+  "confidence": 0.81,
+  "rationale": "Wall-mounted rectangular enclosure with access door and visible controls.",
+  "geometry_signature": "-1.38,1.41,1.12|427",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-024": {
+  "label": "flow meter",
+  "category": "instrument",
+  "confidence": 0.39,
+  "rationale": "Small inline instrument on pipe with sensor-like body and connections.",
+  "geometry_signature": "3.14,1.67,0.65|516",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-025": {
+  "label": "pump-motor unit",
+  "category": "rotating",
+  "confidence": 0.61,
+  "rationale": "Compact coupled machinery; visible pump body and motor-like housing.",
+  "geometry_signature": "0.51,1.13,0.95|476",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-026": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.95,
+  "rationale": "Long horizontal insulated pipe segment with supporting hangers.",
+  "geometry_signature": "-1.95,1.95,-1.33|473",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-027": {
+  "label": "control panel",
+  "category": "electrical",
+  "confidence": 0.56,
+  "rationale": "Wall-mounted rectangular enclosure with door; likely an electrical control panel.",
+  "geometry_signature": "-1.58,1.22,1.12|1562",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-028": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.12,
+  "rationale": "Box mostly covers an unrecognisable vertical structural fragment, not a distinct device.",
+  "geometry_signature": "-2.99,0.40,0.60|428",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-029": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.22,
+  "rationale": "Box captures unrecognizable vertical fragments, likely pipe or structural edge.",
+  "geometry_signature": "-0.09,0.50,1.08|359",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-030": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.86,
+  "rationale": "Long horizontal insulated run near ceiling; matches measured dimensions.",
+  "geometry_signature": "-3.27,1.83,-0.63|384",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-031": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.23,
+  "rationale": "Boxed region is too obscured; no distinctive equipment features visible.",
+  "geometry_signature": "-5.23,0.69,-0.97|229",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-032": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.67,
+  "rationale": "Box covers small pipe connection/fitting beneath insulated horizontal pipe.",
+  "geometry_signature": "2.24,1.92,0.96|406",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-033": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.94,
+  "rationale": "Long horizontal insulated run above equipment, matching pipe dimensions.",
+  "geometry_signature": "1.96,1.86,-0.78|473",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-034": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.24,
+  "rationale": "Unclear fragmented structure; likely obscured pipe or support, not identifiable.",
+  "geometry_signature": "2.95,1.84,0.97|304",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-035": {
+  "label": "insulated pipe (vertical)",
+  "category": "piping",
+  "confidence": 0.96,
+  "rationale": "Tall narrow insulated run extending vertically from near floor to overhead piping.",
+  "geometry_signature": "-2.88,1.25,0.83|241",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-036": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.58,
+  "rationale": "Box surrounds small bent pipe/fitting, not a distinct instrument or valve.",
+  "geometry_signature": "1.00,0.86,-0.47|1787",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-037": {
+  "label": "control valve",
+  "category": "valve",
+  "confidence": 0.62,
+  "rationale": "Small inline valve body with actuator-like top on vertical piping.",
+  "geometry_signature": "2.19,0.90,0.94|381",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-038": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.87,
+  "rationale": "Long thin horizontal strip attached to pipe, matching a label/tag.",
+  "geometry_signature": "-3.49,1.79,-0.54|275",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-039": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.41,
+  "rationale": "Tall narrow pipe-like fragment with bends; not enough detail for a specific instrument.",
+  "geometry_signature": "3.23,0.94,-0.76|440",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-040": {
+  "label": "insulated pipe (vertical)",
+  "category": "piping",
+  "confidence": 0.93,
+  "rationale": "Tall narrow vertical pipe-like insulated column, mounted from floor upward.",
+  "geometry_signature": "-4.14,0.56,0.47|172",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-041": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Unrecognisable fragment; appears to be structural frame or panel, not a listed asset.",
+  "geometry_signature": "0.57,0.53,1.04|221",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-042": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box mostly covers an indistinct vertical surface, not a recognizable asset.",
+  "geometry_signature": "3.11,1.03,-0.99|290",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-043": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.32,
+  "rationale": "Box captures mostly indistinct structural fragment, not a recognizable device.",
+  "geometry_signature": "-4.14,1.44,0.47|172",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-044": {
+  "label": "heat exchanger",
+  "category": "vessel",
+  "confidence": 0.78,
+  "rationale": "Box encloses large rectangular insulated unit consistent with a heat exchanger.",
+  "geometry_signature": "0.25,1.86,1.01|209",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-045": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.86,
+  "rationale": "Long horizontal insulated pipe segment with uniform cylindrical form.",
+  "geometry_signature": "-3.64,1.80,-0.52|220",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-046": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.57,
+  "rationale": "Tall narrow marked strip attached to piping, likely an identification tag.",
+  "geometry_signature": "3.34,1.44,-0.48|294",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-047": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.83,
+  "rationale": "Tall thin marker attached to pipe, matching a vertical pipe tag.",
+  "geometry_signature": "1.89,1.62,1.04|341",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-048": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.22,
+  "rationale": "Unclear small fragment on pipe or fitting; no distinct identifiable device.",
+  "geometry_signature": "-3.77,1.36,0.23|284",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-049": {
+  "label": "manual valve",
+  "category": "valve",
+  "confidence": 0.79,
+  "rationale": "Small yellow handwheel-like fitting on pipe; matches a manual valve.",
+  "geometry_signature": "-1.90,1.66,1.03|361",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-050": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.34,
+  "rationale": "Box contains an indistinct low-mounted fragment, not a recognizable device.",
+  "geometry_signature": "-3.74,0.27,-1.26|265",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-051": {
+  "label": "electric motor",
+  "category": "rotating",
+  "confidence": 0.56,
+  "rationale": "Box encloses compact motor-like housing attached to equipment, not a valve or instrument.",
+  "geometry_signature": "0.43,1.20,0.70|461",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-052": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.89,
+  "rationale": "Long narrow horizontal insulated pipe segment at low height.",
+  "geometry_signature": "-1.35,1.95,-1.51|296",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-053": {
+  "label": "control panel",
+  "category": "electrical",
+  "confidence": 0.58,
+  "rationale": "Rectangular wall-mounted enclosure with apparent front access and internal components.",
+  "geometry_signature": "2.00,1.19,0.91|297",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-054": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.86,
+  "rationale": "Long thin marker attached to pipe; looks like a label strip.",
+  "geometry_signature": "-2.46,1.91,-0.22|482",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-055": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.95,
+  "rationale": "Long horizontal insulated pipe running across the frame.",
+  "geometry_signature": "0.42,1.96,0.44|205",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-056": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.82,
+  "rationale": "Thin vertical tagged strip attached to pipework; matches label/tag more than equipment.",
+  "geometry_signature": "-1.21,0.44,1.13|192",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-057": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.74,
+  "rationale": "Thin vertical tagged strip beside piping, not a device or vessel.",
+  "geometry_signature": "3.25,1.21,-1.47|281",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-058": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.24,
+  "rationale": "Box captures indistinct fragment; no clear machinery or instrument features visible.",
+  "geometry_signature": "-5.26,0.53,-1.41|155",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-059": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.97,
+  "rationale": "Long horizontal insulated pipe section with consistent cylindrical form.",
+  "geometry_signature": "-2.91,1.83,-1.12|162",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-060": {
+  "label": "control valve",
+  "category": "valve",
+  "confidence": 0.49,
+  "rationale": "Small inline device with actuator-like top near piping, likely valve assembly.",
+  "geometry_signature": "1.91,0.68,0.70|285",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-061": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.41,
+  "rationale": "Box encloses a small pipe section/fitting above a larger vertical pipe.",
+  "geometry_signature": "-3.79,1.60,0.24|118",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-062": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.76,
+  "rationale": "Short angled pipe segment/fitting near floor, not a device or valve body.",
+  "geometry_signature": "0.61,0.79,-0.09|500",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-063": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.82,
+  "rationale": "Box spans a horizontal insulated pipe section running across the boiler room.",
+  "geometry_signature": "-2.62,1.94,-0.03|195",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-064": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.98,
+  "rationale": "Long horizontal insulated pipe spanning between supports near ceiling.",
+  "geometry_signature": "-0.05,1.96,0.39|191",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-065": {
+  "label": "control panel",
+  "category": "electrical",
+  "confidence": 0.24,
+  "rationale": "Small wall-mounted rectangular box-like equipment, likely a control panel.",
+  "geometry_signature": "-4.76,0.48,0.57|98",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-066": {
+  "label": "electrical cabinet",
+  "category": "electrical",
+  "confidence": 0.76,
+  "rationale": "Boxy wall-mounted enclosure with cabinet-like dimensions and front access panel.",
+  "geometry_signature": "-4.32,0.62,-0.32|105",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-067": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.34,
+  "rationale": "Box covers small unrecognizable component near floor; no clear device features visible.",
+  "geometry_signature": "-3.74,0.12,-0.74|163",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-068": {
+  "label": "manual valve",
+  "category": "valve",
+  "confidence": 0.38,
+  "rationale": "Small valve-like fitting on horizontal piping; no actuator visible.",
+  "geometry_signature": "-4.33,1.74,-0.35|100",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-069": {
+  "label": "control valve",
+  "category": "valve",
+  "confidence": 0.67,
+  "rationale": "Small inline body with stem/handwheel-like top near piping, likely a valve.",
+  "geometry_signature": "-2.24,0.60,0.63|337",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-070": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.94,
+  "rationale": "Horizontal insulated pipe section with cylindrical form and pipe-support context.",
+  "geometry_signature": "1.82,1.83,-1.44|88",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-071": {
+  "label": "insulated pipe (vertical)",
+  "category": "piping",
+  "confidence": 0.96,
+  "rationale": "Tall vertical insulated pipe with small diameter and floor clearance.",
+  "geometry_signature": "-3.73,0.81,0.25|91",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-072": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.31,
+  "rationale": "Boxed object is too obscured and unrecognizable to identify confidently.",
+  "geometry_signature": "-2.02,0.14,0.65|130",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-073": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.58,
+  "rationale": "Small rectangular tag attached to horizontal pipe/beam; too thin for equipment.",
+  "geometry_signature": "-3.25,1.86,0.51|114",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-074": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.86,
+  "rationale": "Small flat rectangular tag attached to horizontal pipe.",
+  "geometry_signature": "-2.54,1.89,0.64|136",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-075": {
+  "label": "temperature sensor",
+  "category": "instrument",
+  "confidence": 0.43,
+  "rationale": "Slim probe-like vertical element mounted on piping; likely a sensor.",
+  "geometry_signature": "-3.54,0.47,1.05|125",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-076": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.55,
+  "rationale": "Thin elongated object attached along pipe; box fits a tag or marker.",
+  "geometry_signature": "-4.00,1.77,-1.33|102",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-077": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.41,
+  "rationale": "Small rectangular tag attached to pipework, not a device or vessel.",
+  "geometry_signature": "-3.65,1.81,-1.42|76",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-078": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Object is too occluded and unrecognizable to match a specific equipment type.",
+  "geometry_signature": "-2.07,0.21,0.97|101",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-079": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.88,
+  "rationale": "Long horizontal insulated run with pipe supports, not a discrete instrument or valve.",
+  "geometry_signature": "-2.64,1.92,-1.01|101",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-080": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.74,
+  "rationale": "Small curved pipe component between larger insulated runs; no instrument or motor features.",
+  "geometry_signature": "-1.53,1.94,-0.95|152",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-081": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.24,
+  "rationale": "Box contains indistinct small fragment, likely occluded pipe or equipment part.",
+  "geometry_signature": "3.14,0.93,0.53|128",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-082": {
+  "label": "pipe label / tag",
+  "category": "other",
+  "confidence": 0.84,
+  "rationale": "Thin rectangular tag attached to pipe; dimensions match a label plate.",
+  "geometry_signature": "3.28,1.97,-1.51|134",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-083": {
+  "label": "insulated pipe (vertical)",
+  "category": "piping",
+  "confidence": 0.92,
+  "rationale": "Tall vertical insulated cylindrical pipe section, matching measured dimensions and scene context.",
+  "geometry_signature": "-3.81,0.82,0.19|65",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-084": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.79,
+  "rationale": "Long horizontal insulated run at specified height, matching pipe dimensions.",
+  "geometry_signature": "-2.19,1.89,0.64|146",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-085": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.23,
+  "rationale": "Mostly frames dark wall/background; no identifiable equipment features visible.",
+  "geometry_signature": "-2.72,1.05,1.05|86",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-086": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.84,
+  "rationale": "Long horizontal insulated run at ceiling height, consistent with pipe insulation.",
+  "geometry_signature": "0.40,1.96,-1.08|105",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-087": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.56,
+  "rationale": "Short horizontal pipe segment with joint-like form, not a distinct instrument or valve.",
+  "geometry_signature": "2.16,1.98,-1.46|105",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-088": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.21,
+  "rationale": "Box frames an unrecognizable small fragment near piping; no clear equipment identity.",
+  "geometry_signature": "-3.78,0.12,-0.01|100",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-089": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.22,
+  "rationale": "Box covers unclear piping/structure fragment; no distinct component identifiable.",
+  "geometry_signature": "-4.39,1.73,-0.62|54",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-090": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.78,
+  "rationale": "Small thin marking on pipe; size and position match a tag.",
+  "geometry_signature": "0.27,1.95,-1.53|93",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-091": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.27,
+  "rationale": "Box frames mostly indistinct background structure; no clear identifiable equipment.",
+  "geometry_signature": "-3.86,0.88,0.95|56",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-092": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.57,
+  "rationale": "Small flat tag attached to insulated piping, not a standalone device.",
+  "geometry_signature": "0.36,1.53,0.71|291",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-093": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.92,
+  "rationale": "Long horizontal insulated pipe segment at ceiling level.",
+  "geometry_signature": "-2.43,1.88,0.48|132",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-094": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.27,
+  "rationale": "Box covers unrecognizable vertical fragment near wall, not a distinct object.",
+  "geometry_signature": "3.27,0.78,-1.57|123",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-095": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.78,
+  "rationale": "Thin horizontal insulated run at consistent elevation along wall.",
+  "geometry_signature": "-0.03,1.95,-1.53|145",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-096": {
+  "label": "control valve",
+  "category": "valve",
+  "confidence": 0.71,
+  "rationale": "Box encloses a small inline valve body on insulated piping.",
+  "geometry_signature": "3.33,1.38,0.37|50",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-097": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box frames unclear wall-mounted fragment, likely not a distinct identifiable device.",
+  "geometry_signature": "1.13,1.13,0.89|60",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-098": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box covers unclear small fragment; no identifiable pump, valve, or instrument features.",
+  "geometry_signature": "-3.78,0.39,-0.06|45",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-099": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.41,
+  "rationale": "Small flat marker attached to horizontal pipe; likely identification tag.",
+  "geometry_signature": "-2.86,1.82,0.59|55",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-100": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.88,
+  "rationale": "Box frames a small curved pipe fitting near the floor.",
+  "geometry_signature": "2.33,0.79,0.77|151",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-101": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.7,
+  "rationale": "Small thin rectangular object attached to pipe, likely identification tag.",
+  "geometry_signature": "-3.44,1.92,1.01|43",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-102": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.87,
+  "rationale": "Magenta box encloses a short horizontal insulated pipe segment near ceiling.",
+  "geometry_signature": "-2.08,1.93,0.98|126",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-103": {
+  "label": "control valve",
+  "category": "valve",
+  "confidence": 0.71,
+  "rationale": "Small inline valve-like assembly on piping, with actuator/trim visible.",
+  "geometry_signature": "1.42,1.51,0.73|335",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-104": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.26,
+  "rationale": "Unclear small component on machinery; resembles bracket or fragment, not identifiable equipment.",
+  "geometry_signature": "-3.83,0.40,-1.49|50",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-105": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.24,
+  "rationale": "Box encloses indistinct fragment of pipework; no clear identifiable component.",
+  "geometry_signature": "-4.25,1.94,-1.31|37",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-106": {
+  "label": "control panel",
+  "category": "electrical",
+  "confidence": 0.42,
+  "rationale": "Small wall-mounted boxed unit with panel-like face, likely electrical/control equipment.",
+  "geometry_signature": "-4.19,0.63,-0.60|53",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-107": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.66,
+  "rationale": "Small flat strip attached to pipe; dimensions match a label/tag.",
+  "geometry_signature": "-2.12,1.90,-1.02|45",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-108": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.96,
+  "rationale": "Long horizontal insulated run with supports; dimensions match small pipe section.",
+  "geometry_signature": "-1.88,1.91,-0.92|56",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-109": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.57,
+  "rationale": "Small flat rectangular tag attached to piping; no instrument body visible.",
+  "geometry_signature": "3.11,1.01,0.72|58",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-110": {
+  "label": "pipe label / tag",
+  "category": "other",
+  "confidence": 0.67,
+  "rationale": "Small flat rectangular tag attached to pipework, not a valve or instrument.",
+  "geometry_signature": "-3.88,1.83,-0.36|74",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-111": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.22,
+  "rationale": "Small flat object strapped to horizontal pipe; likely an identification tag.",
+  "geometry_signature": "-2.90,1.80,-0.65|82",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-112": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.84,
+  "rationale": "Small rectangular tag attached to pipe; size and position match identification label.",
+  "geometry_signature": "-0.83,1.94,1.01|77",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-113": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.55,
+  "rationale": "Small inline pipe fitting on insulated horizontal pipe near ceiling.",
+  "geometry_signature": "2.15,1.96,-0.52|104",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-114": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.22,
+  "rationale": "Mostly an unrecognizable vertical fragment; no clear equipment features visible.",
+  "geometry_signature": "-4.41,1.19,0.90|35",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-115": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.72,
+  "rationale": "Small vertical marked object attached near piping, consistent with a tag.",
+  "geometry_signature": "-2.82,0.29,0.82|43",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-116": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box encloses a thin indistinct wall-side fragment; no clear identifiable equipment.",
+  "geometry_signature": "0.34,1.43,1.02|151",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-117": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.53,
+  "rationale": "Small insulated pipe connection/fitting on overhead piping, not a distinct instrument or valve.",
+  "geometry_signature": "0.69,1.95,0.95|79",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-118": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.56,
+  "rationale": "Thin vertical marker attached to piping; resembles a label tag.",
+  "geometry_signature": "3.31,1.62,0.29|45",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-119": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.41,
+  "rationale": "Small horizontal pipe segment/fitting near ceiling; no valve, gauge, or electrical features visible.",
+  "geometry_signature": "3.31,1.96,-0.27|42",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-120": {
+  "label": "pressure transmitter",
+  "category": "instrument",
+  "confidence": 0.18,
+  "rationale": "Small instrument on pipework; box frames compact sensor-like component.",
+  "geometry_signature": "-3.83,0.59,-0.27|42",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-121": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box frames indistinct small fragment near floor; object not recognizable.",
+  "geometry_signature": "-3.71,0.16,0.18|36",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-122": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.14,
+  "rationale": "Box covers an unclear fragment near piping; no distinct equipment visible.",
+  "geometry_signature": "-4.69,1.70,-0.58|35",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-123": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.25,
+  "rationale": "Box encloses an unrecognizable small fragment; no clear device features visible.",
+  "geometry_signature": "0.69,1.39,1.04|42",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-124": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.42,
+  "rationale": "Thin vertical strip attached to piping; appears like a tag or marker.",
+  "geometry_signature": "3.11,0.75,-1.46|212",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-125": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.22,
+  "rationale": "Mostly a narrow unidentifiable vertical fragment; no clear equipment features.",
+  "geometry_signature": "3.33,0.92,-0.90|50",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-126": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box captures unclear dark fragment; no distinctive equipment features visible.",
+  "geometry_signature": "3.33,1.91,0.32|38",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-127": {
+  "label": "temperature sensor",
+  "category": "instrument",
+  "confidence": 0.29,
+  "rationale": "Thin vertical probe-like object; size and placement fit a sensor or thermowell.",
+  "geometry_signature": "-5.38,1.53,-1.53|33",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-128": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.58,
+  "rationale": "Thin vertical tagged strip on piping, matching label dimensions and placement.",
+  "geometry_signature": "-5.39,1.04,-1.12|39",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-129": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.22,
+  "rationale": "Too obscured to identify; appears as a small unrecognizable fragment.",
+  "geometry_signature": "-4.86,0.54,-0.06|42",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-130": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.87,
+  "rationale": "Long horizontal insulated run with uniform cylindrical profile, matching pipe dimensions.",
+  "geometry_signature": "-2.59,1.94,-1.48|42",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-131": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Unclear small fragment; no distinctive pump, valve, instrument, or pipe features.",
+  "geometry_signature": "-4.35,0.47,-0.05|29",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-132": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.22,
+  "rationale": "Box mostly captures indistinct small fragment near pipework; object unrecognisable.",
+  "geometry_signature": "-2.21,0.20,0.97|37",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-133": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.64,
+  "rationale": "Small flat sign-like object beside piping; box mostly frames a label/tag.",
+  "geometry_signature": "-1.89,0.16,1.05|117",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-134": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.88,
+  "rationale": "Box encloses a horizontal insulated pipe segment, not a discrete device.",
+  "geometry_signature": "-3.50,1.81,-1.48|46",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-135": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.24,
+  "rationale": "Mostly obscured vertical fragment; no clear equipment features visible.",
+  "geometry_signature": "-0.16,0.97,0.87|39",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-136": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.19,
+  "rationale": "Too obscured; appears like a small structural fragment, not a recognizable device.",
+  "geometry_signature": "0.53,1.46,1.06|92",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-137": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box encloses unclear small fragment; no distinctive machine or instrument features visible.",
+  "geometry_signature": "-4.49,1.64,-1.13|41",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-138": {
+  "label": "control panel",
+  "category": "electrical",
+  "confidence": 0.41,
+  "rationale": "Small wall-mounted rectangular electrical box or panel; details obscured by scan noise.",
+  "geometry_signature": "1.06,1.37,1.05|50",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-139": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.92,
+  "rationale": "Box encloses a short horizontal insulated pipe section.",
+  "geometry_signature": "2.14,1.98,-0.71|71",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-140": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Too fragmented; likely wall-mounted object, not clearly identifiable.",
+  "geometry_signature": "-4.39,1.77,-1.42|28",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-141": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box encloses unclear vertical fragment, likely wall or pipe, no distinct equipment visible.",
+  "geometry_signature": "-3.72,0.34,0.16|29",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-142": {
+  "label": "temperature sensor",
+  "category": "instrument",
+  "confidence": 0.36,
+  "rationale": "Thin vertical probe-like element mounted on piping, likely a sensor or thermowell.",
+  "geometry_signature": "-4.25,1.53,-1.14|136",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-143": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.84,
+  "rationale": "Small rectangular tag mounted on piping, not a functional component.",
+  "geometry_signature": "-2.33,1.41,1.07|84",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-144": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.9,
+  "rationale": "Small rectangular marker attached to pipe, consistent with labeling tag.",
+  "geometry_signature": "-1.89,1.91,1.02|63",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-145": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.63,
+  "rationale": "Small insulated pipe connector/fitting at the pipe junction, not an instrument or valve.",
+  "geometry_signature": "1.18,1.96,0.92|86",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-146": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.93,
+  "rationale": "Long horizontal insulated run matching size and location.",
+  "geometry_signature": "2.04,1.80,-0.91|58",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-147": {
+  "label": "pipe label / tag",
+  "category": "other",
+  "confidence": 0.74,
+  "rationale": "Small thin rectangular tag attached to piping; fits measured dimensions.",
+  "geometry_signature": "-2.84,1.86,0.84|31",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-148": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.28,
+  "rationale": "Box frames an indistinct fragment of the overhead structure, not a clear device.",
+  "geometry_signature": "-0.36,1.83,1.06|39",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-149": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box encloses unrecognizable wall-mounted fragment, not a distinct device.",
+  "geometry_signature": "-0.17,1.36,1.06|30",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-150": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.42,
+  "rationale": "Box encloses an indistinct slim fragment; no clear identifiable industrial component.",
+  "geometry_signature": "0.23,1.67,1.06|25",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-151": {
+  "label": "temperature sensor",
+  "category": "instrument",
+  "confidence": 0.34,
+  "rationale": "Small protruding probe-like fitting on piping; looks like sensor rather than valve.",
+  "geometry_signature": "3.36,1.88,0.60|40",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-152": {
+  "label": "control valve",
+  "category": "valve",
+  "confidence": 0.72,
+  "rationale": "Small inline valve body with actuator-like top on insulated vertical pipe.",
+  "geometry_signature": "-2.30,1.43,0.84|80",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-153": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.36,
+  "rationale": "Boxed object is too occluded and unrecognisable; appears like small fragment.",
+  "geometry_signature": "0.12,0.98,0.87|41",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-154": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.24,
+  "rationale": "Small indistinct object; appears to be a mounted fragment, not identifiable machinery.",
+  "geometry_signature": "1.08,1.87,1.05|36",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-155": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.69,
+  "rationale": "Small vertical pipe segment/fitting beside larger insulated pipe.",
+  "geometry_signature": "-0.21,0.17,0.72|62",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-156": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.74,
+  "rationale": "Slim vertical tagged strip attached to piping, matching a label or marker.",
+  "geometry_signature": "-3.83,0.17,-0.87|70",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-157": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.96,
+  "rationale": "Magenta box encloses a horizontal insulated pipe run near ceiling.",
+  "geometry_signature": "-0.05,1.96,-0.45|43",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-158": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.78,
+  "rationale": "Small rectangular tag attached to piping, not an instrument or valve.",
+  "geometry_signature": "2.91,1.97,0.70|36",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-159": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.83,
+  "rationale": "Box encloses a short horizontal insulated pipe segment near overhead piping.",
+  "geometry_signature": "-3.67,1.81,0.46|51",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-160": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.27,
+  "rationale": "Box frames only wall/pipe insulation fragment, no distinct identifiable equipment.",
+  "geometry_signature": "-2.07,1.28,1.05|51",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-161": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.22,
+  "rationale": "Thin unrecognizable vertical fragment, likely background structure or pipe detail.",
+  "geometry_signature": "0.51,1.75,1.05|41",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-162": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.74,
+  "rationale": "Small flat rectangular tag attached to pipe, not a device.",
+  "geometry_signature": "-4.78,1.70,-1.44|19",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-163": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.62,
+  "rationale": "Small uninsulated pipe junction on horizontal run, not a distinct device.",
+  "geometry_signature": "-3.03,1.88,0.65|42",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-164": {
+  "label": "pipe label / tag",
+  "category": "piping",
+  "confidence": 0.74,
+  "rationale": "Small rectangular tag attached to pipework; dimensions match a label.",
+  "geometry_signature": "-2.89,1.80,-0.53|24",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-165": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.89,
+  "rationale": "Box outlines a horizontal insulated pipe section near ceiling.",
+  "geometry_signature": "-0.04,1.96,-0.09|40",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-166": {
+  "label": "pipe elbow / fitting",
+  "category": "piping",
+  "confidence": 0.61,
+  "rationale": "Small uninsulated pipe fitting on top of horizontal pipe.",
+  "geometry_signature": "-0.63,1.95,1.00|50",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-167": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.18,
+  "rationale": "Box covers unclear dark fragment beside cabinet; object not identifiable.",
+  "geometry_signature": "-1.37,1.26,1.12|26",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-168": {
+  "label": "electrical cabinet",
+  "category": "electrical",
+  "confidence": 0.41,
+  "rationale": "Small rectangular box-like unit mounted near piping; resembles cabinet or enclosure.",
+  "geometry_signature": "3.33,0.82,0.39|27",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-169": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.22,
+  "rationale": "Box encloses an unrecognizable small fragment; no clear equipment features visible.",
+  "geometry_signature": "3.34,0.78,0.72|21",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-170": {
+  "label": "control valve",
+  "category": "valve",
+  "confidence": 0.43,
+  "rationale": "Small inline component on horizontal pipe; likely valve body or actuator.",
+  "geometry_signature": "-2.87,1.83,-0.39|24",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-171": {
+  "label": "pipe label / tag",
+  "category": "other",
+  "confidence": 0.62,
+  "rationale": "Small rectangular tag attached to piping, not a mechanical device.",
+  "geometry_signature": "-1.67,1.92,-1.03|22",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-172": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.89,
+  "rationale": "Box encloses a horizontal insulated pipe section under the ceiling.",
+  "geometry_signature": "-1.57,1.95,0.93|33",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-173": {
+  "label": "insulated pipe (horizontal)",
+  "category": "piping",
+  "confidence": 0.91,
+  "rationale": "Box covers a small horizontal insulated pipe segment near ceiling.",
+  "geometry_signature": "-1.24,1.96,0.95|33",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-174": {
+  "label": "other equipment",
+  "category": "other",
+  "confidence": 0.28,
+  "rationale": "Small unrecognizable vertical component; likely minor pipe or support fragment.",
+  "geometry_signature": "2.16,1.48,1.03|41",
+  "model": "gpt-5.4-mini"
+ },
+ "OBJ-175": {
+  "label": "insulated pipe (vertical)",
+  "category": "piping",
+  "confidence": 0.92,
+  "rationale": "Tall narrow vertical pipe-like insulated run with no fittings or instrument features.",
+  "geometry_signature": "-0.20,0.68,0.87|48",
+  "model": "gpt-5.4-mini"
+ }
+}
