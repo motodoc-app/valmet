@@ -198,7 +198,7 @@ class Copilot:
             keep = [i for i in ids if i in allowed]
             bad.extend(i for i in ids if i not in allowed)
             return f"[{', '.join(keep)}]" if keep else ""
-        return re.sub(r"\[([A-Z][A-Za-z0-9_#\-, ]+)\]", repl, text), bad
+        return re.sub(r"\[([^\[\]\n]{2,80})\]", repl, text), bad
 
     def template_summary(self, ev: dict) -> str:
         a = ev["asset"]

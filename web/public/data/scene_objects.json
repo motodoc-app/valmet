@@ -604,7 +604,7 @@
    ],
    "heuristic_label": "expansion vessel / tank",
    "category": "logistics",
-   "vlm_rationale": "Compact motorized pump assembly with connected piping and base-mounted equipment.",
+   "vlm_rationale": null,
    "auto_label": "pump-motor unit",
    "review_note": "Pink hand pallet truck; VLM proposed 'pump-motor unit' (0.79) \u2014 corrected in review."
   },
@@ -2942,9 +2942,9 @@
     "vertical": false
    },
    "alt_labels": [],
-   "heuristic_label": "equipment (unclassified)",
+   "heuristic_label": null,
    "category": "rotating",
-   "vlm_rationale": "Boxy wall-mounted enclosure with cabinet-like dimensions and front access panel.",
+   "vlm_rationale": null,
    "auto_label": "electrical cabinet",
    "review_note": "Fragments merged after visual check against the boiler-room reference video (pump + motor on plinth behind the pink pallet truck).",
    "merged_from": [

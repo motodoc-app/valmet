@@ -71,6 +71,9 @@ class World:
                                    "n_points", "color_rgb", "category")}
             d["heuristic_label"] = o.get("heuristic_label")
             d["vlm_rationale"] = o.get("vlm_rationale")
+            d["review_note"] = o.get("review_note")
+            d["auto_label"] = o.get("auto_label")
+            d["merged_from"] = o.get("merged_from")
             d["reachable"] = o["id"] in self.reachable
             b = self.by_object.get(o["id"])
             if b:
