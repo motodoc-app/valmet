@@ -125,7 +125,7 @@ The full presenter version with plain-language and engineering lines is [`docs/D
 8. **Value / About.** Hypothetical value with editable inputs; the About sheet lists what each capability is and is not.
 
 ## Data notes
-* **Scan.** `Equipment Room.ply`: 1,676,481 splats, all valid (`data/processed/integrity_report.md`). The originally
+* **Scan.** `Equipment Room.ply` (the file shared on Google Drive, id `1MrwNjHxFqk5IfHpJQ24KlTn5nAAn40rd`; verified identical on 7 Nov 2026: 395,651,019 bytes, SHA-256 `83d8c7d99316c08c9719cfc2c5a6b9d1903b89847780e2458adc662c79f32955`): 1,676,481 splats, all valid (`data/processed/integrity_report.md`). The originally
   distributed `Industrial Boiler Room.ply` was corrupt from record 502,483 onward, identically in the PLY, RAR and
   ZIP copies. That report is kept in `docs/integrity_original_boiler_room.md`.
 * **Labels.** Geometry proposes clusters and the vision model names them; 258 objects remain "other equipment"
