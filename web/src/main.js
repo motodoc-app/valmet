@@ -591,10 +591,11 @@ async function arrive() {
   if (S.cam === "chase" || S.cam === "free") flyTo(r.clone().addScaledVector(dir, -0.9).addScaledVector(side, 1.0).setY(1.7), c.clone().setY(Math.max(0.35, c.y)));
   S.selected = o;
   S.fac.setHighlighted([], { selected: o.id, target: o.id });
-  renderDock(); renderLeft();
+  const owned = APP.modes.get(S.mode)?.ownsCard;          // Plan / Support keep their own cards
+  renderDock(); if (!owned) renderLeft();
   toast(`Arrived at <b>${o.asset.tag}</b>. Diagnosis ready.`);
   S.diag = await S.diagPromise; S.tab = "overview";
-  if (APP.modes.get(S.mode)?.ownsCard) return;
+  if (owned || APP.modes.get(S.mode)?.ownsCard) return;
   $("#right").classList.remove("min");
   renderDiagnosis();
 }

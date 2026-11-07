@@ -12,7 +12,7 @@ import "./planning.css";
 
 // ------------------------------------------------------------------ constants
 const DISCLAIMER = "Planning simulation · approximate geometry (oriented boxes + occupancy grid) · not an engineering clearance check";
-const SUGGESTED = "OBJ-028";            // hand pallet truck parked in front of P-005 (human-verified label)
+const SUGGESTED = "OBJ-028";            // hand pallet truck parked in front of P-005 (review-corrected label)
 const SNAP = 0.05;                      // metres
 const CLEAR_PAD = 0.08;                 // old footprint padding: the scan points of the moved object itself
 const TIGHT = 0.3;                      // below this clearance (m) the proxy is shown amber
@@ -634,7 +634,7 @@ function leftHTML() {
   let body;
   if (act) {
     body = `<div class="section"><div class="label"><span>Moving</span><span class="pl-pill ${P.ev?.status || "ok"}">${{ ok: "Clear", tight: "Tight", bad: "Collision" }[P.ev?.status || "ok"]}</span></div>
-      <div class="pl-moving"><b>${esc(nameOf(act))}</b><small>${esc(act.label)} · ${act.label_source === "human-verified" ? "human-verified label" : Math.round(act.confidence * 100) + "% label confidence"}</small></div>
+      <div class="pl-moving"><b>${esc(nameOf(act))}</b><small>${esc(act.label)} · ${act.label_source === "review-corrected" ? "review-corrected label" : Math.round(act.confidence * 100) + "% label confidence"}</small></div>
       <div class="pl-keys"><span>${ic("move")}Drag the proxy on the floor</span><span><span class="kbd">←↑↓→</span> nudge 5 cm · <span class="kbd">Shift</span> 25 cm</span><span><span class="kbd">R</span> turn 90° · <span class="kbd">[</span> <span class="kbd">]</span> 15°</span></div></div>
       ${P.moves.length > 1 ? `<div class="section"><div class="label">Proxies in this plan</div>${P.moves.map((m) => `<button class="list-row ${m.id === P.active ? "on" : ""}" data-pl-act="${m.id}"><span class="n">${ic("box")}</span><span class="nm"><b>${esc(shortName(objOf(m.id)))}</b><small>${m.id}</small></span><span class="link" data-pl-del="${m.id}" title="Remove proxy">${icon("close")}</span></button>`).join("")}</div>` : ""}
       <div class="section"><button class="link" data-pl-more>${icon("plus")}Move another object</button></div>`;
@@ -660,7 +660,7 @@ function resultsHTML() {
   const q = P.query.trim().toLowerCase();
   if (!q) return "";
   const res = P.objs.map((e) => e.o).filter((o) => `${o.id} ${o.label} ${o.category || ""} ${o.asset?.tag || ""}`.toLowerCase().includes(q))
-    .sort((a, b) => (b.label_source === "human-verified") - (a.label_source === "human-verified") || b.confidence - a.confidence).slice(0, 8);
+    .sort((a, b) => (b.label_source === "review-corrected") - (a.label_source === "review-corrected") || b.confidence - a.confidence).slice(0, 8);
   return res.map((o) => `<button class="list-row" data-pl-pick="${o.id}"><span class="n">${ic("box")}</span><span class="nm"><b>${esc(shortName(o))}</b><small>${o.id} · ${o.size.map((v) => v.toFixed(2)).join(" × ")} m</small></span>${icon("chev")}</button>`).join("")
     || '<p class="note" style="padding:6px 0">No matching object.</p>';
 }
