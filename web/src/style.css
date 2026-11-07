@@ -62,6 +62,7 @@ canvas.gl { position: absolute; inset: 0; display: block; }
 /* ---------- cards ---------- */
 .card { position: absolute; z-index: 4; contain: layout paint; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 24px 60px rgba(0, 0, 0, .35); display: flex; flex-direction: column; overflow: hidden; }
 .card.left { top: 92px; left: 24px; width: 268px; max-height: calc(100% - 92px - 380px); }
+.card.left.tall { max-height: calc(100% - 196px); }       /* X-Ray, Learn, Practice: no mini-map below */
 .card-b { flex: 1 1 auto; min-height: 0; }
 .card-f, .card-h { flex: none; }
 .card.right { top: 92px; right: 64px; width: 360px; max-height: calc(100% - 196px); }
@@ -307,9 +308,10 @@ body.plan-mode .card.left { max-height: calc(100% - 196px - 70px); }
   html, body { font-size: 13px; }
   .wordmark { top: 12px; left: 14px; }
   .wordmark .eyebrow { display: none; }
-  .wordmark .name { font-size: 14px; letter-spacing: .1em; margin: 0; }
-  .topright { top: 8px; right: 10px; left: 150px; }
-  .ask { width: auto; flex: 1; }
+  .wordmark .name { font-size: 11.5px; letter-spacing: .08em; margin: 0; max-width: 92px; line-height: 1.25; }
+  .topright { top: 8px; right: 10px; left: 112px; }
+  .ask { width: auto; flex: 1; min-width: 0; }
+  .iconbtn .lbl { display: none; }
   .ask .kbd { display: none; }
   .pop { position: fixed; top: 52px; left: 10px; right: 10px; width: auto; max-height: 55vh; }
   .modes { top: 52px; left: 10px; right: 10px; transform: none; overflow-x: auto; scrollbar-width: none; }
@@ -330,7 +332,8 @@ body.plan-mode .card.left { max-height: calc(100% - 196px - 70px); }
   .tour { bottom: calc(46% + 12px); }
   .plan-banner { top: auto; bottom: calc(46% + 10px); left: 10px; right: 10px; transform: none; max-width: none; min-width: 0; }
   body.plan-mode .modes { display: none; }
-  body.plan-mode .dock { top: 52px; }
+  body.plan-mode .dock { top: 52px; right: 10px; max-width: none; }
+  .plan-banner .long { display: none; }
   .plan-legend { display: none; }
   .btn { height: 42px; }
   .list-row { padding: 11px 10px; }

@@ -211,6 +211,9 @@ export const staticApi = {
     const cls = Object.entries(CLASS_WORDS).find(([w]) => t.includes(w))?.[1];
     const sig = Object.entries(SIGNAL_WORDS).find(([w]) => t.includes(w))?.[1];
     let asset_id = selected, reason = "";
+    // an asset named by tag ("send the robot to M-006") wins over the current selection
+    const tagM = t.match(/\b([a-z]{1,3}-\d{3})\b/), named = tagM && c.assets.find((x) => x.tag.toLowerCase() === tagM[1])?.asset_id;
+    if (named) asset_id = named;
     const actions = [];
     // a question about a named component ("what does the impeller do?"): answer it for that device type and show the part
     const lib = await staticApi.xrayModel(), selCls = A[selected]?.asset_class;
@@ -245,7 +248,7 @@ export const staticApi = {
     if (m && !reason && !sig && !/\b(it|this|that|here|selected)\b/.test(m[1])) asset_id = null;
     if (!asset_id && m && !sig) {
       const tag = t.match(/\b([a-z]{1,2}-\d{3})\b/);
-      if (tag) { const hit = c.assets.find((a) => a.tag.toLowerCase() === tag[1]); if (hit) { asset_id = hit.asset_id; reason = `${hit.tag} is a ${hit.asset_class.replaceAll("_", " ").toLowerCase()} in ${hit.area_name} [${hit.asset_id}].`; } }
+      if (tag) { const hit = c.assets.find((a) => a.tag.toLowerCase() === tag[1]); if (hit) { asset_id = hit.asset_id; reason = `${hit.tag} is ${/^[aeio]/i.test(hit.asset_class) ? "an" : "a"} ${hit.asset_class.replaceAll("_", " ").toLowerCase()} in ${hit.area_name} [${hit.asset_id}].`; } }
       else {
         const found = findObjects(c, m[1]);
         if (found.length) {
@@ -260,8 +263,10 @@ export const staticApi = {
       const a = A[asset_id], q = a ? `${a.asset_class.replaceAll("_", " ").toLowerCase()} ${a.issue_code.replaceAll("_", " ").toLowerCase()}` : "";
       return { intent: "command", actions: [{ type: "knowledge", query: q }], asset_id, text: `Opening the library${a ? ` with the documents for ${a.tag} (${q})` : ""}. Every document has an ID you can cite.` };
     }
-    if (asset_id && !actions.some((x) => x.type === "select_object")) {
+    // select only what the question picked; an inherited selection just scopes the answer
+    if (asset_id && (asset_id !== selected || reason || named) && !actions.some((x) => x.type === "select_object")) {
       const a = A[asset_id]; actions.push({ type: "select", asset_id, object_id: a.object_id });
+      if (!reason) reason = `${a.tag} is ${/^[aeio]/i.test(a.asset_class) ? "an" : "a"} ${a.asset_class.replaceAll("_", " ").toLowerCase()} in ${a.area_name}, ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score} [${a.asset_id}].`;
       if (a.object_id) { const o = c.scene.objects.find((x) => x.id === a.object_id); reason += ` Mapped to scene object ${a.object_id} (${o.label}, ${o.label_source}), mapping confidence ${a.mapping_confidence}.`; }
     }
     if (/send|go to|navigate|inspect|dispatch|walk|drive|route/.test(t) && asset_id) { actions.push({ type: "navigate", asset_id }); reason += " Dispatching the inspection robot on a collision-free route."; }

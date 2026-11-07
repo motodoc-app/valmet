@@ -133,6 +133,9 @@ async function copilot() {
     ["Show me the relevant manual", (a) => a.sheet && !/Found \d+ object/.test(a.text)],
     ["What does the impeller do?", (a) => /impeller/i.test(a.text) && /KB-XRAY-PROCESS_PUMP#impeller|\[/.test(a.text)],
     ["How do I inspect the positioner?", (a) => /positioner/i.test(a.text)],
+    ["Send the robot to M-006", (a) => a.route && a.nav === "M-006"],
+    ["Why is it losing flow?", (a) => !/Mapped to scene object/.test(a.text) && a.text.length > 40],
+    ["asdfgh", (a) => a.text.length > 5],
   ];
   for (const [q, check] of cases) {
     await p.evaluate(() => { const s = document.querySelector("#sheet"); s.classList.add("hidden"); });

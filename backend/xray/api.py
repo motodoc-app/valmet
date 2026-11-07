@@ -257,6 +257,11 @@ def command(req: CommandReq):
     sig = next((s for w, s in SIGNAL_WORDS.items() if w in t), None)
     asset_id = req.selected_asset_id
     reason = ""
+    # an asset named by tag ("send the robot to M-006") wins over the current selection
+    tag_m = re.search(r"\b([a-z]{1,3}-\d{3})\b", t)
+    named = next((a["asset_id"] for a in assets.values() if tag_m and a["tag"].lower() == tag_m.group(1)), None)
+    if named:
+        asset_id = named
     # a question about a named component ("what does the impeller do?"): answer it for that device type and show the part
     comp = find_component(t, cls, assets.get(asset_id, {}).get("asset_class"))
     if comp and re.search(r"what (does|is|are)|what's|explain|how (does|do i|to)|inspect|fail|faulty|evidence|purpose|why", t) \
@@ -317,7 +322,8 @@ def command(req: CommandReq):
             hit = next((a for a in assets.values() if a["tag"].lower() == tag.group(1)), None)
             if hit:
                 asset_id = hit["asset_id"]
-                reason = f"{hit['tag']} is a {hit['asset_class'].replace('_', ' ').lower()} in {hit['area_name']} [{hit['asset_id']}]."
+                noun = hit['asset_class'].replace('_', ' ').lower()
+                reason = f"{hit['tag']} is {'an' if noun[0] in 'aeiou' else 'a'} {noun} in {hit['area_name']} [{hit['asset_id']}]."
         else:
             found = find_objects(m.group(1))
             if found:
@@ -339,9 +345,15 @@ def command(req: CommandReq):
         return {"intent": "command", "actions": [{"type": "knowledge", "query": q}], "asset_id": asset_id,
                 "text": f"Opening the library{' with the documents for ' + a['tag'] + ' (' + q + ')' if a else ''}. "
                         "Every document has an ID you can cite."}
-    if asset_id and not any(a["type"] == "select_object" for a in actions):
+    # select only what the question picked; an inherited selection just scopes the answer
+    if asset_id and (asset_id != req.selected_asset_id or reason or named) \
+            and not any(a["type"] == "select_object" for a in actions):
         a = assets[asset_id]
         actions.append({"type": "select", "asset_id": asset_id, "object_id": a["object_id"]})
+        if not reason:
+            noun = a['asset_class'].replace('_', ' ').lower()
+            reason = (f"{a['tag']} is {'an' if noun[0] in 'aeiou' else 'a'} {noun} in {a['area_name']}, "
+                      f"{a['condition_state'].replace('_', ' ')}, health {a['health_score']} [{a['asset_id']}].")
         if a["object_id"] and "mapped to workbook asset" not in reason:
             o = WORLD.objects[a["object_id"]]
             reason += (f" It is mapped to scene object {a['object_id']} ('{o['label']}', {o['label_source']}) at "

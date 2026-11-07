@@ -25,7 +25,7 @@ export async function startPlan(reason) {
   $("#app").innerHTML = `
 <canvas class="plan" aria-label="Floor plan of the scanned room. Coloured dots are workbook assets; click one to select it."></canvas>
 <div class="wordmark"><div class="eyebrow">Industrial X-Ray</div><div class="name" id="siteName">Equipment Room</div></div>
-<div class="plan-banner" role="note">${icon("grid")}<span><b>Floor plan view.</b> ${esc(reason)} Every feature except the 3D scan and X-Ray still works.</span><button class="link" id="try3d">Try 3D ${icon("arrow")}</button></div>
+<div class="plan-banner" role="note">${icon("grid")}<span><b>Floor plan view.</b><span class="long"> ${esc(reason)} Every feature except the 3D scan and X-Ray still works.</span></span><button class="link" id="try3d">Try 3D ${icon("arrow")}</button></div>
 <div class="topright">
   <div class="ask">
     <label class="field">${icon("search")}<input id="ask" placeholder="Ask about the plant" autocomplete="off" aria-label="Ask the copilot"/><span class="kbd">/</span></label>
@@ -92,7 +92,11 @@ function fit() {
     if (vis(L)) x0 = L.getBoundingClientRect().right + 16;
     if (vis(R)) x1 = R.getBoundingClientRect().left - 16;
     if (vis(D)) y1 = D.getBoundingClientRect().top - 16;
-  } else if (vis(R)) y1 = R.getBoundingClientRect().top - 10;
+  } else {
+    if (vis(R)) y1 = R.getBoundingClientRect().top - 10;
+    const B = $(".plan-banner"); if (vis(B)) y1 = Math.min(y1, B.getBoundingClientRect().top - 28);
+    const D2 = $("#dock"); if (vis(D2)) y0 = D2.getBoundingClientRect().bottom + 12;
+  }
   const g = P.grid, wm = g.W * g.res, hm = g.H * g.res;
   const k = Math.max(4, Math.min((x1 - x0) / wm, (y1 - y0) / hm));
   P.view = { k, ox: (x0 + x1) / 2 - (wm * k) / 2, oy: (y0 + y1) / 2 - (hm * k) / 2 };

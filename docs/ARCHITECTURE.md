@@ -72,16 +72,34 @@ The command router adds semantic scene search ("where is …") over all 676 obje
 
 ## 6. Hosted mode (`scripts/export_static.py`, `web/src/static-api.js`)
 The export writes the scene, nav grid (floor, obstacle and height bitmaps), approach cells, all 30 diagnoses
-(LLM-narrated at export time and citation-checked), pre-answered component questions, the BM25 corpus and the splat
-in 15 MB chunks. In the browser, `static-api.js` reimplements the API: an exact Euclidean distance transform
+(LLM-narrated at export time and citation-checked), pre-answered component questions, the BM25 corpus. The splat chunks are built
+from the committed `web/public/data/scene.splat` by the web build (`web/scripts/scan-chunks.mjs`: quantised 17-byte
+records, most visible splats first, ≤ 15 MB per file), and `web/scripts/check-manifest.mjs` fails the build if any
+manifest entry is missing or its byte size, splat count or SHA-256 differs. At runtime a missing chunk set falls
+back to `scene.splat`. In the browser, `static-api.js` reimplements the API: an exact Euclidean distance transform
 (Felzenszwalb), A* with the same cost and step rule, line-of-sight smoothing, validation, and BM25 retrieval. The
 same front end runs against either backend.
 
 ## 7. Front end (`web/`)
 three.js 0.180 with **Spark 2.4** (Gaussian-splat renderer that composites with meshes), CSS2D labels, OrbitControls,
-and plain JS modules: `facility.js` (splats, frames, robot, route, blocks, floor map), `xray.js` (procedural pump with
-11 tagged components on an environment-lit podium, with explode, see-through, isolate and labels), `training.js`
-(Learn and Practice), and `main.js` (state, cards, dock, ask bar, transitions). The design language is one calm dark
+and plain JS modules: `boot.js` (entry: checks WebGL 2 before any 3D code is loaded), `facility.js` (splats, frames,
+robot, route, blocks, floor map), `xray.js` (data-driven exploded models for every equipment type, with explode,
+see-through, isolate and labels), `training.js` (Learn and Practice), `tour.js` (guided tour), `ui.js` (formatting
+and the diagnosis card shared by both views), and `main.js` (state, cards, dock, playback, ask bar, transitions).
+
+**Graceful degradation.** `plan2d.js` is a 2D floor plan on a canvas with the same API client: it opens when WebGL 2
+is missing, when the renderer throws during start-up, or when the GPU loses the context and does not restore it
+within 2.5 s (`webglcontextlost`). It keeps the core job: select assets (list or map), dispatch, the live route with
+reroute, proximity reads, the full diagnosis with evidence and sources, the work-order draft and the copilot. Phones
+use a bottom-sheet layout, pixel ratio 1 and the two most important scan chunks.
+
+**Playback.** Each route stores, per object, the arc length at which it first comes within the proximity radius.
+Play, pause, reverse, 1–4× speed and scrubbing then only move an arc-length cursor, so the "assets read" list stays
+exact in both directions at no per-frame cost.
+
+**Replication.** Site-specific values (name, inputs, robot geometry, proximity radius, LLM model, knowledge paths)
+live in `config/project.json`, read by `backend/xray/config.py`; `scripts/run_pipeline.py` runs the whole chain for
+any project file. See `docs/REPLICATE.md`. The design language is one calm dark
 studio look with the system typeface, a numbered list card, a tabbed detail card, a bottom control dock and a tool rail.
 
 ## 8. API (FastAPI, follows the workbook `API_Contract`)

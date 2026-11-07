@@ -154,6 +154,7 @@ function renderLeft() {
   const rank = { attention_required: 0, degraded: 1, watch: 2, healthy: 3 };
   assets.sort((a, b) => (b.is_target - a.is_target) || rank[a.condition_state] - rank[b.condition_state] || a.health_score - b.health_score);
   const nav = S.data.navigation;
+  $("#left").classList.remove("tall");
   $("#left").innerHTML = `
     <div class="card-h"><span class="t">Assets by priority</span><span class="card-tools"><span class="note">${assets.length}</span><button class="link" data-min-card title="Minimise" aria-label="Minimise">${icon("minus")}</button></span></div>
     <div class="card-b" style="padding:0 8px 8px">${assets.map((a, i) => `
@@ -166,6 +167,7 @@ function renderLeft() {
 }
 
 function renderComponents() {
+  $("#left").classList.add("tall");
   const lead = new Set(S.xDiag?.hypotheses?.[0]?.components || []);
   const alt = new Set((S.xDiag?.hypotheses || []).slice(1).flatMap((h) => h.components));
   $("#left").innerHTML = `
