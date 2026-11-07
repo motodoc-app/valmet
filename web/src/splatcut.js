@@ -14,10 +14,11 @@ import * as THREE from "three";
 import { PackedSplats, SplatMesh, SplatEdit, SplatEditSdf, fromHalf } from "@sparkjsdev/spark";
 
 export const CUT = {
-  PAD: 0.04,        // horizontal expansion of the object box (m): the segmentation box is tight
+  PAD: 0.05,        // horizontal expansion of the object box (m): the segmentation box is tight
   TOP: 0.04,        // extra above the box top (m)
+  BELOW: 0.03,      // the segmentation box often starts a few cm above the floor (low forks, wheels): reach down
   FLOOR_Y: 0,       // floor height in the canonical frame (scene.json bounds: the floor plane is y = 0)
-  FLOOR_TRIM: 0.03, // never take splats below FLOOR_Y + this (the floor slab under the object)
+  FLOOR_TRIM: 0.02, // never take splats below FLOOR_Y + this (the floor slab under the object)
   MAX_SCALE: 0.25,  // splats bigger than this (m) are left out of the copy (floaters / haze blobs)
 };
 
@@ -55,7 +56,7 @@ export class SplatCut {
   /** The cut box of an object in world space: oriented like the object, padded, floor slab removed. */
   boxOf(o) {
     const bottom = o.center[1] - o.size[1] / 2, top = o.center[1] + o.size[1] / 2;
-    const y0 = Math.max(bottom, CUT.FLOOR_Y + CUT.FLOOR_TRIM), y1 = Math.max(y0 + 0.02, top + CUT.TOP);
+    const y0 = Math.max(bottom - CUT.BELOW, CUT.FLOOR_Y + CUT.FLOOR_TRIM), y1 = Math.max(y0 + 0.02, top + CUT.TOP);
     return { cx: o.center[0], cz: o.center[2], yaw: o.yaw, y0, y1, cy: (y0 + y1) / 2,
       hx: o.size[0] / 2 + CUT.PAD, hy: (y1 - y0) / 2, hz: o.size[2] / 2 + CUT.PAD };
   }

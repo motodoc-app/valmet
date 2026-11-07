@@ -817,7 +817,8 @@ export function summary() {
   };
 }
 function markdown(s) {
-  const L = [`# Maintenance plan · ${s.title}`, "", `> ${s.disclaimer}.`, "> The scan data is unchanged; moved equipment is shown as virtual planning proxies. Verify on site before moving anything.", "",
+  const L = [`# Maintenance plan · ${s.title}`, "", `> ${s.disclaimer}.`, "> The scan data is unchanged; moved equipment is shown as virtual planning proxies. Verify on site before moving anything.",
+    "> In the 3D view a moved object may be drawn as an approximate cut-out of the scan inside its box (it can include nearby fragments); collisions and clearance always use the oriented boxes.", "",
     `Created ${s.created}`, "", "## Proposed moves"];
   if (!s.moves.length) L.push("", "No equipment moved (original layout).");
   for (const m of s.moves) {
