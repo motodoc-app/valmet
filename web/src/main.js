@@ -12,6 +12,7 @@ import { icon } from "./icons.js";
 
 import { $, $$, esc, nice, cites, pad, kv, sparkline, signalName, toast, header, diagnosisHTML, LITE } from "./ui.js";
 import { startTour } from "./tour.js";
+import { createCopilot } from "./copilot-ui.js";   // [copilot-ui]
 import { APP, emit, withExtras } from "./ext.js";
 // feature modules register their modes, rail buttons and hooks on import (see ext.js)
 import "./planning.js";
@@ -929,27 +930,16 @@ export function setMode(mode) {
 $(".modes").onclick = (e) => { const m = e.target.closest("[data-mode]")?.dataset.mode; if (m && m !== S.mode) m === "xray" ? enterXRay() : setMode(m); };
 
 // ------------------------------------------------------------------ ask
-const SUGG = ["Where is the faulty pump?", "Find the equipment with abnormal vibration", "Send a technician to inspect the faulty pump", "Show me the relevant manual", "Can I practise inspecting this equipment?"];
+// [copilot-ui] the conversation panel (bubbles, mode labels, follow-up chips, suggestions) lives in copilot-ui.js;
+// main.js only runs the returned actions. Keep this block small: other agents edit the rest of main.js.
 const pop = $("#pop"), askIn = $("#ask");
-function showSuggestions() {
-  pop.innerHTML = SUGG.map((s) => `<button class="sugg" data-q="${esc(s)}">${icon("search")}${esc(s)}</button>`).join("");
-  pop.classList.remove("hidden");
-}
-askIn.addEventListener("focus", () => { if (!pop.dataset.answer) showSuggestions(); });
-askIn.addEventListener("keydown", (e) => { if (e.key === "Enter") ask(askIn.value); if (e.key === "Escape") { pop.classList.add("hidden"); askIn.blur(); } });
-pop.addEventListener("click", (e) => { const s = e.target.closest("[data-q]"); if (s) ask(s.dataset.q); if (e.target.closest("[data-pop-close]")) { pop.classList.add("hidden"); delete pop.dataset.answer; } });
 document.addEventListener("keydown", (e) => { if (e.key === "/" && document.activeElement !== askIn && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); askIn.focus(); } });
-document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".ask")) pop.classList.add("hidden"); });
+const COPILOT = createCopilot({ pop, input: askIn, api: () => api, selected: () => S.selected?.asset || S.diag?.asset,
+  assetById: (id) => id && S.data?.objects.find((o) => o.asset?.asset_id === id)?.asset, run: runAskActions });
+export function ask(q) { return COPILOT.ask(q); }
+// [/copilot-ui]
 
-export async function ask(q) {
-  q = (q || "").trim(); if (!q) return;
-  askIn.value = q;
-  pop.dataset.answer = "1";
-  pop.innerHTML = `<div class="reply"><div class="who"><span>Copilot</span></div><span class="note">Working…</span></div>`;
-  pop.classList.remove("hidden");
-  try {
-    const r = await api.command(q, S.selected?.asset?.asset_id || S.diag?.asset?.asset_id);
-    pop.innerHTML = `<div class="reply"><div class="who"><span>Copilot</span><button class="link" data-pop-close>${icon("close")}</button></div>${cites(r.text)}</div>`;
+async function runAskActions(r) {
     for (const a of r.actions || []) {
       if (a.type === "select") { if (!sceneMode()) setMode("facility"); selectAsset(a.asset_id, { fly: !r.actions.some((x) => x.type === "navigate") }); }
       if (a.type === "navigate") { S.blocks = []; S.fac.setBlocks([]); S.prevRoute = null; await dispatch(a.asset_id); }
@@ -967,7 +957,6 @@ export async function ask(q) {
       if (a.type === "learn") setMode("learn");
       if (a.type === "knowledge") openLibrary(a.query || "");
     }
-  } catch (e) { pop.innerHTML = `<div class="reply">Something went wrong: ${esc(e.message)}</div>`; }
 }
 
 // ------------------------------------------------------------------ library, docs, work order, about

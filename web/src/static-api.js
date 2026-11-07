@@ -1,6 +1,6 @@
 // Serverless backend for the hosted demo. Mirrors backend/xray/api.py using data exported by
 // scripts/export_static.py. Routes are planned live with a JS port of backend/xray/navigation.py.
-import { indexFaq, matchFaq, compose, TAG_RE } from "./faq-match.js";
+import { indexFaq, matchFaq, compose, detectIntent, TAG_RE } from "./faq-match.js";
 const base = "./static/";
 const get = async (p) => (await fetch(base + p)).json();
 let cache = {};
@@ -176,6 +176,7 @@ const faqIdx = () => once("faq", async () => {
   try { const r = await fetch(base + "faq.json"); if (!r.ok) return null; return indexFaq(await r.json()); } catch { return null; }
 });
 const QUESTION = /^(what|what's|why|how|is|are|should|can|could|does|do|did|has|have|which|when|who|tell|list|give|any)\b|\?\s*$/;
+const FEATURE_WORDS = /robot|route|path|\bplan\b|support|\bapp\b|copilot|label|scan|\bdata\b|pilot|\bmode\b|\bai\b/;   // questions about the prototype, not the selected asset
 const COMMAND_WORDS = /send|go to|navigate|dispatch|\broute\b|drive|walk|\bwhere\b|locate|\bfind\b|show me|x-?ray|explode|inside|internal|practi[cs]e|exercise|rehears|learn|tutorial|teach|manual|document|\bdocs?\b|knowledge|procedure|explain|what does|what is this|how does/;
 const SIGNAL_WORDS = { vibration: "vibration_mm_s", temperature: "bearing_temp_c", temp: "bearing_temp_c", current: "motor_current_a", pressure: "process_pressure_bar", flow: "process_flow_pct", stiction: "stiction_index", position: "position_actual_pct", overheat: "bearing_temp_c" };
 const ANOMALY = /abnormal|high|unusual|anomal|elevated|highest|find|overheat|hot\b|worst|most/, XRAY_WORDS = /x-?ray|explode|inside|internal|component|parts/;
@@ -243,8 +244,14 @@ export const staticApi = {
       score: +m.score.toFixed(2), asset_id: m.entry.asset_id || ctxAsset?.asset_id || null };
     const prev = history?.length && question.split(/\s+/).length <= 7 ? ` ${history.at(-1).q}` : "";
     const hits = c.search(question + prev, 5, ctxAsset?.asset_class);
+    // weak matches (one rare word of four) are not answers: require most of the question's words in the top source
+    const QSTOP = new Set(["what", "how", "does", "the", "this", "that", "with", "for", "are", "can", "should", "which", "when", "where", "why", "who", "about", "there", "any", "you", "tell"]);
+    const qw = tok(question).filter((w) => !QSTOP.has(w)), top = hits[0] ? tok(`${hits[0].title} ${hits[0].text}`) : [];
+    const covered = qw.filter((w) => top.some((x) => x === w || x.startsWith(w.slice(0, 5)))).length;
+    if (hits.length && qw.length && covered < 2 && covered / qw.length < 0.5) hits.length = 0;
+    if (!hits.length) return { text: `Nothing in the builder pack or the product documentation matches “${question}”. Try naming an asset (“What should I check first on P-005?”), a symptom (“Which motor is overheating?”) or a feature (“How does the robot plan routes?”).`, sources: [], mode: "docsearch", asset_id: ctxAsset?.asset_id ?? null };
     let lead = "";
-    if (ctxAsset) {
+    if (ctxAsset && (named || detectIntent(question) || /\b(it|this|that)\b/i.test(question))) {
       const d = await staticApi.diagnose(ctxAsset.asset_id), a = d.asset, nxt = d.next_steps[1];
       lead = `${a.tag}: ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score}, ${String(a.issue_summary).replace(/\.$/, "")} [${a.asset_id}]. ` +
         `Leading hypothesis: ${d.hypotheses[0].hypothesis}. Recommended next check: ${nxt.step} [${nxt.source}]`;
@@ -334,7 +341,7 @@ export const staticApi = {
       if (same.length) asset_id = same[0].asset_id;
     }
     let m = t.match(/(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$/);
-    if (m && (/manual|document|\bdocs?\b|knowledge|procedure|guide/.test(m[1]) || XRAY_WORDS.test(t))) m = null;   // library / X-Ray requests are not scene searches
+    if (m && (/manual|document|\bdocs?\b|knowledge|procedure|guide/.test(m[1]) || XRAY_WORDS.test(t) || /^(how (does|is|are|was|were|did)|why)\b/.test(t))) m = null;   // library / X-Ray requests are not scene searches
     // "where are the control valves?" names what to look for: the current selection must not answer it
     if (m && !reason && !sigQ && !/\b(it|this|that|here|selected)\b/.test(m[1])) asset_id = null;
     if (!asset_id && m && !sigQ) {
@@ -360,9 +367,9 @@ export const staticApi = {
       if (!reason) reason = `${a.tag} is ${/^[aeio]/i.test(a.asset_class) ? "an" : "a"} ${a.asset_class.replaceAll("_", " ").toLowerCase()} in ${a.area_name}, ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score} [${a.asset_id}].`;
       if (a.object_id) { const o = c.scene.objects.find((x) => x.id === a.object_id); reason += ` Mapped to scene object ${a.object_id} (${o.label}, ${o.label_source}), mapping confidence ${a.mapping_confidence}.`; }
     }
-    if (/send|go to|navigate|inspect|dispatch|walk|drive|route/.test(t) && asset_id && !/practi[cs]e|learn|train|rehears|how do i|how to/.test(t)) { actions.push({ type: "navigate", asset_id }); reason += " Dispatching the inspection robot on a collision-free route."; }
+    if (/send|go to|navigate|inspect|dispatch|walk|drive|route/.test(t) && asset_id && !/practi[cs]e|learn|train|rehears|how do i|how to|how (does|is|are|was|were)|what (is|are|does)|why/.test(t)) { actions.push({ type: "navigate", asset_id }); reason += " Dispatching the inspection robot on a collision-free route."; }
     if (/x-?ray|explode|inside|internal|component|parts/.test(t)) actions.push({ type: "xray", asset_id });
-    if (/explain|what does|what is this|how does/.test(t) && asset_id) {
+    if (/explain|what does|what is this|how does/.test(t) && asset_id && (named || cls || /\b(this|it|that|selected)\b/.test(t) || !FEATURE_WORDS.test(t))) {
       const a = A[asset_id], lib = (await staticApi.xrayModel()).classes[a.asset_class];
       if (lib) reason = `${a.tag} is ${/^[aeiou]/i.test(lib.label) ? "an" : "a"} ${lib.label.toLowerCase()}. ${lib.function} Its main components: ${lib.components.slice(0, 8).map((x) => x.name.toLowerCase()).join(", ")}. Current condition: ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score} [${a.asset_id}]. ` + reason;
     }

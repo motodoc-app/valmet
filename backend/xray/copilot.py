@@ -305,7 +305,8 @@ class Copilot:
         out = []
         for h in hits[:n]:
             sents = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", str(h["text"]).strip())
-            body = " ".join(sents[:2]).strip()
+            body = " ".join(sents[:2]).strip().replace(" 00:00", "")
+            body = re.sub(r"\b[A-Z]+(?:_[A-Z]+)+\b", lambda m: m.group(0).lower().replace("_", " "), body)
             if len(body) > 320:
                 body = body[:300].rsplit(" ", 1)[0] + "…"
             out.append(f"{h['title']}: {body} [{h['id']}]")

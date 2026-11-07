@@ -3,6 +3,7 @@
 // It uses the same API as the 3D app (server or static), so every result is identical:
 // select an asset, dispatch the robot, watch the collision-free route and the proximity reads, block an aisle,
 // and read the arrival diagnosis with its cited evidence.
+import { createCopilot } from "./copilot-ui.js";   // [copilot-ui]
 import { api, connect } from "./api.js";
 import { $, $$, esc, nice, pad, kv, cites, toast, header, diagnosisHTML } from "./ui.js";
 import { icon } from "./icons.js";
@@ -11,6 +12,7 @@ import { CATEGORIES, CAT, catOf } from "./semantic.js";
 const STATUS = { healthy: "#30d158", watch: "#ffd60a", degraded: "#ff9f0a", attention_required: "#ff453a" };
 const RANK = { attention_required: 0, degraded: 1, watch: 2, healthy: 3 };
 const CRUISE = 0.6, ACCEL = 0.45;          // m/s, m/s², same as the 3D app
+let COPILOT = null;                          // [copilot-ui] conversation panel (created in bind())
 let NEAR = 1.2;                             // proximity radius (m); the scene payload overrides it (config/project.json)
 
 const P = {
@@ -318,17 +320,15 @@ function bind() {
   $("#libBtn").onclick = () => openLibrary();
   // ask
   const pop = $("#pop"), askIn = $("#ask");
-  const SUGG = ["Where is the faulty pump?", "Find the equipment with abnormal vibration", "Send a technician to inspect the faulty pump", "Explain the faulty pump", "Show me the relevant manual"];
-  askIn.addEventListener("focus", () => { if (!pop.dataset.answer) { pop.innerHTML = SUGG.map((s) => `<button class="sugg" data-q="${esc(s)}">${icon("search")}${esc(s)}</button>`).join(""); pop.classList.remove("hidden"); } });
-  askIn.addEventListener("keydown", (e) => { if (e.key === "Enter") ask(askIn.value); if (e.key === "Escape") { pop.classList.add("hidden"); askIn.blur(); } });
-  pop.addEventListener("click", (e) => { const s = e.target.closest("[data-q]"); if (s) ask(s.dataset.q); if (e.target.closest("[data-pop-close]")) { pop.classList.add("hidden"); delete pop.dataset.answer; } });
+  // [copilot-ui] conversation panel shared with the 3D view (copilot-ui.js); this file only runs the actions
+  COPILOT = createCopilot({ pop, input: askIn, api: () => api, selected: () => P.selected?.asset || P.diag?.asset,
+    assetById: (id) => id && P.data?.objects.find((o) => o.asset?.asset_id === id)?.asset, run: runAskActions });
   document.addEventListener("keydown", (e) => {
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === "/") { e.preventDefault(); askIn.focus(); }
     if (e.key === " " && P.path) { e.preventDefault(); togglePlay(); }
     if (e.key === "Escape") { $("#sheet").classList.add("hidden"); pop.classList.add("hidden"); }
   });
-  document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".ask")) pop.classList.add("hidden"); });
 }
 function zoomAt(sx, sy, f, base = null) {
   const v = base || P.view, k = Math.max(4, Math.min(400, v.k * f)), r = k / v.k;
@@ -529,14 +529,8 @@ async function arrive() {
 }
 
 // ------------------------------------------------------------------ ask
-export async function ask(q) {
-  q = (q || "").trim(); if (!q) return;
-  const pop = $("#pop"); $("#ask").value = q;
-  pop.dataset.answer = "1"; pop.classList.remove("hidden");
-  pop.innerHTML = `<div class="reply"><div class="who"><span>Copilot</span></div><span class="note">Working…</span></div>`;
-  try {
-    const r = await api.command(q, P.selected?.asset?.asset_id || P.diag?.asset?.asset_id);
-    pop.innerHTML = `<div class="reply"><div class="who"><span>Copilot</span><button class="link" data-pop-close>${icon("close")}</button></div>${cites(r.text)}</div>`;
+export function ask(q) { return COPILOT?.ask(q); }
+async function runAskActions(r) {
     for (const a of r.actions || []) {
       if (a.type === "select") selectAsset(a.asset_id);
       if (a.type === "select_object") selectObject(P.data.objects.find((o) => o.id === a.object_id));
@@ -546,7 +540,6 @@ export async function ask(q) {
       if (a.type === "diagnose") { P.cardLock = true; P.diag = await api.diagnose(a.asset_id); P.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }
       if (a.type === "learn" || a.type === "practice") toast("Learn and Practice use the 3D model. Try the 3D view on a device with WebGL.");
     }
-  } catch (e) { pop.innerHTML = `<div class="reply">Something went wrong: ${esc(e.message)}</div>`; }
 }
 
 // ------------------------------------------------------------------ library, documents, work order

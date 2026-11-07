@@ -212,6 +212,7 @@ COND_RANK = {"attention_required": 0, "degraded": 1, "watch": 2, "healthy": 3}
 XRAY_WORDS = r"x-?ray|explode|inside|internal|component|parts"
 STATUS_WORDS = r"wrong|why|flag|status|health|condition|issue|diagnos|problem|fault"
 QUESTION = r"^(what|what's|why|how|is|are|should|can|could|does|do|did|has|have|which|when|who|tell|list|give|any)\b|\?\s*$"
+FEATURE_WORDS = r"robot|route|path|\bplan\b|support|\bapp\b|copilot|label|scan|\bdata\b|pilot|\bmode\b|\bai\b"  # about the prototype
 COMMAND_WORDS = (r"send|go to|navigate|dispatch|\broute\b|drive|walk|\bwhere\b|locate|\bfind\b|show me|x-?ray|explode|"
                  r"inside|internal|practi[cs]e|exercise|rehears|learn|tutorial|teach|manual|document|\bdocs?\b|"
                  r"knowledge|procedure|explain|what does|what is this|how does")
@@ -366,7 +367,7 @@ def command(req: CommandReq):
             asset_id = same[0]["asset_id"]
     # "where is the expansion vessel / circulation pump / P-002?" -> semantic search over the scene
     m = re.search(r"(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$", t)
-    if m and (re.search(r"manual|document|\bdocs?\b|knowledge|procedure|guide", m.group(1)) or re.search(XRAY_WORDS, t)):
+    if m and (re.search(r"manual|document|\bdocs?\b|knowledge|procedure|guide", m.group(1)) or re.search(XRAY_WORDS, t) or re.match(r"(how (does|is|are|was|were|did)|why)\b", t)):
         m = None          # "show me the manual" / "show me inside the motor" are not scene searches
     # "where are the control valves?" names what to look for: the current selection must not answer it
     if m and not reason and not sig_q and not re.search(r"\b(it|this|that|here|selected)\b", m.group(1)):
@@ -415,12 +416,14 @@ def command(req: CommandReq):
                        f"x={o['center'][0]:.1f}, z={o['center'][2]:.1f} m — mapping confidence "
                        f"{a['mapping_confidence']}.")
     if re.search(r"send|go to|navigate|inspect|dispatch|walk|drive|route", t) and asset_id \
-            and not re.search(r"practi[cs]e|learn|train|rehears|how do i|how to", t):
+            and not re.search(r"practi[cs]e|learn|train|rehears|how do i|how to|how (does|is|are|was|were)|what (is|are|does)|why", t):
         actions.append({"type": "navigate", "asset_id": asset_id, "object_id": assets[asset_id]["object_id"]})
         reason += " Dispatching the inspection robot along a collision-free route."
     if re.search(r"x-?ray|explode|inside|internal|component|parts", t):
         actions.append({"type": "xray", "asset_id": asset_id})
-    if re.search(r"explain|what does|what is this|how does", t) and asset_id:
+    # "explain this" is about the selected asset; "what does Plan mode do?" / "how does the robot plan routes?" is not
+    if re.search(r"explain|what does|what is this|how does", t) and asset_id \
+            and (named or cls or re.search(r"\b(this|it|that|selected)\b", t) or not re.search(FEATURE_WORDS, t)):
         a = assets[asset_id]
         lib = LIBRARY["classes"].get(a["asset_class"], {})
         noun = lib.get('label', a['asset_class']).lower()

@@ -117,7 +117,7 @@ export function compose(hits, n = 3) {
   const out = [];
   for (const h of hits.slice(0, n)) {
     const sents = String(h.text).trim().split(/(?<=[.!?])\s+(?=[A-Z0-9])/);
-    let body = sents.slice(0, 2).join(" ").trim();
+    let body = sents.slice(0, 2).join(" ").trim().replace(/\b[A-Z]+(?:_[A-Z]+)+\b/g, (w) => w.toLowerCase().replaceAll("_", " ")).replace(/ 00:00/g, "");
     if (body.length > 320) body = body.slice(0, 300).replace(/\s+\S*$/, "") + "…";
     out.push(`${h.title}: ${body} [${h.id}]`);
   }
