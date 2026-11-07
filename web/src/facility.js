@@ -2,8 +2,9 @@
 import * as THREE from "three";
 import { SplatMesh } from "@sparkjsdev/spark";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
-import { hazeMask } from "./scanfilter.js";
+import { hazeMask, wallClip } from "./scanfilter.js";
 import { CATEGORIES, CAT, CONDITION, catOf, isUncertain, hexRGB } from "./semantic.js";
+import { buildMarkers, buildTwin } from "./twin.js";
 
 export const STATUS = { healthy: 0x30d158, watch: 0xffd60a, degraded: 0xff9f0a, attention_required: 0xff453a };
 const NEUTRAL = 0xc8ccd2;
@@ -69,18 +70,19 @@ export function splitByHeight(splat, cut) {
 }
 
 /**
- * Partition 32-byte .splat records into up to four layers: below / above the cut-away height, each split into
- * "clean" and "haze" (see scanfilter.js). Every layer becomes its own SplatMesh, so the cut-away and the
- * clean-scan filter are instant visibility flips instead of re-uploads. Returns [{ layer, haze, bytes }] and the counts.
+ * Partition 32-byte .splat records into up to six layers: below / above the cut-away height, each split into
+ * "clean", "haze" and "outside" (beyond a wall plane; see scanfilter.js). Every layer becomes its own SplatMesh,
+ * so the cut-away and the clean-scan filter are instant visibility flips instead of re-uploads.
+ * Returns [{ layer, haze, outside, bytes }] and the counts.
  */
 export function splitScan(splat, cut, bounds) {
   const n = splat.length / 32, dv = new DataView(splat.buffer, splat.byteOffset, splat.byteLength);
-  const haze = bounds ? hazeMask(splat, bounds) : new Uint8Array(n);
-  const kind = new Uint8Array(n), count = [0, 0, 0, 0];      // 0 low, 1 high, 2 low haze, 3 high haze
-  for (let i = 0; i < n; i++) { const k = (dv.getFloat32(i * 32 + 4, true) <= cut ? 0 : 1) + 2 * haze[i]; kind[i] = k; count[k]++; }
-  const out = count.map((c) => new Uint8Array(c * 32)), at = [0, 0, 0, 0];
+  const cls = bounds ? hazeMask(splat, bounds) : new Uint8Array(n);      // 0 clean, 1 haze, 2 outside
+  const kind = new Uint8Array(n), count = [0, 0, 0, 0, 0, 0];            // kind = (low 0 / high 1) + 2 * class
+  for (let i = 0; i < n; i++) { const k = (dv.getFloat32(i * 32 + 4, true) <= cut ? 0 : 1) + 2 * cls[i]; kind[i] = k; count[k]++; }
+  const out = count.map((c) => new Uint8Array(c * 32)), at = [0, 0, 0, 0, 0, 0];
   for (let i = 0; i < n; i++) { const k = kind[i]; out[k].set(splat.subarray(i * 32, i * 32 + 32), at[k]++ * 32); }
-  return { parts: out.map((bytes, k) => ({ layer: k % 2 ? "high" : "low", haze: k >= 2, bytes })), total: n, haze: count[2] + count[3] };
+  return { parts: out.map((bytes, k) => ({ layer: k % 2 ? "high" : "low", haze: k >> 1 === 1, outside: k >> 1 === 2, bytes })), total: n, haze: count[2] + count[3] };
 }
 
 let _dot;
@@ -110,6 +112,10 @@ export class Facility {
     this.scanStats = { splats: 0, haze: 0 };
     this._buildFrames();
     this._buildRobot();
+    // asset condition pins (twin.js): the condition reads at a glance without a box around every asset
+    this.markers = buildMarkers(data.objects);
+    this.root.add(this.markers);
+    this.twin = null;         // clean-geometry overlay, built on first use (setTwin)
     this.routeGroup = new THREE.Group();
     this.blockGroup = new THREE.Group();
     this.gridGroup = new THREE.Group();
@@ -124,6 +130,16 @@ export class Facility {
    * so the page can never hang on the scan. `onStatus({received, total, phase})` reports progress.
    */
   async loadScan(manifest, onStatus, { splats = true, timeoutMs = 45000, fallback = null, lite = false } = {}) {
+    // full-fidelity SPZ chunks first (needs the splat engine); on any failure of the first chunk → classic chunks
+    if (manifest.splat_format === "spz") {
+      const classic = manifest.classic || fallback;
+      if (splats && !new URLSearchParams(location.search).get("splat")) {
+        try { return await this._loadHQ(manifest, onStatus, { timeoutMs: Math.max(timeoutMs, 90000), lite }); }
+        catch (e) { console.warn("full-fidelity scan unavailable, using the classic scan:", e.message); this._dropHQ(); }
+      }
+      manifest = classic;
+    }
+    this.renderPath = "classic";
     try {
       return await this._loadScan(manifest, onStatus, { splats, timeoutMs, lite });
     } catch (e) {
@@ -132,6 +148,64 @@ export class Facility {
       console.warn("scan chunks unavailable, using the full scene file:", e.message);
       return this._loadScan(fallback, onStatus, { splats, timeoutMs, lite });
     }
+  }
+
+  /**
+   * Full-fidelity scan: every splat of the supplied 3DGS model with its spherical harmonics, as SPZ chunks
+   * (scripts/build-hq-scan.mjs). Splats stay in the scan's own frame; the canonical transform is the mesh matrix,
+   * so they line up with scene.json exactly and view-dependent colour rotates correctly. Each chunk is one layer
+   * (low/high × clean/haze) of one importance tier, so cut-away and clean-scan stay instant visibility flips.
+   * Phones (lite) load tier 0 only. Throws if the first chunk cannot be shown (caller falls back to classic).
+   */
+  async _loadHQ(manifest, onStatus, { timeoutMs, lite }) {
+    const chunks = manifest.chunks.filter((c) => !lite || c.tier === 0);
+    this.renderPath = "hq";
+    this.scanSource = `full-fidelity scan · ${chunks.length} SPZ chunks · SH ${manifest.max_sh}`;
+    const M = new THREE.Matrix4().fromArray(manifest.transform).transpose();   // stored row-major
+    const total = chunks.reduce((n, c) => n + c.bytes, 0);
+    let received = 0;
+    const report = (phase) => onStatus?.({ received, total, phase });
+    const fetchChunk = async (c) => {
+      const res = await fetch(c.url);
+      if (!res.ok) throw new Error(`${c.url}: HTTP ${res.status}`);
+      const reader = res.body?.getReader();
+      if (!reader) { const b = new Uint8Array(await res.arrayBuffer()); received += b.length; report("download"); return b; }
+      const out = new Uint8Array(c.bytes); let n = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (n + value.length > out.length) throw new Error(`${c.url}: larger than declared`);
+        out.set(value, n); n += value.length; received += value.length; report("download");
+      }
+      if (n !== c.bytes) throw new Error(`${c.url}: ${n} of ${c.bytes} bytes`);
+      return out;
+    };
+    const show = async (bytes, c) => {
+      const m = new SplatMesh({ fileBytes: bytes, fileType: "spz", fileName: c.file });
+      m.matrixAutoUpdate = false; m.matrix.copy(M);
+      m.userData.layer = c.layer; m.userData.haze = !!c.haze; m.userData.outside = !!c.outside; m.userData.hq = true;
+      m.visible = false;
+      this._styleSplat(m);
+      this.root.add(m); this.splats.push(m);
+      await Promise.race([m.initialized, new Promise((_, rej) => setTimeout(() => rej(new Error("splat engine timeout")), timeoutMs))]);
+      m.visible = this._layerOn(m);
+      this.scanStats.splats += c.count; if (c.haze) this.scanStats.haze += c.count;
+      this.splatMode = "splats";
+    };
+    report("download");
+    // the first chunk proves the path works (download + decode); the rest stream in parallel afterwards
+    await show(await fetchChunk(chunks[0]), chunks[0]);
+    report("render");
+    const rest = await Promise.allSettled(chunks.slice(1).map(async (c) => show(await fetchChunk(c), c)));
+    for (const r of rest) if (r.status === "rejected") console.warn("scan chunk skipped:", r.reason?.message);
+    report("done");
+  }
+
+  _dropHQ() {
+    for (const m of this.splats.filter((s) => s.userData.hq)) { this.root.remove(m); m.dispose?.(); }
+    this.splats = this.splats.filter((s) => !s.userData.hq);
+    this.scanStats = { splats: 0, haze: 0 };
+    this.splatMode = undefined;
   }
 
   async _loadScan(manifest, onStatus, { splats, timeoutMs, lite }) {
@@ -167,19 +241,19 @@ export class Facility {
       // split each chunk at the cut-away height: the upper part (ceiling, overhead pipes) can be hidden so
       // high spectator cameras look straight into the room, like an architectural floor-plan cut
       // ...and partition out the haze (clean-scan filter) the same way
-      const { parts, total: nAll, haze: nHaze } = splitScan(all, this.cutY, this.data.bounds);
+      const { parts, total: nAll, haze: nHaze } = splitScan(all, this.cutY, { ...this.data.bounds, walls: wallClip(this.data.planes, this.data.bounds) });
       this.scanStats.splats += nAll; this.scanStats.haze += nHaze;
-      for (const { layer, haze, bytes: splat } of parts) {
+      for (const { layer, haze, outside, bytes: splat } of parts) {
         if (!splat.length) continue;
         const preview = this._points(splat);
-        preview.userData.layer = layer; preview.userData.haze = haze;
+        preview.userData.layer = layer; preview.userData.haze = haze; preview.userData.outside = outside;
         preview.visible = this._layerOn(preview);
         this._stylePreview(preview);
         this.previews.push(preview);
         if (!splats) continue;
         try {
           const m = new SplatMesh({ fileBytes: splat, fileType: "splat", fileName: "scene.splat" });
-          m.userData.layer = layer; m.userData.haze = haze;
+          m.userData.layer = layer; m.userData.haze = haze; m.userData.outside = outside;
           m.visible = this._layerOn(m);
           this._styleSplat(m);
           this.root.add(m);
@@ -242,7 +316,7 @@ export class Facility {
       });
       edges.forEach(([i, j], e) => { pos.set(world[i], (k * 24 + e * 2) * 3); pos.set(world[j], (k * 24 + e * 2 + 1) * 3); });
       c.set(this.colorFor(o));
-      const base = o.asset ? 0.85 : 0.16;
+      const base = o.asset ? 0.45 : 0.16;   // subtle: the condition pin (twin.js) carries the status
       for (let v = 0; v < 24; v++) col.set([c.r, c.g, c.b, base], (k * 24 + v) * 4);
       this.frames.set(o.id, { k, obj: o, base, cs, sn, h });
     });
@@ -312,7 +386,12 @@ export class Facility {
 
   // ---------------------------------------------------------------- scan layers: cut-away, clean scan, semantic dimming
   // haze is hidden by the clean-scan filter and always in the semantic view (there the scan is only context)
-  _layerOn(m) { return (m.userData.layer === "low" || !this.cutaway) && !(m.userData.haze && (this.cleanScan || this.semantic)); }
+  // high cameras (cut-away) also drop the haze: from above, the floaters outside the walls are what reads as "unfinished"
+  // wall skins and what lies behind them ("outside") only go in cut-away views, where they would ring the room
+  _layerOn(m) {
+    const u = m.userData;
+    return (u.layer === "low" || !this.cutaway) && !(u.haze && (this.cleanScan || this.semantic || this.cutaway)) && !(u.outside && this.cutaway);
+  }
   _applyLayers() {
     for (const m of this.splats) m.visible = this._layerOn(m);
     for (const p of this.previews) p.visible = !p.userData.replaced && this._layerOn(p);
@@ -325,6 +404,25 @@ export class Facility {
   setCleanScan(on) {
     this.cleanScan = !!on;
     this._applyLayers();
+  }
+
+  /**
+   * Digital-twin overlay (twin.js): drivable-floor tint + 0.5 m grid, room outline from the fitted planes and every
+   * asset as a clean outline, all in the scan's canonical frame. `grid` (api.grid()) gives the drivable tint.
+   */
+  setTwin(on, grid = this.walkGrid) {
+    if (on && !this.twin) { this.twin = buildTwin(this.data, grid); this.root.add(this.twin); }
+    if (this.twin) this.twin.visible = !!on;
+    this.twinOn = !!on;
+    this._markerStyle();
+  }
+  // pins hide in the semantic view (it has floor rings) and where the asset's own label is already up
+  _markerStyle() {
+    for (const s of this.markers.children) {
+      if (!s.isSprite) { s.visible = !this.semantic; continue; }
+      const f = this.frames.get(s.userData.id);
+      s.visible = !this.semantic && !f?.label?.visible;
+    }
   }
 
   setShowMode(mode) {
@@ -375,12 +473,13 @@ export class Facility {
       const f = this.frames.get(id); if (!f) continue;
       dirty = this._writeAlpha(f) || dirty;
       const o = f.obj, on = next.has(id) || id === selected || id === target;
-      const worth = o.asset || id === selected || (o.confidence >= 0.7 && ["rotating", "valve", "instrument", "vessel", "electrical"].includes(o.category));
+      const worth = o.asset || id === selected || (o.confidence >= 0.7 && ["rotating", "valve", "instrument", "vessel", "electrical"].includes(catOf(o)));
       if (on && worth) this.ensureLabel(id).visible = true;
       else if (f.label) f.label.visible = false;
       this._fill(id, id === selected || id === target);
     }
     this._commit(dirty);
+    this._markerStyle();
   }
 
   pulse(t, id) {
@@ -484,6 +583,7 @@ export class Facility {
     for (const p of this.previews) this._stylePreview(p);
     this._applyLayers();
     this._semStyle();
+    this._markerStyle();
   }
 
   /** Show uncertain: hatch the objects whose label is a guess (low confidence or "other equipment"). */

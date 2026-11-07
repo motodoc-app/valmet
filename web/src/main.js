@@ -154,12 +154,18 @@ async function boot() {
 }
 
 function homeView() {
-  // Corner-to-corner view under the ceiling: from the room corner nearest the robot, looking across the room.
+  // [render: Agent V] Eye height (1.65 m) at the short wall nearest the robot, 1 m off the centre line towards it,
+  // looking down the long axis of the room. The old corner view at 1.85 m sat 20 cm under the ceiling ducts and behind
+  // the big insulated pipe column, whose blurry splats filled half of the first picture.
   const b = S.data.bounds, s = S.data.start;
-  const x = s[0] < (b.min[0] + b.max[0]) / 2 ? b.min[0] + 0.9 : b.max[0] - 0.9;
-  const z = s[2] < (b.min[2] + b.max[2]) / 2 ? b.min[2] + 0.9 : b.max[2] - 0.9;
-  const cx = (b.min[0] + b.max[0]) / 2, cz = (b.min[2] + b.max[2]) / 2;
-  return { pos: new THREE.Vector3(x, 1.85, z), tgt: new THREE.Vector3(cx + (cx - x) * 0.25, 0.2, cz + (cz - z) * 0.25) };
+  const c = [(b.min[0] + b.max[0]) / 2, (b.min[2] + b.max[2]) / 2], lo = [b.min[0], b.min[2]], hi = [b.max[0], b.max[2]], st = [s[0], s[2]];
+  const L = hi[1] - lo[1] >= hi[0] - lo[0] ? 1 : 0, W = 1 - L;          // long axis (0 = x, 1 = z) and the short one
+  const p = [0, 0], t = [0, 0];
+  p[L] = st[L] < c[L] ? lo[L] + 0.65 : hi[L] - 0.65;
+  p[W] = c[W] + Math.max(-1, Math.min(1, st[W] - c[W]));
+  t[L] = c[L] + (c[L] - p[L]) * 0.33;
+  t[W] = c[W] - (p[W] - c[W]) * 0.45;
+  return { pos: new THREE.Vector3(p[0], 1.65, p[1]), tgt: new THREE.Vector3(t[0], 0.5, t[1]) };
 }
 
 // ------------------------------------------------------------------ left card: assets (facility) / components (x-ray)

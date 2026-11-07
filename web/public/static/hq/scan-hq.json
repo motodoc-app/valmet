@@ -1,0 +1,217 @@
+{
+ "splat_format": "spz",
+ "max_sh": 3,
+ "total": 1669970,
+ "bytes": 37031880,
+ "cut_y": 1.7,
+ "transform": [
+  0.052326275990879044,
+  -0.005292613305653393,
+  -0.9986160168379651,
+  -0.0029706934070011354,
+  -0.003657987453352517,
+  -0.9999802626707666,
+  0.005108169603266517,
+  1.1716893328611302,
+  -0.9986233423912728,
+  0.0033856333678413996,
+  -0.05234460352300978,
+  -0.23338790918974547,
+  0,
+  0,
+  0,
+  1
+ ],
+ "dropped": {
+  "transparent": 6511,
+  "note": "opacity < 1/255 (never visible)"
+ },
+ "chunks": [
+  {
+   "file": "scan-0.wasm",
+   "tier": 0,
+   "layer": "low",
+   "haze": false,
+   "outside": false,
+   "count": 353464,
+   "bytes": 7667019,
+   "sha256": "c857fd498936a84256ccc9869c18249e3aeaf0004d7883dac42078320de820af"
+  },
+  {
+   "file": "scan-1.wasm",
+   "tier": 0,
+   "layer": "high",
+   "haze": false,
+   "outside": false,
+   "count": 182566,
+   "bytes": 3921919,
+   "sha256": "4a89104873692e091d95a1667e6f08b8800ae13d3b7c0101ed18f4e785982f5d"
+  },
+  {
+   "file": "scan-2.wasm",
+   "tier": 0,
+   "layer": "low",
+   "haze": true,
+   "outside": false,
+   "count": 52658,
+   "bytes": 1036248,
+   "sha256": "c004cd182248d237f4f3ddd8c3488e0a76345fccffa9e5978b5b83f2792311fe"
+  },
+  {
+   "file": "scan-3.wasm",
+   "tier": 0,
+   "layer": "high",
+   "haze": true,
+   "outside": false,
+   "count": 43581,
+   "bytes": 835820,
+   "sha256": "d949345926f0f75d02a2b051c1eba8343241d2d978b962405fc8cd8cc08bb285"
+  },
+  {
+   "file": "scan-4.wasm",
+   "tier": 0,
+   "layer": "low",
+   "haze": false,
+   "outside": true,
+   "count": 76257,
+   "bytes": 1562113,
+   "sha256": "5dbda9104b489073bbbfae47de399958593428acdebf1c7250953abdd0ae487f"
+  },
+  {
+   "file": "scan-5.wasm",
+   "tier": 0,
+   "layer": "high",
+   "haze": false,
+   "outside": true,
+   "count": 21474,
+   "bytes": 422960,
+   "sha256": "17822a18fe1faf9f9e314b37fd6687fec106ed398e3d13616b2f5c099b358480"
+  },
+  {
+   "file": "scan-6.wasm",
+   "tier": 1,
+   "layer": "low",
+   "haze": false,
+   "outside": false,
+   "count": 292848,
+   "bytes": 6748367,
+   "sha256": "5634b741c9b93b00dd666aa17e706b420aa59a4c62f611aa18e93a6ca274d95d"
+  },
+  {
+   "file": "scan-7.wasm",
+   "tier": 1,
+   "layer": "high",
+   "haze": false,
+   "outside": false,
+   "count": 115033,
+   "bytes": 2619712,
+   "sha256": "b2d65a20426b149e2698752cf699784306a88983ed7ff54d5c9c02d9643c253a"
+  },
+  {
+   "file": "scan-8.wasm",
+   "tier": 1,
+   "layer": "low",
+   "haze": true,
+   "outside": false,
+   "count": 8764,
+   "bytes": 183008,
+   "sha256": "cf96c80988bdf50d8030b5c4383ce526673a43533ed1d49f8f16da4d4a8b766e"
+  },
+  {
+   "file": "scan-9.wasm",
+   "tier": 1,
+   "layer": "high",
+   "haze": true,
+   "outside": false,
+   "count": 5430,
+   "bytes": 110162,
+   "sha256": "51cbdb6fafcba4b8537edee2382b83fccc275e1c7e5bf07447bd84db800f325f"
+  },
+  {
+   "file": "scan-10.wasm",
+   "tier": 1,
+   "layer": "low",
+   "haze": false,
+   "outside": true,
+   "count": 40269,
+   "bytes": 877824,
+   "sha256": "4f252726e13bcfd0fc0970d87f89562fd1194878d55900f629ceada4ea4145be"
+  },
+  {
+   "file": "scan-11.wasm",
+   "tier": 1,
+   "layer": "high",
+   "haze": false,
+   "outside": true,
+   "count": 7656,
+   "bytes": 168235,
+   "sha256": "84e407cc1d2d2643ef7f42f683e70d1f8b80b3306c079e2f3add2806b611b5e8"
+  },
+  {
+   "file": "scan-12.wasm",
+   "tier": 2,
+   "layer": "low",
+   "haze": false,
+   "outside": false,
+   "count": 319351,
+   "bytes": 7457599,
+   "sha256": "4c53caad2553fde650622942182976a39bfcd2b15a773d763a8a7e1748411879"
+  },
+  {
+   "file": "scan-13.wasm",
+   "tier": 2,
+   "layer": "high",
+   "haze": false,
+   "outside": false,
+   "count": 108058,
+   "bytes": 2481921,
+   "sha256": "82880bb9e7fcc7a70177e16f2f8a2d45eeb6ec26bd70f93f642371862b4876b2"
+  },
+  {
+   "file": "scan-14.wasm",
+   "tier": 2,
+   "layer": "low",
+   "haze": true,
+   "outside": false,
+   "count": 4971,
+   "bytes": 109900,
+   "sha256": "e90aff82ed64a5fc0e14a121e66b39b1d3700caf22b428db23f3fa3452da89c4"
+  },
+  {
+   "file": "scan-15.wasm",
+   "tier": 2,
+   "layer": "high",
+   "haze": true,
+   "outside": false,
+   "count": 1991,
+   "bytes": 42232,
+   "sha256": "b664fd8aa534a8bd8cce4b257a649e983c4fdd971ac8258c9b86834130937cea"
+  },
+  {
+   "file": "scan-16.wasm",
+   "tier": 2,
+   "layer": "low",
+   "haze": false,
+   "outside": true,
+   "count": 29967,
+   "bytes": 659269,
+   "sha256": "53ab34d20b8b1946f6249a4ba8bbb4874a8701c75cdecd852746c321f98d1fc3"
+  },
+  {
+   "file": "scan-17.wasm",
+   "tier": 2,
+   "layer": "high",
+   "haze": false,
+   "outside": true,
+   "count": 5632,
+   "bytes": 127572,
+   "sha256": "6e09cbace92d96b1e8c385ec6bc5d67ef651128fa06bfb70d5093e39370ccf4a"
+  }
+ ],
+ "source": {
+  "file": "data/raw/equipment_room.ply",
+  "splats": 1676481,
+  "bytes": 395651019,
+  "sha256": "83d8c7d99316c08c9719cfc2c5a6b9d1903b89847780e2458adc662c79f32955"
+ }
+}
