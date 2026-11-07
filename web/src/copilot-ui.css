@@ -1,5 +1,6 @@
 /* "Ask about the plant" conversation panel (copilot-ui.js). Lives inside the existing .pop popover. */
-.pop:has(.cp-head) { width: 460px; max-height: min(72vh, 680px); display: flex; flex-direction: column; overflow: hidden; padding: 0; z-index: 30; }
+.pop:has(.cp-head) { width: 460px; max-height: min(72vh, 680px); display: flex; flex-direction: column; overflow: hidden; padding: 0; z-index: 30;
+  background: #131519; }
 .cp-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 8px; border-bottom: 1px solid var(--line); flex: none; }
 .cp-title { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text); }
 .cp-title svg { width: 14px; height: 14px; }
