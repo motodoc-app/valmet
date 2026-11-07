@@ -160,7 +160,7 @@ The full presenter version with plain-language and engineering lines is [`docs/D
 3. **Understand.** *Open* on the briefing card: the cited diagnosis (confidence 52 %), evidence tab, sources.
 4. **Plan.** The *Plan* tab (or *Plan access* on the asset card): the hand pallet truck blocks P-005's service area;
    grab it (the scanned truck moves with it as an approximate cut-out), turn it with the wheel, R or Q / E, drop it;
-   collisions, clearance, the service zone and the route update (8.40 m → 7.98 m); undo, reset or export. The scan
+   collisions, clearance, the service zone and the route update (7.72 m → 7.63 m); undo, reset or export. The scan
    file is never changed.
 5. **Check the way in.** *Send robot here* on the card; switch the camera to *Robot POV* mid-route (simulated robot
    camera, rendered from the scan), or *Angled* at 4×; *Block aisle* re-routes live; *Reverse* and the route slider

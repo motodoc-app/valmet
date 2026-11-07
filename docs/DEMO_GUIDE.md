@@ -46,11 +46,11 @@ X-Ray · Plan · Learn · Practice · Support · Value**. The camera buttons are
 | 5 | Angled view (formerly "Broadcast") | Dock → **Angled** | Above at an angle, like a broadcast camera |
 | 6 | Robot POV | Dock → **Robot POV** | Robot's-eye view; HUD "Simulated robot camera — rendered from the 3D scan, not a live feed" |
 | 7 | Search P-005 | Press **/** (or click *Ask about the plant*), type *Where is P-005?*, Enter | P-005 selected; asset card on the right |
-| 8 | Plan a robot route | Asset card → **Send robot here** | Route drawn; dock shows "8.4 m · A* … ms · clearance 0.206 m · 0 collisions" |
+| 8 | Plan a robot route | Asset card → **Send robot here** | Route drawn; dock shows "7.72 m · A* … ms · clearance 0.206 m · 0 collisions" |
 | 9 | Start navigation | (starts by itself) — dock **Pause** / **Play** toggles it; **Speed** cycles 1–4× | Robot drives; *En route* card |
 | 10 | Robot moves | Watch, or switch to **Chase** / **Robot POV** mid-route | *Assets read along the way* fills with status and health |
 | 11 | Insert an obstacle | Dock → **Block aisle** (enabled while a route is active and the robot has not arrived) | A block appears ahead of the robot |
-| 12 | Reroute | (automatic) | New route from the robot's position (≈ 8.4 → 8.65 m), still 0 collisions |
+| 12 | Reroute | (automatic) | New route from the robot's position (a short detour), still 0 collisions |
 | 13 | Arrive | Wait for the end of the route | Prompt **You've arrived at P-005** with **Inspect equipment** and **See diagnosis**; the diagnosis card opens on the right |
 | 14 | Equipment card | Left list → **P-005** (or click the pump) | Asset card: **Robot is here** · **Explore internals (X-Ray)** (primary) · **What's wrong?** · **Plan access** |
 | 15 | AI diagnosis | Asset card → **What's wrong?** (or **See diagnosis** on the prompt) | Likely fouling, **52 %** confidence with breakdown, grey source tags; tabs Overview / Evidence / Sources |
@@ -60,7 +60,7 @@ X-Ray · Plan · Learn · Practice · Support · Value**. The camera buttons are
 | 19 | Close without losing position | Panel **×** (or `Esc`) | Same camera, camera mode, robot position and selection as before (measured: camera moved 0.000 m) |
 | 20 | Maintenance planning | Tab **Plan** (or asset card → **Plan access**) | Card "Make room to service P-005": Pick → Move → Check |
 | 21 | Move a virtual proxy | **Pick the pallet truck**, then drag it on the floor (or the card's arrow buttons / arrow keys; turn with the wheel, `R`, `Q` / `E` or the dock's turn buttons); **Done – check the result** | Proxy follows; the scanned truck moves with it (approximate cut-out) |
-| 22 | Collision / clearance feedback | Drop it on another object to see a collision; **Suggest a good spot for me** for a clean result | While overlapping, the proxy turns red and the *Clearance* tile reads "0 m · collision"; then "It fits. No collisions, the P-005 service zone is clear …", clearance, route 8.40 m → 7.98 m |
+| 22 | Collision / clearance feedback | Drop it on another object to see a collision; **Suggest a good spot for me** for a clean result | While overlapping, the proxy turns red and the *Clearance* tile reads "0 m · collision"; then "It fits. No collisions, the P-005 service zone is clear …", clearance, route 7.72 m → 7.63 m |
 | 23 | Reset the layout | **Reset all** (undo with **Undo** / `Ctrl+Z`) | Scanned layout back; no moves |
 | 24 | Open a lesson | Tab **Learn** → lesson **01** "Why does fouling lower flow but raise current?" | Lesson text with the relevant parts highlighted |
 | 25 | Practice exercise | Tab **Practice** → tick the 3 *Before you start* boxes → **Start exercise** → answer, **Continue** | "Task 1 of 6" …; completion summary with score and takeaways |
@@ -82,7 +82,7 @@ briefing card puts everything back for the next run.
 | 1:10–1:35 | | **Plan access** → grab the pallet truck → drop it clear | "The truck blocks the service area. Move it: collisions, clearance and the route update — the route gets shorter. Approximate, not an engineering check." |
 | 1:35–2:00 | Business impact | Value page → closing title | "Technicians arrive prepared. Data is synthetic and savings are not yet measured; a pilot measures time to find equipment and to prepare a visit." |
 
-Timing: the robot cruises at 0.6 m/s, so the 8.4 m route takes about 15 s at 1×; press **Speed** for 2× or 4× to fit
+Timing: the robot cruises at 0.6 m/s, so the 7.7 m route takes about 14 s at 1×; press **Speed** for 2× or 4× to fit
 the 0:42–0:55 slot.
 
 Mention the **Support** hand-off in one line if time allows ("send the whole context to an expert as a link —

@@ -675,7 +675,7 @@ async function arrive() {
   S.robot.arrived = true;
   const o = S.navObject, c = new THREE.Vector3(...o.center), r = S.fac.robot.position.clone();
   // the user opened another asset's diagnosis while the robot drove: arriving must not replace it (prompt only)
-  const userCard = S.cardLock && S.diag?.asset?.asset_id && S.diag.asset.asset_id !== o.asset?.asset_id;
+  const userCard = S.cardLock && (S.diagAsked || S.diag?.asset?.asset_id) && (S.diagAsked || S.diag.asset.asset_id) !== o.asset?.asset_id;
   const dir = c.clone().sub(r).setY(0).normalize();
   const side = new THREE.Vector3(-dir.z, 0, dir.x);
   if (S.cam === "chase" || S.cam === "free") flyTo(r.clone().addScaledVector(dir, -0.9).addScaledVector(side, 1.0).setY(1.7), c.clone().setY(Math.max(0.35, c.y)));
@@ -1132,7 +1132,7 @@ async function runAskActions(r) {
         S.selected = best; renderAssetCard(best); renderLeft();
         const c = new THREE.Vector3(...best.center); flyTo(c.clone().add(viewOffset(c)), c);
       }
-      if (a.type === "diagnose") { S.cardLock = true; if (!sceneMode()) setMode("facility"); S.diag = await api.diagnose(a.asset_id); S.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }
+      if (a.type === "diagnose") { S.cardLock = true; S.diagAsked = a.asset_id; if (!sceneMode()) setMode("facility"); S.diag = await api.diagnose(a.asset_id); S.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }
       if (a.type === "practice") setMode("practice");
       if (a.type === "learn") setMode("learn");
       if (a.type === "knowledge") openLibrary(a.query || "");

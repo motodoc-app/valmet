@@ -289,7 +289,7 @@ function zoneStatus(moves = P.moves) {
     if (overlap(tfp, e.fp)) continue;         // frames touching the pump's own frame are parts of it (motor, fittings)
     // fixed or small fragments right next to the pump (its pipework, flanges, inlet valve) belong to the installation;
     // movable equipment there (a pallet truck, a cart) is what the plan is about (same 0.6 m as the robot's line of sight)
-    if (boxDist(tfp, e.fp) <= INSTALL_M && (movable(e.o) || Math.max(e.o.size[0], e.o.size[2]) < 0.3)) continue;
+    if (boxDist(tfp, e.fp) <= INSTALL_M && (!movable(e.o).ok || Math.max(e.o.size[0], e.o.size[2]) < 0.3)) continue;
     if (!(e.top > OBST_MIN && e.bottom < OBST_MAX)) continue;
     if (overlap(z, e.fp)) obstructions.push({ id: e.o.id, name: shortName(e.o), proxy: false });
   }

@@ -521,9 +521,13 @@ async function blockAisle() {
 }
 async function arrive() {
   P.robot.arrived = true;
-  P.selected = P.navObject; renderLeft();
+  // the user opened another asset's diagnosis while the robot drove: arriving must not replace it (toast only)
+  const userCard = () => P.cardLock && (P.diagAsked || P.diag?.asset?.asset_id) && (P.diagAsked || P.diag.asset.asset_id) !== P.navObject.asset.asset_id;
+  if (!userCard()) { P.selected = P.navObject; renderLeft(); }
   toast(`Arrived at <b>${P.navObject.asset.tag}</b>. Diagnosis ready.`);
-  P.diag = await P.diagPromise; P.tab = "overview";
+  const d = await P.diagPromise;
+  if (userCard()) return;
+  P.diag = d; P.tab = "overview";
   $("#right").classList.remove("min");
   renderDiagnosis();
 }
@@ -537,7 +541,7 @@ async function runAskActions(r) {
       if (a.type === "navigate") await restart(a.asset_id);
       if (a.type === "xray") await renderParts(a.asset_id || P.selected?.asset?.asset_id || P.target.asset.asset_id);
       if (a.type === "knowledge") openLibrary(a.query || "");
-      if (a.type === "diagnose") { P.cardLock = true; P.diag = await api.diagnose(a.asset_id); P.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }
+      if (a.type === "diagnose") { P.cardLock = true; P.diagAsked = a.asset_id; P.diag = await api.diagnose(a.asset_id); P.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }
       if (a.type === "learn" || a.type === "practice") toast("Learn and Practice use the 3D model. Try the 3D view on a device with WebGL.");
     }
 }

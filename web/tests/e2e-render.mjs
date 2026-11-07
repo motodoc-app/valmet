@@ -162,7 +162,9 @@ try {
     p = await ctx.newPage(); p.errors = []; p.on("pageerror", (e) => p.errors.push(e.message));
     await p.goto(BASE + "?scan=off");
     await waitFor(p, () => window.__app?.fac && window.__look);
-    await sleep(8000);
+    await sleep(2000);
+    // the view renders on demand: frame times are measured while the user interacts with the 3D view
+    for (let i = 0; i < 60; i++) { await p.mouse.move(500 + (i % 20) * 10, 380 + (i % 7) * 6); await sleep(100); }
     const d = await p.evaluate(() => ({ ...window.__look, plate: undefined, pr: window.__renderer.getPixelRatio() }));
     ok("Adaptive resolution: active on desktop, bounded to [1, 2]", d.adapt && d.dprMax === 2 && d.pr >= 1 && d.pr <= 2 && d.frameMs > 0, `pixel ratio ${d.pr}, ${d.frameMs} ms/frame, ${d.changes} changes`);
     await ctx.close();
