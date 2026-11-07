@@ -147,6 +147,22 @@ const ctx = () => once("ctx", async () => {
 });
 
 const SIGNAL_WORDS = { vibration: "vibration_mm_s", temperature: "bearing_temp_c", temp: "bearing_temp_c", current: "motor_current_a", pressure: "process_pressure_bar", flow: "process_flow_pct", stiction: "stiction_index" };
+const STOP = new Set(["the", "where", "is", "are", "find", "show", "me", "a", "an", "all", "of", "in", "this", "room", "please", "locate", "which"]);
+function findObjects(c, phrase) {
+  const words = (phrase.toLowerCase().match(/[a-z0-9-]+/g) || []).filter((w) => !STOP.has(w));
+  if (!words.length) return [];
+  const A = Object.fromEntries(c.assets.map((a) => [a.object_id, a]));
+  const out = [];
+  for (const o of c.scene.objects) {
+    if (o.kind !== "object") continue;
+    const a = A[o.id];
+    const hay = `${o.label} ${o.category || ""} ${a ? `${a.tag} ${a.asset_class.replaceAll("_", " ")}` : ""}`.toLowerCase();
+    const score = words.filter((w) => hay.includes(w) || (w.endsWith("s") && hay.includes(w.slice(0, -1)))).length;
+    if (score) out.push([score + o.confidence + (a ? 0.5 : 0), o]);
+  }
+  out.sort((x, y) => y[0] - x[0]);
+  return out.filter(([sc]) => sc >= (out[0]?.[0] ?? 0) - 0.6).map(([, o]) => o);
+}
 const CLASS_WORDS = { pump: "PROCESS_PUMP", motor: "ELECTRIC_MOTOR", valve: "CONTROL_VALVE", transmitter: "PRESSURE_TRANSMITTER", sensor: "VIBRATION_SENSOR" };
 
 export const staticApi = {
@@ -172,16 +188,17 @@ export const staticApi = {
   diagnose: (id) => once("d" + id, () => get(`diag/${id}.json`)),
   async query(question, asset_id, component) {
     const c = await ctx();
-    const pre = component && asset_id && c.answers[`${component}|${asset_id}`];
+    const cls0 = c.assets.find((a) => a.asset_id === asset_id)?.asset_class;
+    const pre = component && (c.answers[`${component}|${asset_id}`] || c.answers[`${cls0}#${component}`]);
     if (pre && /what does|evidence/i.test(question)) return pre;
     const scope = c.assets.find((a) => a.asset_id === asset_id)?.asset_class;
     const hits = c.search(question + (component ? " " + component : ""), 6, scope);
-    if (component) { const kb = c.corpus.find((d) => d.id === `KB-XRAY-PUMP#${component}`); if (kb && !hits.some((h) => h.id === kb.id)) hits.unshift(kb); }
+    if (component) { const kb = c.corpus.find((d) => d.id === `KB-XRAY-${scope}#${component}`); if (kb && !hits.some((h) => h.id === kb.id)) hits.unshift(kb); }
     return { text: hits.slice(0, 3).map((h) => `${h.text} [${h.id}]`).join(" ") || "No supporting document found in the builder pack.", sources: hits, mode: "retrieval (offline demo)" };
   },
   search: async (q) => (await ctx()).search(q || "pump fouling flow current", 8),
   doc: async (id) => { const d = (await ctx()).corpus.find((x) => x.id === id); if (!d) throw new Error("not found"); return d; },
-  xrayModel: () => get("xray.json"),
+  xrayModel: () => once("xray", () => get("xray.json")),
   async draftWO(asset_id) {
     const d = await staticApi.diagnose(asset_id), a = d.asset;
     return { draft_id: `WO-DRAFT-${a.tag}`, status: "Draft · needs planner approval", asset_id, tag: a.tag, area_name: a.area_name, maintenance_type: "inspection",
@@ -204,12 +221,34 @@ export const staticApi = {
       const cand = c.assets.filter((a) => !cls || a.asset_class === cls).sort((a, b) => b.priority - a.priority);
       if (cand.length) { const a = cand[0]; asset_id = a.asset_id; reason = `${a.tag} has the highest maintenance priority${cls ? " among " + cls.replace("_", " ").toLowerCase() + "s" : ""}: ${a.condition_state.replace("_", " ")}, health ${a.health_score}, ${a.issue_code} (${a.criticality}) [${a.asset_id}].`; }
     }
-    if (asset_id) {
+    if (cls && !reason && (!asset_id || A[asset_id]?.asset_class !== cls) && /explain|what does|how does|component|parts|x-?ray|inside|practi|learn|this/.test(t)) {
+      const same = c.assets.filter((a) => a.asset_class === cls).sort((a, b) => b.priority - a.priority);
+      if (same.length) asset_id = same[0].asset_id;
+    }
+    const m = t.match(/(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$/);
+    if (!asset_id && m && !sig) {
+      const tag = t.match(/\b([a-z]{1,2}-\d{3})\b/);
+      if (tag) { const hit = c.assets.find((a) => a.tag.toLowerCase() === tag[1]); if (hit) { asset_id = hit.asset_id; reason = `${hit.tag} is a ${hit.asset_class.replaceAll("_", " ").toLowerCase()} in ${hit.area_name} [${hit.asset_id}].`; } }
+      else {
+        const found = findObjects(c, m[1]);
+        if (found.length) {
+          const best = found[0], b = c.assets.find((a) => a.object_id === best.id);
+          actions.push({ type: "select_object", object_id: best.id, matches: found.slice(0, 40).map((o) => o.id), asset_id: b?.asset_id ?? null });
+          asset_id = b?.asset_id ?? null;
+          reason = `Found ${found.length} object${found.length === 1 ? "" : "s"} labelled like “${m[1]}” in the scan. Highlighting ${found.length > 1 ? "them" : "it"}; the closest match is ${best.id} (${best.label}, ${Math.round(best.confidence * 100)}% confidence, ${best.label_source}).` + (b ? ` It is mapped to workbook asset ${b.tag} [${b.asset_id}].` : "");
+        }
+      }
+    }
+    if (asset_id && !actions.some((x) => x.type === "select_object")) {
       const a = A[asset_id]; actions.push({ type: "select", asset_id, object_id: a.object_id });
       if (a.object_id) { const o = c.scene.objects.find((x) => x.id === a.object_id); reason += ` Mapped to scene object ${a.object_id} (${o.label}, ${o.label_source}), mapping confidence ${a.mapping_confidence}.`; }
     }
     if (/send|go to|navigate|inspect|dispatch|walk|drive|route/.test(t) && asset_id) { actions.push({ type: "navigate", asset_id }); reason += " Dispatching the inspection robot on a collision-free route."; }
-    if (/x-?ray|explode|inside|internal|component/.test(t)) actions.push({ type: "xray" });
+    if (/x-?ray|explode|inside|internal|component|parts/.test(t)) actions.push({ type: "xray", asset_id });
+    if (/explain|what does|what is this|how does/.test(t) && asset_id) {
+      const a = A[asset_id], lib = (await staticApi.xrayModel()).classes[a.asset_class];
+      if (lib) reason = `${a.tag} is ${/^[aeiou]/i.test(lib.label) ? "an" : "a"} ${lib.label.toLowerCase()}. ${lib.function} Its main components: ${lib.components.slice(0, 8).map((x) => x.name.toLowerCase()).join(", ")}. Current condition: ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score} [${a.asset_id}]. ` + reason;
+    }
     if (/practi[cs]e|exercise|train|rehears/.test(t)) actions.push({ type: "practice" });
     if (/learn|tutorial|teach/.test(t)) actions.push({ type: "learn" });
     if (/manual|document|doc|knowledge|procedure/.test(t)) actions.push({ type: "knowledge" });

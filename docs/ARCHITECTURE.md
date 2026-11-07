@@ -62,6 +62,14 @@
 * **Command router**: transparent rules for "faulty / abnormal <signal> / send / x-ray / practise / manual". Anything
   else falls through to retrieval-augmented question answering.
 
+## 5b. Equipment library (`backend/xray/knowledge/equipment.json`)
+One entry per asset class: a teaching model described with a shape vocabulary (cylinder, box, torus, ring, fins,
+blades, coil, bolts, thread, hex, plus named pump parts), each component's function, failure signs, evidence signals
+and fault codes, class-specific fault → component hypotheses, lessons and a scored practice scenario. The X-Ray
+viewer builds any entry, normalises its size to the podium, keeps exploded parts above it and frames the camera
+automatically; the copilot uses the same entry for hypotheses and citations (`KB-XRAY-<CLASS>#<component>`).
+The command router adds semantic scene search ("where is …") over all 676 object labels.
+
 ## 6. Hosted mode (`scripts/export_static.py`, `web/src/static-api.js`)
 The export writes the scene, nav grid (floor, obstacle and height bitmaps), approach cells, all 30 diagnoses
 (LLM-narrated at export time and citation-checked), pre-answered component questions, the BM25 corpus and the splat

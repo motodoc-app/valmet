@@ -27,7 +27,7 @@ $("#app").innerHTML = `
 <div class="wordmark"><div class="eyebrow">Industrial X-Ray</div><div class="name">Equipment Room</div></div>
 <nav class="modes" aria-label="Mode">
   <button data-mode="facility" class="on">Facility</button><button data-mode="xray">X-Ray</button>
-  <button data-mode="learn">Learn</button><button data-mode="practice">Practice</button>
+  <button data-mode="learn">Learn</button><button data-mode="practice">Practice</button><button data-mode="value">Value</button>
 </nav>
 <div class="topright">
   <div class="ask">
@@ -38,6 +38,7 @@ $("#app").innerHTML = `
 </div>
 <aside class="card left" id="left"></aside>
 <aside class="card right" id="right"></aside>
+<section class="card value hidden" id="value" aria-label="Value calculator"></section>
 <div class="card sheet hidden" id="sheet"></div>
 <div class="dock" id="dock"></div>
 <div class="rail" id="rail">
@@ -74,7 +75,8 @@ xControls.enableDamping = true;
 xControls.enabled = false;
 xControls.minDistance = 1.2; xControls.maxDistance = 9;
 xControls.maxPolarAngle = Math.PI * 0.48;
-const XHOME = { pos: new THREE.Vector3(2.4, 2.1, 4.4), tgt: new THREE.Vector3(-0.1, 0.45, 0) };
+// X-Ray camera home is computed per device by XRay.load() (auto-fit to the exploded model)
+const xHome = () => S.xray.home || { pos: new THREE.Vector3(2.4, 2.1, 4.4), tgt: new THREE.Vector3(0, 0.5, 0) };
 
 addEventListener("resize", () => {
   renderer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight);
@@ -99,7 +101,6 @@ async function boot() {
   S.target = data.objects.find((o) => o.id === data.target_object_id);
   S.home = homeView();
   camera.position.copy(S.home.pos); controls.target.copy(S.home.tgt);
-  xCam.position.copy(XHOME.pos); xControls.target.copy(XHOME.tgt);
   initTraining(S, { $, esc, cites, setMode, card: (h) => ($("#right").innerHTML = h), xCam, xControls, toast, icon, focusPart });
   renderLeft(); renderOverviewCard(); renderDock();
   try {
@@ -137,18 +138,26 @@ function renderLeft() {
 }
 
 function renderComponents() {
-  const lead = new Set(S.diag?.hypotheses?.[0]?.components || []);
-  const alt = new Set((S.diag?.hypotheses || []).slice(1).flatMap((h) => h.components));
+  const lead = new Set(S.xDiag?.hypotheses?.[0]?.components || []);
+  const alt = new Set((S.xDiag?.hypotheses || []).slice(1).flatMap((h) => h.components));
   $("#left").innerHTML = `
-    <div class="card-h"><span class="t">Components</span><button class="link" data-close-x title="Back to facility">${icon("close")}</button></div>
-    <div class="card-b" style="padding:0 8px 8px">${S.xray.order().map((id, i) => {
-      const c = S.kb.components.find((x) => x.id === id);
+    <div class="card-h"><span class="t">Components · ${esc(xDef().label)}</span><button class="link" data-close-x title="Back to facility">${icon("close")}</button></div>
+    <div style="padding:0 16px 10px"><select class="search" id="xDevice" aria-label="Device">${deviceOptions()}</select></div>
+    <div class="card-b" style="padding:0 8px 8px">${S.xray.order().filter((id) => xComp(id)).map((id, i) => {
+      const c = xComp(id);
       return `<button class="list-row ${S.xSelected === id ? "on" : ""}" data-comp="${id}"><span class="n">${pad(i + 1)}</span>
         <span class="nm"><b>${esc(c.name)}</b></span>${lead.has(id) ? '<span class="pill red">Suspected</span>' : alt.has(id) ? '<span class="pill amber">Alternative</span>' : S.xSelected === id ? icon("chev") : ""}</button>`;
     }).join("")}</div>`;
   $("#left").onclick = (e) => {
     if (e.target.closest("[data-close-x]")) return setMode("facility");
     const r = e.target.closest("[data-comp]"); if (r) selectComponent(r.dataset.comp);
+  };
+  $("#xDevice").onchange = async (e) => {
+    await prepareXRay(e.target.value);
+    S.xSelected = S.xDiag.hypotheses[0]?.components?.[0] || null; S.xray.selected = S.xSelected;
+    const h = xHome(); flyTo(h.pos, h.tgt, 1.0, xCam, xControls);
+    S.xray.setExplode(0.65); renderDock();
+    if (S.mode === "xray") { renderComponents(); renderPartCard(); } else setMode(S.mode);
   };
 }
 
@@ -198,9 +207,25 @@ function renderAssetCard(o) {
   card(`${header(nice(a.asset_class), a.tag, '<span class="tag syn">Synthetic</span>', true)}
     <div class="sub"><span class="status s-${a.condition_state}">${nice(a.condition_state)}</span> · ${esc(a.issue_summary)}</div>
     <div class="section">${kv("Health", a.health_score)}${kv("Criticality", esc(a.criticality))}${kv("Area", esc(a.area_name))}</div>
+    ${equipmentInfo(a)}
     <div class="section"><div class="label">3D identity</div>${identityRows(o)}</div>
     <div class="section stack"><button class="btn primary block" data-act="dispatch-sel">${icon("play")}Send robot here</button>
-      <button class="btn block" data-act="diagnose-sel">${icon("spark")}Diagnose now</button></div></div>`);
+      <button class="btn block" data-act="diagnose-sel">${icon("spark")}Diagnose now</button>
+      ${S.kb.classes[a.asset_class] ? `<button class="btn block" data-act="xray-sel">${icon("layers")}Explain and show components</button>` : ""}</div></div>`);
+}
+
+function equipmentInfo(a) {
+  const lib = S.kb.classes[a.asset_class];
+  if (!lib) return "";
+  return `<div class="section"><div class="label">Equipment</div><p class="p">${esc(lib.function)}</p>
+    <div class="row">${lib.components.map((c) => `<button class="pill" data-xpart="${c.id}">${esc(c.name)}</button>`).join("")}</div></div>`;
+}
+function deviceOptions() {
+  const order = { attention_required: 0, degraded: 1, watch: 2, healthy: 3 };
+  const as = S.data.objects.filter((o) => o.asset && S.kb.classes[o.asset.asset_class]).map((o) => o.asset)
+    .sort((a, b) => a.asset_class.localeCompare(b.asset_class) || order[a.condition_state] - order[b.condition_state]);
+  return Object.keys(S.kb.classes).map((cls) => `<optgroup label="${esc(S.kb.classes[cls].label)}">${as.filter((a) => a.asset_class === cls)
+    .map((a) => `<option value="${a.asset_id}" ${a.asset_id === S.xAsset?.asset_id ? "selected" : ""}>${a.tag} · ${nice(a.condition_state)}</option>`).join("")}</optgroup>`).join("");
 }
 
 function identityRows(o) {
@@ -261,6 +286,7 @@ $("#right").addEventListener("click", async (e) => {
   const t = e.target;
   const tab = t.closest("[data-tab]"); if (tab) { S.tab = tab.dataset.tab; return renderDiagnosis(); }
   const xt = t.closest("[data-xtab]"); if (xt) { S.xTab = xt.dataset.xtab; return renderPartCard(); }
+  const pq = t.closest("[data-partq]"); if (pq) { $("#partQ").value = pq.dataset.partq; return askPart(); }
   if (t.closest("[data-close-card]")) { S.selected = null; S.fac.setHighlighted([], { target: S.target.id }); renderLeft(); return S.diag ? renderDiagnosis() : renderOverviewCard(); }
   const row = t.closest("[data-obj]"); if (row) return selectObject(S.data.objects.find((o) => o.id === row.dataset.obj));
   const act = t.closest("[data-act]")?.dataset.act;
@@ -268,7 +294,8 @@ $("#right").addEventListener("click", async (e) => {
   if (act === "locate") selectObject(S.target, { fly: true });
   if (act === "dispatch-sel") dispatch(S.selected.asset.asset_id);
   if (act === "diagnose-sel") { S.diag = await api.diagnose(S.selected.asset.asset_id); S.tab = "overview"; renderDiagnosis(); }
-  if (act === "xray") enterXRay();
+  if (act === "xray") enterXRay(null, S.diag?.asset?.asset_id);
+  if (act === "xray-sel") enterXRay(null, S.selected.asset.asset_id);
   if (act === "wo") showWorkOrder(S.diag.asset.asset_id);
   if (act === "isolate") { const on = S.xray.hidden.size === 0; S.xray.isolate(on ? S.xSelected : null); renderPartCard(); }
   if (act === "askpart") askPart();
@@ -322,7 +349,7 @@ $("#dock").addEventListener("click", async (e) => {
   if (d === "grid") { S.grid = !S.grid; if (S.grid) S.fac.showGrid(await api.grid()); S.fac.gridGroup.visible = S.grid; renderDock(); }
   if (d === "follow") { S.follow = !S.follow; renderDock(); }
   if (d === "assemble") { S.xray.setExplode(0); renderDock(); }
-  if (d === "all") { S.xray.isolate(null); flyTo(XHOME.pos, XHOME.tgt, 1, xCam, xControls); if (S.xSelected) renderPartCard(); }
+  if (d === "all") { S.xray.isolate(null); flyTo(xHome().pos, xHome().tgt, 1, xCam, xControls); if (S.xSelected) renderPartCard(); }
   if (d === "ghost") { S.xray.setGhost(!S.xray.ghost); renderDock(); }
   if (d === "labels") { S.xray.setLabels(!S.xray.labelsOn); renderDock(); }
 });
@@ -332,7 +359,7 @@ $("#rail").addEventListener("click", (e) => {
   const r = e.target.closest("[data-rail]")?.dataset.rail;
   const x = S.mode !== "facility", cam = x ? xCam : camera, ctl = x ? xControls : controls;
   if (r === "in" || r === "out") { const v = cam.position.clone().sub(ctl.target).multiplyScalar(r === "in" ? 0.8 : 1.25); flyTo(ctl.target.clone().add(v), ctl.target.clone(), 0.4, cam, ctl); }
-  if (r === "reset") x ? flyTo(XHOME.pos, XHOME.tgt, 1, xCam, xControls) : flyTo(S.home.pos, S.home.tgt);
+  if (r === "reset") x ? flyTo(xHome().pos, xHome().tgt, 1, xCam, xControls) : flyTo(S.home.pos, S.home.tgt);
   if (r === "full") document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.().catch(() => {});
   if (r === "help") showAbout();
 });
@@ -467,62 +494,85 @@ function updateTween(dt) {
   if (k >= 1) tween = null;
 }
 
-// ------------------------------------------------------------------ X-Ray
-async function enterXRay(focus = null) {
-  if (!S.diag) S.diag = await api.diagnose(S.target.asset.asset_id);
-  if (S.mode === "facility") {
-    const o = S.data.objects.find((x) => x.asset?.asset_id === S.diag.asset.asset_id) || S.target;
+// ------------------------------------------------------------------ X-Ray (any device: the model comes from the library)
+const xDef = () => S.kb.classes[S.xClass];
+const xComp = (id) => xDef()?.components.find((c) => c.id === id);
+const assetById = (id) => S.data.objects.find((o) => o.asset?.asset_id === id)?.asset;
+
+/** Load the exploded model + diagnosis for one asset (defaults: selection, current diagnosis, then the target). */
+async function prepareXRay(assetId) {
+  assetId = assetId || S.xAsset?.asset_id || S.selected?.asset?.asset_id || S.diag?.asset?.asset_id || S.target.asset.asset_id;
+  const a = assetById(assetId);
+  if (!S.kb.classes[a.asset_class]) { toast(`No teaching model for ${nice(a.asset_class)} yet.`); return false; }
+  // fetch first, then switch device state + model together, so no render ever sees a half-switched device
+  const diag = S.diag?.asset?.asset_id === assetId ? S.diag : await api.diagnose(assetId);
+  if (S.xClass !== a.asset_class) S.xSelected = null;
+  S.xAsset = a; S.xClass = a.asset_class; S.xDiag = diag;
+  S.xray.load(S.xClass);
+  const lead = S.xDiag.hypotheses[0]?.components || [];
+  S.xray.highlight(lead, { alt: S.xDiag.hypotheses.slice(1).flatMap((h) => h.components) });
+  return true;
+}
+async function enterXRay(focus = null, assetId = null) {
+  const from = S.mode;
+  if (!(await prepareXRay(assetId))) return;
+  if (from === "facility") {
+    const o = S.data.objects.find((x) => x.asset?.asset_id === S.xAsset.asset_id) || S.target;
     const c = new THREE.Vector3(...o.center);
     flyTo(c.clone().add(new THREE.Vector3(0.3, 0.1, 0.3)), c, 0.8);
     await wait(500); $(".fade").classList.add("on"); await wait(500);
   }
   setMode("xray");
-  xCam.position.copy(XHOME.pos).multiplyScalar(1.25); xControls.target.copy(XHOME.tgt);
-  flyTo(XHOME.pos, XHOME.tgt, 1.4, xCam, xControls);
+  const h = xHome();
+  xCam.position.copy(h.pos).sub(h.tgt).multiplyScalar(1.3).add(h.tgt); xControls.target.copy(h.tgt);
+  flyTo(h.pos, h.tgt, 1.4, xCam, xControls);
   S.xray.setExplode(0);
-  const lead = S.diag.hypotheses[0]?.components || [];
-  S.xray.highlight(lead, { alt: S.diag.hypotheses.slice(1).flatMap((h) => h.components) });
   $(".fade").classList.remove("on");
   setTimeout(() => { S.xray.setExplode(0.65); renderDock(); }, 900);
+  const lead = S.xDiag.hypotheses[0]?.components || [];
   S.xSelected = (focus && focus[0]) || lead[0] || null;
+  S.xray.selected = S.xSelected;
   renderComponents(); renderPartCard();
 }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function renderPartCard() {
   if (S.mode !== "xray") return;
-  const c = S.kb.components.find((x) => x.id === S.xSelected);
-  if (!c) return card(`${header("Illustrative model", "Centrifugal pump", '<span class="tag">Illustrative</span>')}
-    <p class="p" style="margin-top:12px">${esc(S.kb.model.provenance)}</p><p class="note">Select a component on the left or in the model.</p></div>`);
-  const lead = new Set(S.diag?.hypotheses?.[0]?.components || []);
-  const tel = Object.fromEntries((S.diag?.telemetry?.signals || []).map((s) => [s.signal, s]));
+  const c = xComp(S.xSelected), D = S.xDiag;
+  if (!c) return card(`${header("Illustrative model", esc(xDef().model_title), '<span class="tag">Illustrative</span>')}
+    <div class="sub">${S.xAsset.tag} · ${nice(S.xAsset.condition_state)} · ${nice(S.xAsset.issue_code)}</div>
+    <p class="p" style="margin-top:12px">${esc(xDef().function)}</p><p class="note">${esc(S.kb.provenance)}</p><p class="note">Select a component on the left or in the model.</p></div>`);
+  const lead = new Set(D?.hypotheses?.[0]?.components || []);
+  const tel = Object.fromEntries((D?.telemetry?.signals || []).map((s) => [s.signal, s]));
   const isolated = S.xray.hidden.size > 0;
   const tabs = { overview: "Overview", evidence: "Evidence", ask: "Ask" };
   const body = {
     overview: `<p class="p">${esc(c.function)}</p>${kv("Group", nice(c.group))}${kv("Linked faults", c.issue_codes.map(nice).join(", "))}
-      ${lead.has(c.id) ? kv("Status", `<span style="color:var(--bad)">Suspected for ${S.diag.asset.tag}</span>`) : ""}
+      ${lead.has(c.id) ? kv("Status", `<span style="color:var(--bad)">Suspected for ${D.asset.tag}</span>`) : ""}
       <div class="section"><div class="label">Typical failure signs</div>${c.failure_symptoms.map((s, i) => `<div class="step"><span class="k">${i + 1}</span><span>${esc(s.charAt(0).toUpperCase() + s.slice(1))}</span></div>`).join("")}</div>`,
-    evidence: `<div class="label note" style="margin-bottom:4px">Signals for ${S.diag?.asset?.tag ?? "the target"}</div>${c.evidence_signals.map((s) => { const t = tel[s]; const hot = t && (t.abnormal || Math.abs(t.z_vs_peers ?? 0) >= 1.5);
+    evidence: `<div class="label note" style="margin-bottom:4px">Signals for ${D?.asset?.tag ?? "this asset"}</div>${c.evidence_signals.map((s) => { const t = tel[s]; const hot = t && (t.abnormal || Math.abs(t.z_vs_peers ?? 0) >= 1.5);
       return `<div class="sig"><div><b>${nice(s.replace(/_(mm_s|c|a|pct|bar|rpm)$/, ""))}</b><small>${t ? `${t.recent_mean} ${t.unit} · peers ${t.peer_mean} · <span class="${hot ? "flag" : ""}">z ${t.z_vs_peers}</span>` : "Not measured on this asset"}</small></div>${t ? sparkline(t.series, 88, 26, hot) : ""}</div>`; }).join("")}`,
     ask: `<input class="search" id="partQ" value="What does the ${esc(c.name.toLowerCase())} do and what evidence suggests it may be faulty?"/>
-      <div class="section"><button class="btn block" data-act="askpart">${icon("spark")}Ask the copilot</button></div><div id="partA" class="section"></div>`,
+      <div class="row" style="margin-top:8px">${[`How do I inspect the ${c.name.toLowerCase()}?`, `Show me the maintenance guidance for the ${c.name.toLowerCase()}`].map((q) => `<button class="pill" data-partq="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+      <div class="section"><button class="btn block" data-act="askpart">${icon("spark")}Ask the copilot</button></div><div id="partA" class="section"></div>
+      <p class="note">Answers come only from the builder-pack documents and the training notes, with citations. They are not OEM repair procedures.</p>`,
   };
   card(`${header(nice(c.group), esc(c.name), '<span class="tag">Illustrative</span>')}
     <div class="tabs">${Object.entries(tabs).map(([k, v]) => `<button data-xtab="${k}" class="${S.xTab === k ? "on" : ""}">${v}</button>`).join("")}</div>
     ${body[S.xTab]}
     <div class="section"><button class="btn block" data-act="isolate">${icon("target")}${isolated ? "Show all parts" : "Isolate component"}</button></div>
-    <div class="section" style="text-align:center"><button class="link" data-docid="KB-XRAY-PUMP#${c.id}">Training note ${icon("arrow")}</button></div></div>`);
+    <div class="section" style="text-align:center"><button class="link" data-docid="KB-XRAY-${S.xClass}#${c.id}">Training note ${icon("arrow")}</button></div></div>`);
 }
 
 async function askPart() {
   $("#partA").innerHTML = '<div class="note">Looking it up…</div>';
-  const a = await api.query($("#partQ").value, S.diag?.asset?.asset_id, S.xSelected);
+  const a = await api.query($("#partQ").value, S.xAsset?.asset_id, S.xSelected);
   $("#partA").innerHTML = `<div class="narr">${cites(a.text)}</div><p class="note" style="margin-top:6px">${esc(a.mode)} · ${a.sources?.length ?? 0} sources</p>`;
 }
 
 export function focusPart(id, dist = 1.6) {
   const c = S.xray.partCenter(id);
-  const dir = XHOME.pos.clone().sub(XHOME.tgt).normalize();
+  const dir = xHome().pos.clone().sub(xHome().tgt).normalize();
   flyTo(c.clone().addScaledVector(dir, dist), c, 0.9, xCam, xControls);
 }
 function selectComponent(id) {
@@ -532,20 +582,93 @@ function selectComponent(id) {
   S.onComponentPick?.(id);
 }
 
+// ------------------------------------------------------------------ value (ROI): transparent, hypothetical inputs
+const ROI_INPUTS = [
+  ["techs", "Technicians using the tool", 50, 1, 500, 1, ""],
+  ["tasks", "Information look-ups per technician per week", 4, 1, 40, 1, ""],
+  ["before", "Minutes to find location, documents and history today", 30, 1, 120, 1, "min"],
+  ["after", "Minutes with Industrial X-Ray", 10, 1, 120, 1, "min"],
+  ["rate", "Loaded labour cost per hour", 50, 10, 200, 1, "€"],
+  ["weeks", "Working weeks per year", 50, 1, 52, 1, ""],
+  ["hires", "New technicians onboarded per year", 10, 0, 200, 1, ""],
+  ["trainH", "Onboarding hours saved per new technician", 16, 0, 160, 1, "h"],
+  ["downH", "Downtime hours avoided per year (needs validated plant data)", 0, 0, 200, 1, "h"],
+  ["downC", "Cost of one downtime hour", 5000, 0, 50000, 500, "€"],
+];
+export function computeROI(v) {
+  const hours = v.techs * v.tasks * v.weeks * Math.max(0, v.before - v.after) / 60;
+  const lookup = hours * v.rate, training = v.hires * v.trainH * v.rate, downtime = v.downH * v.downC;
+  return { hours, lookup, training, downtime, total: lookup + training + downtime };
+}
+S.roi = Object.fromEntries(ROI_INPUTS.map(([k, , d]) => [k, d]));
+const eur = (x) => "€" + Math.round(x).toLocaleString("en-US");
+const num = (x) => Math.round(x).toLocaleString("en-US");
+function roiNumbers() {
+  const v = S.roi, r = computeROI(v);
+  $("#roiTotal").textContent = eur(r.total);
+  $("#roiLookup").textContent = eur(r.lookup);
+  $("#roiTrain").textContent = eur(r.training);
+  $("#roiDown").textContent = r.downtime ? eur(r.downtime) : "not counted";
+  $("#roiF").innerHTML = `
+    <div class="formula">${v.techs} technicians × ${v.tasks} look-ups/week × ${v.weeks} weeks × (${v.before} − ${v.after}) min ÷ 60 = <b>${num(r.hours)} h</b></div>
+    <div class="formula">${num(r.hours)} h × €${v.rate}/h = <b>${eur(r.lookup)}</b></div>
+    <div class="formula">${v.hires} new technicians × ${v.trainH} h × €${v.rate}/h = <b>${eur(r.training)}</b></div>
+    <div class="formula">${v.downH} h × ${eur(v.downC)} = <b>${eur(r.downtime)}</b></div>`;
+  for (const [k, , , , , , unit] of ROI_INPUTS) {
+    const el = $(`[data-roiv="${k}"]`);
+    if (el) el.textContent = `${unit === "€" ? "€" : ""}${num(v[k])}${unit && unit !== "€" ? " " + unit : ""}`;
+  }
+}
+function renderValue() {
+  const v = S.roi;
+  $("#value").innerHTML = `
+    <div class="card-h"><span class="eyebrow-row">Business value<span class="tag">Illustrative</span></span><button class="link" data-mode-back title="Back to facility">${icon("close")}</button></div>
+    <div class="card-b value-grid">
+      <div>
+        <div class="h1" style="font-size:19px">What could this be worth?</div>
+        <p class="p">Every number below is a hypothetical input you can change. Nothing here is a measured Valmet saving; a pilot would replace these assumptions with measurements.</p>
+        ${ROI_INPUTS.map(([k, label, , min, max, step]) => `<label class="roi-in"><span>${label}</span>
+          <span class="roi-row"><input type="range" min="${min}" max="${max}" step="${step}" value="${v[k]}" data-roi="${k}" aria-label="${label}"/><b data-roiv="${k}"></b></span></label>`).join("")}
+      </div>
+      <div>
+        <div class="roi-total"><span>Potential annual value</span><b id="roiTotal"></b><small>Labour-time value. It becomes cash only if the saved time is redeployed or costs fall.</small></div>
+        <div class="kv"><span>Faster information look-ups</span><span id="roiLookup"></span></div>
+        <div class="kv"><span>Faster onboarding</span><span id="roiTrain"></span></div>
+        <div class="kv"><span>Avoided downtime</span><span id="roiDown"></span></div>
+        <div class="section"><div class="label">How it is calculated</div><div id="roiF"></div></div>
+        <div class="section"><div class="label">What a pilot should measure</div>
+          <div class="step"><span class="k">1</span><span>Time from work order to standing at the right asset with the right documents.</span></div>
+          <div class="step"><span class="k">2</span><span>Wrong-asset or wrong-part events per 100 jobs.</span></div>
+          <div class="step"><span class="k">3</span><span>First-time-fix rate and repeat visits.</span></div>
+          <div class="step"><span class="k">4</span><span>Hours until a new technician works independently.</span></div>
+          <div class="step"><span class="k">5</span><span>Downtime per fault, only with validated operating data.</span></div></div>
+      </div>
+    </div>`;
+  $$("[data-roi]").forEach((el) => (el.oninput = (e) => { S.roi[e.target.dataset.roi] = +e.target.value; roiNumbers(); }));
+  roiNumbers();
+}
+$("#value").addEventListener("click", (e) => { if (e.target.closest("[data-mode-back]")) setMode("facility"); });
+
 // ------------------------------------------------------------------ modes
 export function setMode(mode) {
   const x = ["xray", "learn", "practice"].includes(mode);
-  if (mode === "xray" && S.mode === "facility" && !S.diag) return enterXRay();
+  $("#value").classList.toggle("hidden", mode !== "value");
+  $("#right").classList.toggle("hidden", mode === "value");
+  $("#dock").classList.toggle("hidden", mode === "value");
+  if (mode === "value") renderValue();
   S.mode = mode;
   $$(".modes button").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
   controls.enabled = !x; xControls.enabled = x;
   $(".labels").innerHTML = "";
-  $("#left").classList.toggle("hidden", mode !== "facility" && mode !== "xray");
+  $("#left").classList.toggle("hidden", mode === "value");
   S.onComponentPick = null;
   if (mode === "facility") { S.xray.selected = null; renderLeft(); S.diag ? renderDiagnosis() : (S.robot.moving ? renderTransitCard() : renderOverviewCard()); }
   if (mode === "xray") { renderComponents(); renderPartCard(); }
-  if (mode === "learn") S.training.learn();
-  if (mode === "practice") S.training.practice();
+  if (mode === "learn" || mode === "practice") renderComponents();
+  if (mode === "learn" || mode === "practice") {
+    const go = () => { const h = xHome(); xCam.position.copy(h.pos); xControls.target.copy(h.tgt); mode === "learn" ? S.training.learn() : S.training.practice(); };
+    if (!S.xClass) prepareXRay().then(go); else go();
+  }
   renderDock();
 }
 $(".modes").onclick = (e) => { const m = e.target.closest("[data-mode]")?.dataset.mode; if (m) m === "xray" ? enterXRay() : setMode(m); };
@@ -575,7 +698,15 @@ export async function ask(q) {
     for (const a of r.actions || []) {
       if (a.type === "select") { if (S.mode !== "facility") setMode("facility"); selectAsset(a.asset_id, { fly: !r.actions.some((x) => x.type === "navigate") }); }
       if (a.type === "navigate") { S.blocks = []; S.fac.setBlocks([]); S.prevRoute = null; await dispatch(a.asset_id); }
-      if (a.type === "xray") await enterXRay();
+      if (a.type === "xray") await enterXRay(null, a.asset_id);
+      if (a.type === "select_object") {
+        if (S.mode !== "facility") setMode("facility");
+        const best = S.data.objects.find((o) => o.id === a.object_id);
+        S.matches = a.matches || [];
+        S.fac.setHighlighted(S.matches, { selected: best.id, target: S.target.id });
+        S.selected = best; renderAssetCard(best); renderLeft();
+        const c = new THREE.Vector3(...best.center); flyTo(c.clone().add(viewOffset(c)), c);
+      }
       if (a.type === "practice") setMode("practice");
       if (a.type === "learn") setMode("learn");
       if (a.type === "knowledge") openLibrary();
@@ -592,7 +723,7 @@ $("#sheet").addEventListener("click", (e) => { if (e.target.closest("[data-close
 $("#libBtn").onclick = () => openLibrary();
 async function openLibrary(q = "") {
   sheet("Library", `<input class="search" id="libQ" placeholder="Search manuals, asset cards and service cases" value="${esc(q)}"/>
-    <p class="note" style="margin:8px 0 4px">8 knowledge documents, 30 asset cards, 50 service cases and 11 training notes. Answers cite the document IDs.</p><div id="libRes"></div>`);
+    <p class="note" style="margin:8px 0 4px">8 knowledge documents, 30 asset cards, 50 service cases and ${Object.values(S.kb.classes).reduce((n, c) => n + c.components.length, 0)} training notes across ${Object.keys(S.kb.classes).length} equipment types. Answers cite the document IDs.</p><div id="libRes"></div>`);
   const run = async () => {
     const res = await api.search($("#libQ").value);
     $("#libRes").innerHTML = res.map((d) => `<button class="doc" data-docid="${esc(d.id)}"><span class="k">${nice(d.kind)}</span><code>${esc(d.id)}</code><p>${esc(d.title)} · ${esc(d.text.slice(0, 120))}…</p></button>`).join("") || '<p class="note">No matches.</p>';
@@ -611,7 +742,8 @@ async function showDoc(id) {
 }
 document.addEventListener("click", (e) => {
   const c = e.target.closest(".cite, [data-docid]"); if (c) showDoc(c.dataset.doc || c.dataset.docid);
-  const x = e.target.closest("[data-xcomp]"); if (x) enterXRay(x.dataset.xcomp.split(","));
+  const x = e.target.closest("[data-xcomp]"); if (x) enterXRay(x.dataset.xcomp.split(","), S.diag?.asset?.asset_id);
+  const xp = e.target.closest("[data-xpart]"); if (xp && S.selected?.asset) enterXRay([xp.dataset.xpart], S.selected.asset.asset_id);
 });
 async function showWorkOrder(id) {
   const w = await api.draftWO(id);
@@ -668,7 +800,7 @@ renderer.setAnimationLoop(() => {
   const dt = QA ? 0.05 : Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   updateTween(dt);
   if (!S.fac) return;
-  if (S.mode === "facility") {
+  if (!["xray", "learn", "practice"].includes(S.mode)) {
     updateRobot(dt, t);
     if (!S.robot.moving) S.fac.pulse(t, S.target.id);
     controls.update();

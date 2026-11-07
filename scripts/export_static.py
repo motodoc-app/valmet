@@ -14,7 +14,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 from xray import config  # noqa: E402
-from xray.copilot import KB_PUMP  # noqa: E402
+from xray.copilot import LIBRARY  # noqa: E402
 from xray.metadata import priority_score, telemetry_evidence  # noqa: E402
 from xray.world import World  # noqa: E402
 
@@ -66,16 +66,26 @@ def main(with_llm: bool = True) -> None:
         (OUT / "diag" / f"{aid}.json").write_text(json.dumps(d, default=str))
         print("diag", aid, d["narrative"]["mode"])
 
-    # pre-answered component questions for the target (shown with the same citation checks)
-    tgt = w.mapping["target_asset_id"]
-    answers = {}
-    for c in KB_PUMP["components"]:
+    # pre-answered component questions for EVERY device type (answered for that class's highest-priority asset),
+    # so the hosted demo's X-Ray "Ask" works for any device, with the same citation checks as the live API
+    from concurrent.futures import ThreadPoolExecutor
+    by_class = {}
+    for aid, a in sorted(w.assets_summary.items(), key=lambda kv: -priority_score(w.pack.asset(kv[0]))):
+        by_class.setdefault(a["asset_class"], aid)
+    jobs = [(cls, aid, c) for cls, aid in by_class.items() for c in LIBRARY["classes"].get(cls, {}).get("components", [])]
+
+    def ask(job):
+        cls, aid, c = job
         q = f"What does the {c['name'].lower()} do and what evidence suggests it may be faulty?"
-        answers[f"{c['id']}|{tgt}"] = w.copilot.answer(q, tgt, c["id"])
-        print("answer", c["id"])
+        return f"{cls}#{c['id']}", w.copilot.answer(q, aid, c["id"])
+    answers = {}
+    with ThreadPoolExecutor(8) as ex:
+        for k, v in ex.map(ask, jobs):
+            answers[k] = v
+    print("answers", len(answers))
     (OUT / "answers.json").write_text(json.dumps(answers, default=str))
     (OUT / "corpus.json").write_text(json.dumps(w.copilot.corpus.docs, default=str))
-    (OUT / "xray.json").write_text(json.dumps(KB_PUMP))
+    (OUT / "xray.json").write_text(json.dumps(LIBRARY))
 
     # split the web splat into ≤15 MB chunks (records are 32 B)
     src = config.WEB_PUBLIC / "scene.splat"

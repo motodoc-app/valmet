@@ -19,6 +19,29 @@ fault detected → located → safe route (live reroute) → grounded diagnosis 
 | Backend architecture (15 %) | Modular Python pipeline and a FastAPI service following the workbook's `API_Contract`. Pytest covers the core guarantees. A serverless export runs the same app as a static site. |
 | Demo clarity & innovation (10 %) | Photoreal splats in the browser, natural-language commands, and a calm studio-style UI. The journey runs facility → X-Ray → Learn → Practice. |
 
+## What is automatic, what is labelled, what is illustrative
+
+| Feature | How it works | Status |
+|---|---|---|
+| 3D environment | Gaussian-splat scan rendered in the browser; orbit, zoom, click any frame | Real scan |
+| Object frames (676) | Plane fitting + clustering on the point cloud, fully automatic | Automatic |
+| Object names | A vision model labels each cluster from rendered views; confidence shown; 258 left as "other equipment" | Automatic, 4 human corrections (marked) |
+| Scene search (“Where is the expansion vessel?”) | Searches those labels and workbook tags across the whole scan | Automatic |
+| Asset ↔ object link | Class-aware procedural mapping with a stated confidence (the brief allows this) | Procedural |
+| Navigation, reroute, proximity | Computed from the scan's floor and obstacles; every route validated | Automatic |
+| Diagnosis | Workbook telemetry, alarms, work orders, cases and documents; LLM wording limited to cited IDs | Grounded in synthetic data |
+| Exploded models, lessons, practice | One library entry per equipment type (pump, motor, control valve, pressure transmitter, vibration sensor) | Illustrative teaching models, not from the scan, not OEM |
+| Manuals | Retrieval over the builder pack's documents and the training notes, with citations | No OEM manuals were supplied |
+| Value page | Calculator with editable, clearly hypothetical inputs and the formula shown | Illustrative |
+
+### Every feature works for every device
+All 30 workbook assets get the same flow: select (in the scan, the list or by asking) → equipment card with its
+function and components → diagnosis → X-Ray exploded model of its type → lesson → practice → work order. Device
+behaviour lives in data, not code: `backend/xray/knowledge/equipment.json` holds, per asset class, the exploded model
+(built from a small shape vocabulary), component knowledge, fault-to-component hypotheses, lessons and a practice
+scenario. Adding a new equipment type means adding one entry to that file. `pytest` checks that every class in the
+workbook has a complete entry and that every faulty asset's diagnosis points at real components of its model.
+
 ## Run it
 
 ```bash
@@ -62,6 +85,10 @@ python scripts/step2_semantics.py  # merge labels
    the safety gate, then do the bearing exercise (pick the part, quiz, disassemble and reassemble in order) and
    finish on the scored summary.
 8. **Draft work order.** A draft with evidence IDs and safety prerequisites; it triggers no control actions.
+9. **Any device.** Ask “Where is the expansion vessel?” (scene search), click any asset and choose *Explain and show
+   components*, or switch device in the X-Ray list: motor, control valve, transmitter and vibration sensor all have
+   their own exploded model, lesson and practice exercise.
+10. **Value.** Adjust the hypothetical inputs and see the formula update; the page lists what a pilot should measure.
 
 ## Data notes
 * **Scan.** `Equipment Room.ply`: 1,676,481 splats, all valid (`data/processed/integrity_report.md`). The originally

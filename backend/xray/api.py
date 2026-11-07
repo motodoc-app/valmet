@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import config
-from .copilot import KB_PUMP
+from .copilot import LIBRARY
 from .metadata import telemetry_evidence
 from .world import World
 
@@ -175,7 +175,8 @@ def knowledge_doc(doc_id: str):
 
 @app.get("/api/xray/model")
 def xray_model():
-    return KB_PUMP
+    """Equipment library: exploded model + component knowledge + lessons + practice for every asset class."""
+    return LIBRARY
 
 
 @app.post("/api/work-orders/draft")
@@ -205,6 +206,29 @@ SIGNAL_WORDS = {"vibration": "vibration_mm_s", "temperature": "bearing_temp_c", 
                 "stiction": "stiction_index", "position": "position_actual_pct"}
 CLASS_WORDS = {"pump": "PROCESS_PUMP", "motor": "ELECTRIC_MOTOR", "valve": "CONTROL_VALVE",
                "transmitter": "PRESSURE_TRANSMITTER", "sensor": "VIBRATION_SENSOR"}
+STOP = {"the", "where", "is", "are", "find", "show", "me", "a", "an", "all", "of", "in", "this", "room", "please", "locate", "which"}
+
+
+def find_objects(phrase: str) -> list[dict]:
+    """Semantic search over the 3D scene: match words against every object's label (from the vision model or
+    review) and against workbook tags/classes. Returns matching objects, best first."""
+    words = [w for w in re.findall(r"[a-z0-9\-]+", phrase.lower()) if w not in STOP]
+    if not words:
+        return []
+    out = []
+    for o in WORLD.scene["objects"]:
+        if o["kind"] != "object":
+            continue
+        b = WORLD.by_object.get(o["id"])
+        a = WORLD.assets_summary[b["asset_id"]] if b else None
+        hay = f"{o['label']} {o.get('category', '')} " + (f"{a['tag']} {a['asset_class'].replace('_', ' ')}" if a else "")
+        hay = hay.lower()
+        score = sum(1 for w in words if w in hay or (w.endswith("s") and w[:-1] in hay))
+        if score:
+            out.append((score + o["confidence"] + (0.5 if a else 0), o))
+    out.sort(key=lambda x: -x[0])
+    top = out[0][0] if out else 0
+    return [o for sc, o in out if sc >= top - 0.6]
 
 
 @app.post("/api/copilot/command")
@@ -242,10 +266,40 @@ def command(req: CommandReq):
                       + (f" among {cls.replace('_', ' ').lower()}s" if cls else "") +
                       f": {a['condition_state']}, health {a['health_score']}, {a['issue_code']} "
                       f"({a['criticality']}) [{a['asset_id']}].")
-    if asset_id:
+    # a named equipment type overrides a selection of a different type ("explain this valve" while a pump is selected)
+    if cls and not reason and (not asset_id or assets.get(asset_id, {}).get("asset_class") != cls) \
+            and re.search(r"explain|what does|how does|component|parts|x-?ray|inside|practi|learn|this", t):
+        from .metadata import priority_score
+        same = sorted((a for a in assets.values() if a["asset_class"] == cls),
+                      key=lambda a: -priority_score(WORLD.pack.asset(a["asset_id"])))
+        if same:
+            asset_id = same[0]["asset_id"]
+    # "where is the expansion vessel / circulation pump / P-002?" -> semantic search over the scene
+    m = re.search(r"(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$", t)
+    if not asset_id and m and not sig:
+        tag = re.search(r"\b([a-z]{1,2}-\d{3})\b", t)
+        if tag:
+            hit = next((a for a in assets.values() if a["tag"].lower() == tag.group(1)), None)
+            if hit:
+                asset_id = hit["asset_id"]
+                reason = f"{hit['tag']} is a {hit['asset_class'].replace('_', ' ').lower()} in {hit['area_name']} [{hit['asset_id']}]."
+        else:
+            found = find_objects(m.group(1))
+            if found:
+                best = found[0]
+                b = WORLD.by_object.get(best["id"])
+                actions.append({"type": "select_object", "object_id": best["id"], "matches": [o["id"] for o in found[:40]],
+                                "asset_id": b["asset_id"] if b else None})
+                asset_id = b["asset_id"] if b else None
+                reason = (f"Found {len(found)} object{'s' if len(found) != 1 else ''} labelled like “{m.group(1)}” in the scan. "
+                          f"Highlighting {'them' if len(found) > 1 else 'it'}; the closest match is {best['id']} "
+                          f"({best['label']}, {round(best['confidence'] * 100)}% confidence, {best['label_source']}).")
+                if b:
+                    reason += f" It is mapped to workbook asset {b['tag']} [{b['asset_id']}]."
+    if asset_id and not any(a["type"] == "select_object" for a in actions):
         a = assets[asset_id]
         actions.append({"type": "select", "asset_id": asset_id, "object_id": a["object_id"]})
-        if a["object_id"]:
+        if a["object_id"] and "mapped to workbook asset" not in reason:
             o = WORLD.objects[a["object_id"]]
             reason += (f" It is mapped to scene object {a['object_id']} ('{o['label']}', {o['label_source']}) at "
                        f"x={o['center'][0]:.1f}, z={o['center'][2]:.1f} m — mapping confidence "
@@ -253,8 +307,15 @@ def command(req: CommandReq):
     if re.search(r"send|go to|navigate|inspect|dispatch|walk|drive|route", t) and asset_id:
         actions.append({"type": "navigate", "asset_id": asset_id, "object_id": assets[asset_id]["object_id"]})
         reason += " Dispatching the inspection robot along a collision-free route."
-    if re.search(r"x-?ray|explode|inside|internal|component", t):
-        actions.append({"type": "xray"})
+    if re.search(r"x-?ray|explode|inside|internal|component|parts", t):
+        actions.append({"type": "xray", "asset_id": asset_id})
+    if re.search(r"explain|what does|what is this|how does", t) and asset_id:
+        a = assets[asset_id]
+        lib = LIBRARY["classes"].get(a["asset_class"], {})
+        noun = lib.get('label', a['asset_class']).lower()
+        reason = (f"{a['tag']} is {'an' if noun[0] in 'aeiou' else 'a'} {noun}. {lib.get('function', '')} "
+                  f"Its main components: {', '.join(c['name'].lower() for c in lib.get('components', [])[:8])}. "
+                  f"Current condition: {a['condition_state'].replace('_', ' ')}, health {a['health_score']} [{a['asset_id']}]. ") + reason
     if re.search(r"practi[cs]e|exercise|train|rehears", t):
         actions.append({"type": "practice"})
     if re.search(r"learn|tutorial|teach", t):

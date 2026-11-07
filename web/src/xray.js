@@ -1,5 +1,6 @@
-// Layer C: X-Ray inspection — procedurally generated, clearly *illustrative* end-suction centrifugal pump.
-// Every mesh is tagged with a component id from backend/xray/knowledge/pump_components.json.
+// Layer C: X-Ray inspection. Builds ANY device in backend/xray/knowledge/equipment.json from a small shape
+// vocabulary (cylinders, boxes, tori, fins, blades, coils, bolts, threads, hex, plus a few named pump parts),
+// auto-scales it to the podium and explodes it along each part's own direction. Illustrative teaching models.
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
@@ -181,19 +182,62 @@ function bearingHousing() {
 }
 
 // id, builder, assembled position (x along shaft), explode direction, finish
-const PART_DEFS = [
-  ["baseplate", () => new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.08, 0.62), null), [-0.35, -0.48, 0], [0, 0, 0], "graphite"],
-  ["motor", motor, [-0.98, 0, 0], [-0.62, 0.1, 0], "paint"],
-  ["coupling", coupling, [-0.55, 0, 0], [-0.22, 0.48, 0], "steel"],
-  ["shaft", () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 1.05, 24), null); m.rotation.z = Math.PI / 2; return m; }, [-0.05, 0, 0], [0, 0, 0.6], "polished"],
-  ["bearing_housing", bearingHousing, [-0.2, 0, 0], [-0.05, 0.62, 0], "cast"],
-  ["bearing_outboard", () => bearing(0.075), [-0.38, 0, 0], [-0.25, 0.26, 0.45], "polished"],
-  ["bearing_inboard", () => bearing(0.08), [-0.02, 0, 0], [0.05, 0.26, 0.45], "polished"],
-  ["seal", () => { const g = new THREE.Group(); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.07, 32), null); a.rotation.z = Math.PI / 2; const s = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 8, 24), null); s.rotation.y = Math.PI / 2; s.position.x = -0.05; g.add(a, s); return g; }, [0.18, 0, 0], [0.3, 0.3, 0.3], "carbon"],
-  ["impeller", impeller, [0.4, 0, 0], [0.55, 0.05, 0.42], "bronze"],
-  ["wear_ring", () => { const m = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 10, 40), null); m.rotation.y = Math.PI / 2; return m; }, [0.5, 0, 0], [0.75, 0.32, 0.42], "bronze"],
-  ["casing", volute, [0.45, 0, 0], [0.85, 0, -0.45], "cast"],
-];
+// ------------------------------------------------------------------ shape vocabulary (data -> meshes)
+const AXIS_ROT = { x: [0, 0, Math.PI / 2], y: [0, 0, 0], z: [Math.PI / 2, 0, 0] };
+function oriented(mesh, axis = "y", p = [0, 0, 0]) {
+  const r = AXIS_ROT[axis] || AXIS_ROT.y;
+  mesh.rotation.set(...r);
+  mesh.position.set(...p);
+  return mesh;
+}
+// rotate a ring of things laid out in the Y-Z plane (axis x) into the requested axis
+function onAxis(group, axis) { if (axis === "y") group.rotation.z = Math.PI / 2; if (axis === "z") group.rotation.y = Math.PI / 2; return group; }
+const SPECIAL = { volute, impeller, bearing, motor, coupling, bearingHousing };
+
+function prim(d) {
+  const p = d.p || [0, 0, 0];
+  let m;
+  switch (d.t) {
+    case "cyl": m = oriented(new THREE.Mesh(new THREE.CylinderGeometry(d.r2 ?? d.r, d.r, d.h, 40, 1, !!d.open), null), d.axis, p); break;
+    case "box": m = new THREE.Mesh(new THREE.BoxGeometry(...d.s), null); m.position.set(...p); break;
+    case "sphere": m = new THREE.Mesh(new THREE.SphereGeometry(d.r, 32, 20), null); m.position.set(...p); break;
+    case "torus": { m = new THREE.Mesh(new THREE.TorusGeometry(d.r, d.tube, 12, 48), null);
+      // TorusGeometry lies in XY (axis z): turn it so its axis matches
+      if (d.axis === "x") m.rotation.y = Math.PI / 2; if (d.axis === "y") m.rotation.x = Math.PI / 2; m.position.set(...p); break; }
+    case "ring": { m = new THREE.Mesh(new THREE.RingGeometry(d.ri, d.ro, 48), null);
+      if (d.axis === "x") m.rotation.y = Math.PI / 2; if (d.axis === "y") m.rotation.x = Math.PI / 2; m.position.set(...p); break; }
+    case "fins": { m = new THREE.Group();   // radial fins around an axis
+      for (let i = 0; i < d.n; i++) {
+        const a = (i / d.n) * Math.PI * 2, f = new THREE.Mesh(new THREE.BoxGeometry(d.len, d.thin ? 0.008 : 0.035, d.thin ? 0.004 : 0.01), null);
+        f.position.set(0, Math.sin(a) * d.r, Math.cos(a) * d.r); f.rotation.x = -a; m.add(f);
+      }
+      onAxis(m, d.axis); m.position.set(...p); break; }
+    case "blades": { m = new THREE.Group();
+      for (let i = 0; i < d.n; i++) {
+        const a = (i / d.n) * Math.PI * 2, b = new THREE.Mesh(new THREE.BoxGeometry(0.012, d.r * 0.8, d.w), null);
+        b.position.set(0, Math.sin(a) * d.r * 0.55, Math.cos(a) * d.r * 0.55); b.rotation.x = -a; b.rotation.y = 0.35; m.add(b);
+      }
+      onAxis(m, d.axis); m.position.set(...p); break; }
+    case "bolts": { m = new THREE.Group();
+      for (let i = 0; i < d.n; i++) {
+        const a = (i / d.n) * Math.PI * 2, b = new THREE.Mesh(new THREE.CylinderGeometry(d.size, d.size, d.size * 2.2, 6), null);
+        b.rotation.z = Math.PI / 2; b.position.set(0, Math.sin(a) * d.r, Math.cos(a) * d.r); m.add(b);
+      }
+      onAxis(m, d.axis); m.position.set(...p); break; }
+    case "coil": { const pts = [];   // helical spring along Y
+      for (let i = 0; i <= d.turns * 24; i++) { const a = (i / 24) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * d.r, -d.h / 2 + (i / (d.turns * 24)) * d.h, Math.sin(a) * d.r)); }
+      m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), d.turns * 24, d.tube, 8, false), null); m.position.set(...p); break; }
+    case "thread": { const pts = [];
+      for (let i = 0; i <= d.turns * 16; i++) { const a = (i / 16) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * d.r, -d.h / 2 + (i / (d.turns * 16)) * d.h, Math.sin(a) * d.r)); }
+      m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), d.turns * 16, d.r * 0.12, 6, false), null); m.position.set(...p); break; }
+    case "hex": m = new THREE.Mesh(new THREE.CylinderGeometry(d.r, d.r, d.h, 6), null); m.position.set(...p); break;
+    case "special": m = SPECIAL[d.name](...(d.args || [])); m.position.set(...p); break;
+    default: m = new THREE.Group();
+  }
+  if (d.accent) m.traverse((x) => (x.userData.accent = true));
+  return m;
+}
+
 const FINISH = {
   cast: { color: 0xb9bec6, metalness: 0.75, roughness: 0.42 },
   paint: { color: 0x2b3038, metalness: 0.3, roughness: 0.5, clearcoat: 0.6, clearcoatRoughness: 0.3 },
@@ -202,19 +246,22 @@ const FINISH = {
   graphite: { color: 0x3a3f47, metalness: 0.4, roughness: 0.65 },
   carbon: { color: 0x22262c, metalness: 0.2, roughness: 0.5 },
   bronze: { color: 0xb08d57, metalness: 0.9, roughness: 0.3 },
+  copper: { color: 0xb87333, metalness: 0.95, roughness: 0.32 },
+  pcb: { color: 0x1f5c3a, metalness: 0.2, roughness: 0.5 },
+  ceramic: { color: 0xe8e2d6, metalness: 0.05, roughness: 0.6 },
 };
 const SUSPECT = new THREE.Color(0xff453a);
 const SELECT = new THREE.Color(0x0a84ff);
 const ALT = new THREE.Color(0xff9f0a);
 const BLACK = new THREE.Color(0x000000);
+const TARGET_SIZE = 2.0;   // every device is normalised to roughly this size on the 2.1 m-radius podium
 
 export class XRay {
-  constructor(kb, renderer) {
-    this.kb = kb;
+  constructor(lib, renderer) {
+    this.lib = lib;
     this.scene = new THREE.Scene();
     this.scene.background = this._backdrop();
     this.root = new THREE.Group();
-    this.root.position.set(-0.25, 0.525, 0);
     this.scene.add(this.root);
     this.parts = new Map();
     this.explode = 0; this.target = 0;
@@ -224,7 +271,6 @@ export class XRay {
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this._lights();
     this._podium();
-    this._build();
   }
 
   _backdrop() {
@@ -255,37 +301,77 @@ export class XRay {
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -0.081;
     this.scene.add(disc, rim, floor);
-    this.podium = disc;
   }
 
-  _build() {
-    PART_DEFS.forEach(([id, build, pos, off, finish], i) => {
-      const obj = build();
-      const mat = new THREE.MeshPhysicalMaterial({ ...FINISH[finish], emissive: 0x000000 });
+  /** Build the exploded model for an asset class from the library. Returns the class definition. */
+  load(cls) {
+    if (this.cls === cls) return this.def;
+    for (const p of this.parts.values()) { this.root.remove(p.holder); this.root.remove(p.label); p.el.remove(); }
+    this.parts.clear();
+    this.cls = cls; this.def = this.lib.classes[cls];
+    this.hidden = new Set(); this.flagged = new Set(); this.alt = new Set(); this.selected = null; this.ghost = false;
+    this.explode = 0; this.target = 0;
+    this.root.scale.setScalar(1); this.root.position.set(0, 0, 0);
+    this.def.components.forEach((comp, i) => {
+      const obj = new THREE.Group();
+      for (const d of comp.shape) obj.add(prim(d));
+      const mat = new THREE.MeshPhysicalMaterial({ ...(FINISH[comp.finish] || FINISH.steel), emissive: 0x000000 });
       const accent = new THREE.MeshPhysicalMaterial({ color: 0xff9f0a, metalness: 0.3, roughness: 0.4 });
-      obj.traverse((m) => { if (m.isMesh) { m.material = m.userData.accent ? accent : mat; m.userData.componentId = id; } });
+      obj.traverse((m) => { if (m.isMesh) { m.material = m.userData.accent ? accent : mat; m.userData.componentId = comp.id; } });
       const holder = new THREE.Group();
       holder.add(obj);
-      holder.position.set(...pos);
+      holder.position.set(...comp.pos);
       this.root.add(holder);
-      const comp = this.kb.components.find((c) => c.id === id);
       const el = document.createElement("div");
       el.className = "ptag";
-      el.innerHTML = `<i>${String(i + 1).padStart(2, "0")}</i>${comp?.name ?? id}`;
+      el.innerHTML = `<i>${String(i + 1).padStart(2, "0")}</i>${comp.name}`;
       const label = new CSS2DObject(el);
       label.visible = false;
       this.root.add(label);
-      this.parts.set(id, { holder, obj, base: new THREE.Vector3(...pos), off: new THREE.Vector3(...off), mat, comp, label, el, n: i + 1 });
+      this.parts.set(comp.id, { holder, obj, base: new THREE.Vector3(...comp.pos), off: new THREE.Vector3(...comp.explode), mat, comp, label, el, n: i + 1 });
     });
+    // auto-fit: scale the assembled model to TARGET_SIZE and stand it on the podium, centred
+    this.root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(this.root), size = box.getSize(new THREE.Vector3());
+    const k = TARGET_SIZE / Math.max(size.x, size.y, size.z);
+    this.unit = 1 / k;                    // model units per scene metre, for explode distances
+    this.root.scale.setScalar(k);
+    const c = box.getCenter(new THREE.Vector3());
+    this.root.position.set(-c.x * k, -box.min.y * k + 0.01, -c.z * k);
+    // keep exploded parts above the podium
+    let lowest = Infinity;
+    for (const p of this.parts.values()) {
+      const pb = new THREE.Box3().setFromObject(p.holder);
+      lowest = Math.min(lowest, pb.min.y + p.off.y * k);
+    }
+    if (lowest < 0.01) this.root.position.y += 0.01 - lowest;
+    this.root.updateMatrixWorld(true);
+    for (const p of this.parts.values()) p.lbox = null;
+    this.home = this._homeView();
+    return this.def;
   }
 
-  order() { return PART_DEFS.map((d) => d[0]); }
+  _homeView() {
+    // frame the fully exploded model
+    const saved = [...this.parts.values()].map((p) => p.holder.position.clone());
+    for (const p of this.parts.values()) p.holder.position.copy(p.base).add(p.off);
+    this.root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(this.root), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+    [...this.parts.values()].forEach((p, i) => p.holder.position.copy(saved[i]));
+    this.root.updateMatrixWorld(true);
+    const r = Math.max(s.x, s.y * 1.3, s.z) * 0.5;
+    const dist = r / Math.tan((38 / 2) * Math.PI / 180) * 1.25;
+    const dir = new THREE.Vector3(0.45, 0.42, 0.79).normalize();
+    return { pos: c.clone().addScaledVector(dir, Math.max(dist, 3)), tgt: c };
+  }
+
+  order() { return this.def ? this.def.components.map((c) => c.id) : []; }
   pickables() { const out = []; for (const [id, p] of this.parts) if (!this.hidden.has(id)) p.obj.traverse((m) => m.isMesh && out.push(m)); return out; }
   setExplode(v) { this.target = Math.max(0, Math.min(1, v)); }
   setGhost(on) {
     this.ghost = on;
-    for (const id of ["casing", "bearing_housing", "motor"]) {
-      const m = this.parts.get(id).mat;
+    for (const id of this.def?.ghost || []) {
+      const m = this.parts.get(id)?.mat; if (!m) continue;
       m.transparent = on; m.opacity = on ? 0.16 : 1; m.depthWrite = !on; m.needsUpdate = true;
     }
   }
@@ -295,7 +381,8 @@ export class XRay {
   highlight(lead = [], { alt = [], selected = null } = {}) { this.flagged = new Set(lead); this.alt = new Set(alt); this.selected = selected; }
 
   update(dt, t) {
-    this.explode += (this.target - this.explode) * Math.min(1, dt * 4);
+    if (!this.def) return;
+    this.explode += (this.target - this.explode) * (1 - Math.exp(-4 * dt));
     const e = this.explode, ease = e * e * (3 - 2 * e);
     for (const [id, p] of this.parts) {
       p.holder.position.copy(p.base).addScaledVector(p.off, ease);
@@ -310,17 +397,19 @@ export class XRay {
         const inv = new THREE.Matrix4().copy(this.root.matrixWorld).invert(); b.applyMatrix4(inv);
         p.lbox = { c: b.getCenter(new THREE.Vector3()), top: b.max.y }; p.holder.position.copy(pos0);
       }
-      p.label.position.set(p.holder.position.x + p.lbox.c.x, p.holder.position.y + p.lbox.top + 0.06, p.holder.position.z + p.lbox.c.z);
+      p.label.position.set(p.holder.position.x + p.lbox.c.x, p.holder.position.y + p.lbox.top + 0.06 * this.unit, p.holder.position.z + p.lbox.c.z);
       p.label.visible = (this.labelsOn || id === this.selected || this.flagged.has(id)) && !this.hidden.has(id) && ease > 0.5;
       p.el.classList.toggle("sus", this.flagged.has(id));
     }
     const spin = (1 - ease) * dt * 2.2;
-    for (const id of ["impeller", "shaft", "coupling"]) this.parts.get(id).obj.rotation.x += spin;
+    for (const id of this.def.spin || ["impeller", "shaft", "coupling", "rotor", "fan"]) {
+      const p = this.parts.get(id); if (p) p.obj.rotation.x += spin;
+    }
   }
 
   partCenter(id) {
     const p = this.parts.get(id);
-    if (p.lbox) return this.root.localToWorld(new THREE.Vector3(p.holder.position.x + p.lbox.c.x, p.holder.position.y + p.lbox.c.y, p.holder.position.z + p.lbox.c.z));
+    if (p?.lbox) return this.root.localToWorld(new THREE.Vector3(p.holder.position.x + p.lbox.c.x, p.holder.position.y + p.lbox.c.y, p.holder.position.z + p.lbox.c.z));
     return new THREE.Box3().setFromObject(p.holder).getCenter(new THREE.Vector3());
   }
 }

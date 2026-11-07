@@ -19,24 +19,24 @@ from pathlib import Path
 from . import config
 from .metadata import BuilderPack, priority_score, telemetry_evidence
 
-KB_PUMP = json.loads((Path(__file__).parent / "knowledge" / "pump_components.json").read_text())
+# Equipment library: one entry per asset class (exploded model, component knowledge, fault hypotheses,
+# lessons, practice scenario). Adding a device type is a data change, not a code change.
+LIBRARY = json.loads((Path(__file__).parent / "knowledge" / "equipment.json").read_text())
 
-ISSUE_HYPOTHESES = {
-    "FOULING": [("Fouling / deposits in impeller or volute", ["impeller", "casing"]),
-                ("Internal wear (wear-ring clearance growth)", ["wear_ring"]),
-                ("Process-side restriction (strainer / partially closed valve)", [])],
-    "CAVITATION_RISK": [("Insufficient suction head → cavitation", ["impeller", "casing"]),
-                        ("Suction-side restriction", [])],
-    "SEAL_DEGRADATION": [("Mechanical seal face wear", ["seal"]), ("Shaft run-out stressing the seal", ["shaft"])],
-    "BEARING_WEAR": [("Bearing degradation", ["bearing_inboard", "bearing_outboard"]),
-                     ("Lubrication issue", ["bearing_housing"])],
-    "MISALIGNMENT": [("Shaft misalignment at coupling", ["coupling"]), ("Soft foot / baseplate", ["baseplate"])],
-    "CURRENT_IMBALANCE": [("Electrical supply / winding imbalance", ["motor"]), ("Mechanical load change", [])],
-    "OVERHEATING": [("Cooling or load issue", ["motor"])],
-    "POSITION_DEVIATION": [("Actuator / positioner tracking problem", []), ("Valve friction (stiction)", [])],
-    "CALIBRATION_DRIFT": [("Positioner calibration drift", [])],
-    "MOUNTING_ISSUE": [("Sensor mounting degraded", ["bearing_housing"])],
-}
+
+def kb_id(cls: str, component: str) -> str:
+    return f"KB-XRAY-{cls}#{component}"
+
+
+def hypotheses_for(cls: str, issue: str) -> list:
+    """Class-specific hypotheses (with linked components) from the library; generic fallback otherwise."""
+    h = LIBRARY["classes"].get(cls, {}).get("hypotheses", {}).get(issue)
+    if h:
+        return h
+    for other in LIBRARY["classes"].values():
+        if issue in other.get("hypotheses", {}):
+            return [[t, []] for t, _ in other["hypotheses"][issue]]
+    return [["Unspecified deviation; verify locally", []]]
 
 
 def _tok(s: str) -> list[str]:
@@ -66,9 +66,10 @@ class Corpus:
                          "text": f"{c['historical_interpretation']}. Next check: {c['recommended_next_check']}. "
                                  f"Workflow: {c['safe_evidence_workflow']} Severity {c['severity']}.",
                          "kind": "service_case", "source": "Historical_Service_Cases"})
-        for comp in KB_PUMP["components"]:
-            docs.append({"id": f"KB-XRAY-PUMP#{comp['id']}", "title": f"{comp['name']} (illustrative pump)",
-                         "scope": "PROCESS_PUMP", "component": comp["id"],
+        for cls, lib in LIBRARY["classes"].items():
+          for comp in lib["components"]:
+            docs.append({"id": kb_id(cls, comp["id"]), "title": f"{comp['name']} ({lib['label'].lower()}, training note)",
+                         "scope": cls, "component": comp["id"],
                          "text": f"{comp['name']}: {comp['function']} Typical symptoms: "
                                  f"{'; '.join(comp['failure_symptoms'])}. Signals: {', '.join(comp['evidence_signals'])}.",
                          "kind": "training_kb", "source": "Industrial X-Ray AI educational knowledge base (non-OEM)"})
@@ -134,7 +135,7 @@ class Copilot:
         support = min(1.0, 0.55 + 0.15 * len(abnormal) + 0.05 * min(len(related), 4) + 0.05 * min(len(cases), 3))
         overall = max(0.05, min(0.95, conf * support * (1 - min(dq_pen, 0.4)) * (0.6 + 0.4 * map_conf)))
         hyps = []
-        for i, (h, comps) in enumerate(ISSUE_HYPOTHESES.get(issue, [("Unspecified deviation", [])])):
+        for i, (h, comps) in enumerate(hypotheses_for(cls, issue)):
             hyps.append({"hypothesis": h, "components": comps, "rank": i + 1,
                          "status": "leading hypothesis" if i == 0 else "alternative — not excluded"})
         steps = [
@@ -175,7 +176,8 @@ class Copilot:
         ids |= {w["work_order_id"] for w in ev["work_orders"]} | {c["case_id"] for c in ev["similar_cases"]}
         ids |= {d["issue_id"] for d in ev["data_quality"]} | {ev["asset"]["asset_id"], ev["asset"]["tag"]}
         ids |= {"Telemetry_Sample_3d", "DOC-3D-MAPPING", "DOC-FIELD-SAFETY", "DOC-RAG-GUIDE"}
-        ids |= {f"KB-XRAY-PUMP#{c['id']}" for c in KB_PUMP["components"]}
+        cls = ev["asset"]["asset_class"]
+        ids |= {kb_id(cls, c["id"]) for c in LIBRARY["classes"].get(cls, {}).get("components", [])}
         return ids
 
     # ------------------------------------------------------------------ narration
@@ -264,7 +266,8 @@ class Copilot:
         q = question + (f" {component}" if component else "")
         hits = self.corpus.search(q, k=6, scope=scope)
         if component:
-            kb = self.corpus.get(f"KB-XRAY-PUMP#{component}")
+            kb = self.corpus.get(kb_id(scope, component)) if scope else next(
+                (d for d in self.corpus.docs if d.get("component") == component), None)
             if kb and kb not in hits:
                 hits.insert(0, kb)
         allowed = {h["id"] for h in hits} | (self.valid_ids(ev) if ev else set())
@@ -277,7 +280,7 @@ class Copilot:
                               "asset_evidence": ({k: v for k, v in ev.items() if k not in ("telemetry",)}
                                                  if ev else None)}, default=str)[:20000]
         sys_prompt = ("Answer the technician's question using ONLY the context. Cite IDs in square brackets. "
-                      "If the context does not support an answer, say so. Mark illustrative/training (KB-XRAY-PUMP) "
+                      "If the context does not support an answer, say so. Mark illustrative/training (KB-XRAY-...) "
                       "content as general training knowledge, not OEM instructions. No step-by-step repair or "
                       "disassembly procedures. Max 120 words.")
         try:

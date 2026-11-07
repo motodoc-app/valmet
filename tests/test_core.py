@@ -86,3 +86,42 @@ def test_diagnosis_is_grounded(world):
             assert i.strip() in allowed
     assert any(s["source"] == "DOC-FIELD-SAFETY" for s in d["next_steps"])
     assert 0 < d["confidence"]["overall"] < 1
+
+
+def test_every_workbook_class_has_a_complete_device_model(world):
+    """Same features for any device: each asset class in the workbook has an exploded model, knowledge,
+    lessons and a practice scenario whose references all resolve."""
+    from xray.copilot import LIBRARY
+    classes = {a["asset_class"] for a in world.pack.assets.to_dict("records")}
+    assert classes <= set(LIBRARY["classes"]), classes - set(LIBRARY["classes"])
+    for cls, d in LIBRARY["classes"].items():
+        ids = {c["id"] for c in d["components"]}
+        assert len(ids) == len(d["components"]) >= 5
+        for c in d["components"]:
+            assert c["shape"] and len(c["pos"]) == 3 and len(c["explode"]) == 3 and c["function"]
+        refs = [f for t in d["learn_topics"] for s in t["steps"] for f in s["focus"]]
+        for sc in d["practice_scenarios"]:
+            for t in sc["tasks"]:
+                refs += (t["answer"] if isinstance(t.get("answer"), list) else []) + t.get("order", [])
+        refs += [c for hs in d["hypotheses"].values() for h in hs for c in h[1]]
+        assert set(refs) <= ids, (cls, set(refs) - ids)
+        assert d["learn_topics"] and d["practice_scenarios"]
+
+
+def test_diagnosis_links_to_components_for_every_faulty_asset(world):
+    from xray.copilot import LIBRARY
+    for a in world.pack.assets.to_dict("records"):
+        if a["issue_code"] == "NORMAL":
+            continue
+        d = world.copilot.evidence(a["asset_id"])
+        ids = {c["id"] for c in LIBRARY["classes"][a["asset_class"]]["components"]}
+        linked = {c for h in d["hypotheses"] for c in h["components"]}
+        assert linked and linked <= ids, (a["tag"], a["issue_code"], linked)
+
+
+def test_scene_search_finds_objects_by_meaning():
+    from xray.api import find_objects
+    vessels = find_objects("expansion vessel")
+    assert vessels and "vessel" in vessels[0]["label"]
+    cabinets = find_objects("electrical cabinets")
+    assert len(cabinets) >= 3 and all("cabinet" in o["label"] or o.get("category") == "electrical" for o in cabinets[:3])

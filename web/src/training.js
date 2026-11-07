@@ -1,15 +1,19 @@
 // LEARN (guided explanations synchronised with the 3D model) and PRACTICE (scored virtual exercise).
-// Content: backend/xray/knowledge/pump_components.json. Educational prototype only.
+// Content comes from the equipment library for the device currently loaded in the X-Ray view, so every asset
+// class gets the same lesson and practice flow. Educational prototype only.
 export function initTraining(S, ui) {
   const { esc, cites, card, toast, icon, focusPart } = ui;
-  const kb = S.kb;
-  const comp = (id) => kb.components.find((c) => c.id === id);
+  const def = () => S.kb.classes[S.xClass];
+  const comp = (id) => def().components.find((c) => c.id === id);
+  let lastClass = null;
+  const reset = () => { if (lastClass !== S.xClass) { topic = null; step = 0; P = null; lastClass = S.xClass; } };
   const head = (eyebrow, title, tag) => `<div class="card-h" style="padding-bottom:0"><span class="eyebrow-row">${eyebrow}${tag ? `<span class="tag">${tag}</span>` : ""}</span></div><div class="card-b"><div class="h1">${title}</div>`;
   const bar = (n, i) => `<div class="progress">${Array.from({ length: n }, (_, k) => `<i class="${k < i ? "done" : k === i ? "cur" : ""}"></i>`).join("")}</div>`;
 
   // ---------------------------------------------------------------- LEARN
   let topic = null, step = 0;
   function learn() {
+    reset();
     S.xray.setHidden([]); S.xray.setGhost(true); S.xray.setExplode(0.3);
     if (!topic) return topics();
     const st = topic.steps[step];
@@ -18,7 +22,7 @@ export function initTraining(S, ui) {
     card(`${head("Lesson", esc(topic.title), "Conceptual")}
       <div class="sub">Step ${step + 1} of ${topic.steps.length}</div>${bar(topic.steps.length, step)}
       <p class="p" style="color:var(--text);font-size:14px">${cites(st.text)}</p>
-      ${st.focus.map((f) => `<div class="kv"><span>${esc(comp(f).name)}</span><span class="cite" data-doc="KB-XRAY-PUMP#${f}">KB-XRAY-PUMP#${f}</span></div>`).join("")}
+      ${st.focus.map((f) => `<div class="kv"><span>${esc(comp(f).name)}</span><span class="cite" data-doc="KB-XRAY-${S.xClass}#${f}">KB-XRAY-${S.xClass}#${f}</span></div>`).join("")}
       <div class="section row" style="flex-wrap:nowrap"><button class="btn" id="lPrev" ${step === 0 ? "disabled" : ""} style="flex:1">${icon("back")}Back</button>
         <button class="btn primary" id="lNext" style="flex:1">${step === topic.steps.length - 1 ? "Finish" : "Next"}</button></div>
       <div class="section" style="text-align:center"><button class="link" id="lAll">All lessons</button></div>
@@ -32,16 +36,17 @@ export function initTraining(S, ui) {
   }
   function topics() {
     S.xray.highlight([]);
-    const issue = S.diag?.asset?.issue_code;
-    card(`${head("Learn", "Lessons")}
-      <p class="p" style="margin-top:8px">Short lessons that highlight the relevant parts as you read.</p>
-      ${kb.learn_topics.map((t, i) => `<button class="list-row" data-topic="${t.id}"><span class="n">0${i + 1}</span><span class="nm"><b>${esc(t.title)}</b><small>${t.steps.length} steps${t.issue_code === issue ? " · matches the current fault" : ""}</small></span>${icon("chev")}</button>`).join("")}</div>`);
-    document.querySelectorAll("[data-topic]").forEach((el) => (el.onclick = () => { topic = kb.learn_topics.find((t) => t.id === el.dataset.topic); step = 0; learn(); }));
+    const issue = S.xDiag?.asset?.issue_code;
+    card(`${head(`Learn · ${esc(def().label)}`, "Lessons")}
+      <p class="p" style="margin-top:8px">Short lessons that highlight the relevant parts of the ${esc(def().label.toLowerCase())} as you read. Switch device in the list on the left.</p>
+      ${def().learn_topics.map((t, i) => `<button class="list-row" data-topic="${t.id}"><span class="n">0${i + 1}</span><span class="nm"><b>${esc(t.title)}</b><small>${t.steps.length} steps${t.issue_code === issue ? " · matches the current fault" : ""}</small></span>${icon("chev")}</button>`).join("")}</div>`);
+    document.querySelectorAll("[data-topic]").forEach((el) => (el.onclick = () => { topic = def().learn_topics.find((t) => t.id === el.dataset.topic); step = 0; learn(); }));
   }
 
   // ---------------------------------------------------------------- PRACTICE
   let P = null;
   function practice() {
+    reset();
     S.xray.setGhost(false);
     if (!P) return intro();
     const sc = P.sc, task = sc.tasks[P.i];
@@ -97,10 +102,10 @@ export function initTraining(S, ui) {
   const next = () => { P.i++; practice(); };
 
   function intro() {
-    const sc = kb.practice_scenarios[0];
+    const sc = def().practice_scenarios[0];
     S.xray.setHidden([]); S.xray.setExplode(0); S.xray.highlight([]);
     const spark = (v) => { const lo = Math.min(...v), hi = Math.max(...v), r = hi - lo || 1; return `<svg class="spark" viewBox="0 0 88 26"><polyline fill="none" stroke="var(--text-2)" stroke-width="1.25" points="${v.map((y, i) => `${(i / (v.length - 1)) * 88},${23 - ((y - lo) / r) * 20}`).join(" ")}"/></svg>`; };
-    card(`${head("Practice", "Bearing inspection rehearsal", "Fictional case")}
+    card(`${head(`Practice · ${esc(def().label)}`, esc(sc.title.replace(" (fictional training case)", "")), "Fictional case")}
       <p class="p" style="margin-top:10px">${esc(sc.brief)}</p>
       ${sc.evidence.map((e) => `<div class="sig"><div><b>${e.signal.replace(/_/g, " ")}</b><small>${e.values[0]} to ${e.values.at(-1)}</small></div>${spark(e.values)}</div>`).join("")}
       <div class="section"><div class="label">Before you start</div>
