@@ -33,7 +33,7 @@ function steps(A) {
       run: async () => { await X.planning?.demo?.(); } });
   list.push(
     { title: "Check the way in",
-      plain: "The inspection robot drives the route to the pump and reads every asset it passes. The camera watches from above, like a match broadcast.",
+      plain: "The inspection robot drives the route to the pump and reads every asset it passes. The Angled camera watches from above, like a match broadcast; Robot POV rides along on the robot's simulated camera. On arrival, Inspect equipment opens the X-Ray model right over the room.",
       eng: "2.5D multi-level heightfield, clearance-aware A* for a 0.2 m robot radius, line-of-sight smoothing, independent validation of the final path.",
       run: async () => { A.setMode("facility"); A.setRate(2); A.setCamera("broadcast"); await A.dispatch(t.asset_id); } },
     { title: "Rehearse the job",

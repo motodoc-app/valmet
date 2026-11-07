@@ -217,7 +217,12 @@ function renderLeft() {
         <span class="nm"><b>${a.tag}</b><small>${nice(a.asset_class)} · ${a.is_target ? "Simulated fault" : nice(a.issue_code)}</small></span>
         <span class="health s-${a.condition_state}">${a.health_score}</span></button>`).join("")}</div>
     <div class="card-f"><span><b>${S.data.stats.n_objects}</b> object candidates</span><span><b>${nav.walkable_area_m2}</b> m² drivable</span><span><b>${(S.data.integrity.declared_vertex_count / 1e6).toFixed(1)}M</b> splats</span></div>`;
-  $("#left").onclick = (e) => { if (e.target.closest("[data-min-card]")) return; const r = e.target.closest("[data-asset]"); if (r) selectAsset(r.dataset.asset, { fly: true }); };
+  $("#left").onclick = (e) => {
+    if (e.target.closest("[data-min-card]")) return;
+    const r = e.target.closest("[data-asset]"); if (!r) return;
+    if (APP.xo?.open) return APP.xo.show(r.dataset.asset);      // X-Ray panel open: look inside that asset instead
+    selectAsset(r.dataset.asset, { fly: true });
+  };
 }
 
 function renderComponents() {
@@ -300,7 +305,7 @@ function renderAssetCard(o) {
 function assetActions(o) {
   const a = o.asset, model = !!S.kb.classes[a.asset_class], here = robotAt(o);
   return `<div class="actions-top">
-      <button class="btn ${here && model ? "" : "primary"}" data-act="dispatch-sel">${icon("play")}${here ? "Robot is here · re-send" : "Send robot here"}</button>
+      <button class="btn ${here && model ? "" : "primary"}" data-act="dispatch-sel" ${here ? "disabled title=\"The robot is standing at this asset\"" : ""}>${icon(here ? "check" : "play")}${here ? "Robot is here" : "Send robot here"}</button>
       ${model ? `<button class="btn ${here ? "primary" : ""}" data-act="xo-sel" title="Open the exploded teaching model over the scene">${icon("layers")}Explore internals (X-Ray)</button>` : ""}
       <button class="btn" data-act="diagnose-sel">${icon("spark")}What's wrong?</button>
       ${APP.modes.has("plan") ? `<button class="btn" data-act="plan-sel" title="Plan the access: move what is in the way in a safe layout simulation">${icon("grid")}Plan access</button>` : ""}</div>`;
@@ -781,6 +786,7 @@ async function initMinimap() {
   const cv = $("#minimap canvas");
   cv.width = MM.w * 2; cv.height = MM.h * 2; cv.style.width = MM.w + "px"; cv.style.height = MM.h + "px";
   cv.onclick = (e) => {             // click the map to look there from above
+    if (APP.xo?.open) return;
     const r = cv.getBoundingClientRect(), x = MM.grid.x0 + (e.clientX - r.left) / MM.k, z = MM.grid.z0 + (e.clientY - r.top) / MM.k;
     S.cam = "free"; renderDock();
     flyTo(new THREE.Vector3(x, 4.5, z + 2.2), new THREE.Vector3(x, 0, z), 0.9);
@@ -1052,6 +1058,7 @@ export function ask(q) { return COPILOT.ask(q); }
 // [/copilot-ui]
 
 async function runAskActions(r) {
+    if (r.actions?.length && APP.xo?.open) APP.xo.close();   // the copilot drives the room: put it back first
     for (const a of r.actions || []) {
       if (a.type === "select") { if (!sceneMode()) setMode("facility"); selectAsset(a.asset_id, { fly: !r.actions.some((x) => x.type === "navigate") }); }
       if (a.type === "navigate") { S.blocks = []; S.fac.setBlocks([]); S.prevRoute = null; await dispatch(a.asset_id); }
@@ -1156,6 +1163,7 @@ canvas.addEventListener("pointermove", (e) => { if (S.cam === "pov" && down && e
 canvas.addEventListener("wheel", leavePov, { passive: true });
 canvas.addEventListener("pointerup", (e) => {
   if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  if (APP.xo?.open) return;                 // the room is inert behind the X-Ray panel (its state is restored on close)
   ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   if (sceneMode()) {
     ray.setFromCamera(ndc, camera);

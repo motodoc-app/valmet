@@ -261,6 +261,7 @@ function buildArrival() {
     if (a === "inspect") {
       S.selected = o; S.cardLock = false;
       A.selectObject(o);
+      S.fac.setHighlighted([], { selected: o.id, target: o.id });     // calm room behind the panel: just this asset
       if (!A.modes.get(S.mode)?.ownsCard) { A.renderAssetCard(o); document.getElementById("right")?.classList.remove("min"); }
       if (S.kb.classes[o.asset.asset_class]) await show(o.asset.asset_id);
     }
@@ -312,7 +313,7 @@ function place() {
   if (H) y1 = Math.min(y1, H.top - 10);
   _p.set(o.center[0], o.center[1] + o.size[1] / 2 + 0.12, o.center[2]).project(cam);
   let anchored = _p.z > -1 && _p.z < 1;
-  let x = ((_p.x + 1) / 2) * innerWidth, y = ((1 - _p.y) / 2) * innerHeight - 14;
+  let x = ((_p.x + 1) / 2) * innerWidth, y = ((1 - _p.y) / 2) * innerHeight - 30;     // clear of the asset's own tag
   // asset off screen or behind a card: park the prompt low in the free area, where nothing else lives
   if (!anchored || x < x0 || x > x1 || y < y0 + h * 0.5 || y > y1 + 40) { anchored = false; x = (x0 + x1) / 2; y = y1; }
   x = Math.max(x0 + w / 2, Math.min(x1 - w / 2, x));
