@@ -311,7 +311,8 @@ export class Facility {
   }
 
   // ---------------------------------------------------------------- scan layers: cut-away, clean scan, semantic dimming
-  _layerOn(m) { return (m.userData.layer === "low" || !this.cutaway) && !(m.userData.haze && this.cleanScan); }
+  // haze is hidden by the clean-scan filter and always in the semantic view (there the scan is only context)
+  _layerOn(m) { return (m.userData.layer === "low" || !this.cutaway) && !(m.userData.haze && (this.cleanScan || this.semantic)); }
   _applyLayers() {
     for (const m of this.splats) m.visible = this._layerOn(m);
     for (const p of this.previews) p.visible = !p.userData.replaced && this._layerOn(p);
@@ -405,8 +406,8 @@ export class Facility {
         if (e.x <= e.y && e.x <= e.z) px.x = 1e4; else if (e.y <= e.z) px.y = 1e4; else px.z = 1e4;
         float edge = 1.0 - smoothstep(0.4, 1.4, min(px.x, min(px.y, px.z)));
         float st = step(0.55, fract((gl_FragCoord.x + gl_FragCoord.y) / 7.0));
-        float fill = 0.17 * mix(1.0, 0.35 + 1.9 * st, vStyle.y);
-        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.5 + 0.5, edge * 0.45);
+        float fill = 0.24 * mix(1.0, 0.3 + 1.6 * st, vStyle.y);
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.7 + 0.3, edge * 0.3);
         diffuseColor.a = vStyle.x * mix(fill, 0.95, edge);
         if (diffuseColor.a < 0.004) discard;`);
     };
@@ -481,6 +482,7 @@ export class Facility {
     if (!this.sem) this._buildSemantic();
     for (const m of this.splats) this._styleSplat(m);
     for (const p of this.previews) this._stylePreview(p);
+    this._applyLayers();
     this._semStyle();
   }
 
