@@ -172,8 +172,8 @@ function cutChip() {
   const lo = soft ? (f.cutTop - f.cutSoft / 2).toFixed(2) : f.layerY.toFixed(1);
   const what = soft ? `ceiling and overhead ducts faded out from ${lo} m` : `everything above ${lo} m hidden`;
   L.cut.innerHTML = f.cutaway
-    ? `<span class="cc-dot"></span><span><b>Cut-away</b> ${what} so you can see inside. Dark gaps = no scan data.</span><button type="button" data-cut="full" title="Show the whole scan, ceiling included (stays on when you switch views)">Show full scan</button>`
-    : `<span class="cc-dot off"></span><span><b>Full scan</b> ceiling shown (it hides the room from above).</span><button type="button" data-cut="auto" title="Fade out the ceiling again in overhead views">Cut-away</button>`;
+    ? `<span class="cc-dot"></span><span><b>Cut-away</b> ${what}<span class="cc-why"> so you can see inside</span>. Dark gaps = no scan data.</span><button type="button" data-cut="full" title="Show the whole scan, ceiling included (stays on when you switch views)">Show full scan</button>`
+    : `<span class="cc-dot off"></span><span><b>Full scan</b> ceiling shown<span class="cc-why"> (it hides the room from above)</span>.</span><button type="button" data-cut="auto" title="Fade out the ceiling again in overhead views">Cut-away</button>`;
   L.cut.title = f.cutaway ? "The 3D scan itself is unchanged; this only changes what is drawn from this camera." : "";
   placeCut();
 }
@@ -181,7 +181,11 @@ function placeCut() {
   if (!L.cut || L.cut.classList.contains("hidden")) return;
   const vis = (el) => el && getComputedStyle(el).display !== "none" && !el.classList.contains("hidden") && el.getBoundingClientRect().height > 0;
   const d = document.querySelector("#dock"), lc = document.querySelector("#left"), rc = document.querySelector("#right");
-  if (innerWidth <= 820) { Object.assign(L.cut.style, { top: "", bottom: "", left: "50%", maxWidth: `${innerWidth - 24}px` }); return; }   // CSS: under the header
+  if (innerWidth <= 820) {           // phones: under the header and the mode tabs, never over them
+    const m = document.querySelector(".modes"), top = Math.max(64, vis(m) ? m.getBoundingClientRect().bottom + 8 : 64);
+    Object.assign(L.cut.style, { top: `${Math.round(top)}px`, bottom: "auto", left: "50%", maxWidth: `${innerWidth - 24}px` });
+    return;
+  }
   // just above the dock (and above the semantic legend when it is up), centred between the cards: clear of the
   // guide strip and the toasts at the top
   let bottom = vis(d) ? innerHeight - d.getBoundingClientRect().top + 10 : 24;
