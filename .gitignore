@@ -12,3 +12,4 @@ web/public/data/tiny.splat
 web/public/static/*.wasm
 web/public/static/scan.json
 web/tests/shots/
+.claude/worktrees/
