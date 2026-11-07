@@ -502,6 +502,10 @@ def write_md(q: dict) -> None:
         L.append(f"- **{c['id']}**: {c['auto']} → **{c['final']}**{m}. {c['note']}")
     L.append("")
     L.append("## Data-quality audit of candidates\n")
+    L.append("Visual check of the largest 'possible over-merge' frames: OBJ-005 (chair + upright device + clutter, "
+             "labelled pump-motor unit and linked to a workbook pump), OBJ-007 (shelf with mixed items), OBJ-009 "
+             "(metal rack with items, labelled pump-motor unit) and OBJ-020 (two overhead pipe runs in one frame) look "
+             "merged; OBJ-010 (white cabinet) looks like one object.\n")
     L.append(f"{dq['any_flag']} of {n1} candidates trigger at least one rule below; {dq['no_flag']} trigger none. "
              "Rules overlap (one object can be tiny, flat and low-support at once). Flags are review hints, not verdicts.\n")
     L.append("| Flag | Count | Rule |\n|---|---:|---|")
@@ -573,8 +577,32 @@ def write_md(q: dict) -> None:
     OUT_MD.write_text("\n".join(L))
 
 
-# Proposed corrections from the AI second-opinion audit and the size rules (filled in after viewing the crops).
-PROPOSALS: list[tuple[str, str]] = []
+# Proposed corrections from the AI second-opinion audit and the size rules (written after viewing the crops).
+# Not applied: each needs a person to confirm (scene_annotations.json relabel_near entry + step2_semantics.py).
+PROPOSALS: list[tuple[str, str]] = [
+    ("OBJ-005 (linked to workbook pump P-002 / ASSET-014)",
+     "'pump-motor unit' 0.78: the 1.6 x 1.1 x 1.3 m frame contains an office chair, an upright black device and clutter. "
+     "Check in person before demoing this asset binding; likely over-merged."),
+    ("OBJ-009", "'pump-motor unit' 0.74 -> 'shelving' (crop shows a metal rack with items on it)."),
+    ("OBJ-033", "'pump-motor unit' 0.74 -> 'other equipment' (a small table / bench)."),
+    ("OBJ-019", "'expansion vessel' 0.88 -> 'ladder' (crop shows a step ladder). Caution: it is the only object "
+     "labelled 'expansion vessel' and tests/test_core.py::test_scene_search_finds_objects_by_meaning expects a "
+     "search for 'expansion vessel' to return a label containing 'vessel'; update that test in the same change."),
+    ("OBJ-034, OBJ-088, OBJ-098, OBJ-123, OBJ-125",
+     "'pipe label / tag' -> 'insulated pipe (horizontal/vertical)' (1.1-1.9 m long thin runs; seen in the crops). "
+     "The other 22 tags >= 0.6 m long (label_size_mismatch flag) should be reviewed the same way."),
+    ("OBJ-165, OBJ-238", "'electric motor' -> 'other equipment' (pipe surface; thin object next to a ladder)."),
+    ("OBJ-201", "'pump-motor unit' -> 'other equipment' (30 x 12 x 7 cm flat fragment)."),
+    ("OBJ-303, OBJ-340, OBJ-596, OBJ-271", "instrument labels -> 'other equipment' (ladder leg, stick/handle, hanging "
+     "cable, bare pipe surface)."),
+    ("OBJ-371, OBJ-380", "'control valve' -> 'other equipment' (chair / hose region near the floor)."),
+    ("OBJ-053", "'circulation pump' -> 'pipe elbow / fitting' (curved insulated pipe)."),
+    ("OBJ-124 + OBJ-143", "two labels (centrifugal pump / pump-motor unit) on the same small red item 0.28 m apart; "
+     "OBJ-143 is linked to a workbook pump. Likely one physical object (or a fitting): keep at most one."),
+    ("Category field", "normalise the VLM 'category' per label (e.g. 4 'pipe label / tag' have category 'other', "
+     "'electric motor' appears as rotating and electrical, 'heat exchanger' as other and vessel). Display-only, "
+     "but it affects category filters and search."),
+]
 
 
 def main() -> None:

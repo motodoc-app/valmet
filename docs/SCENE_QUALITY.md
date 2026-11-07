@@ -45,28 +45,28 @@ Label = the VLM taxonomy class (or the human-review label). 'VLM categories' sho
 |---|---|---:|---:|---:|---:|---|---|---:|
 | other equipment | unidentified | 258 | 0.25 | 0 | 0 | vlm+geometry 256, human-verified 2 | other 258 | 124 |
 | pipe label / tag | piping (tag) | 121 | 0.70 | 76 | 0 | vlm+geometry 121 | piping 117, other 4 | 91 |
-| insulated pipe (horizontal) | piping | 50 | 0.87 | 48 | 0 | vlm+geometry 50 | piping 50 | 32 |
 | pipe elbow / fitting | piping | 50 | 0.56 | 8 | 0 | vlm+geometry 50 | piping 50 | 28 |
+| insulated pipe (horizontal) | piping | 50 | 0.87 | 48 | 0 | vlm+geometry 50 | piping 50 | 32 |
 | control valve | valve | 43 | 0.54 | 6 | 5 | vlm+geometry 43 | valve 43 | 28 |
-| temperature sensor | instrument | 21 | 0.45 | 0 | 3 | vlm+geometry 21 | instrument 21 | 15 |
 | pump-motor unit | rotating | 21 | 0.70 | 15 | 8 | vlm+geometry 20, human-verified 1 | rotating 21 | 11 |
-| insulated pipe (vertical) | piping | 18 | 0.88 | 17 | 0 | vlm+geometry 18 | piping 18 | 9 |
+| temperature sensor | instrument | 21 | 0.45 | 0 | 3 | vlm+geometry 21 | instrument 21 | 15 |
 | electrical cabinet | electrical | 18 | 0.66 | 8 | 0 | vlm+geometry 18 | electrical 18 | 5 |
+| insulated pipe (vertical) | piping | 18 | 0.88 | 17 | 0 | vlm+geometry 18 | piping 18 | 9 |
 | control panel | electrical | 15 | 0.47 | 2 | 0 | vlm+geometry 15 | electrical 15 | 6 |
 | electric motor | rotating | 12 | 0.45 | 0 | 4 | vlm+geometry 12 | electrical 8, rotating 4 | 4 |
 | junction box | electrical | 11 | 0.56 | 3 | 0 | vlm+geometry 11 | electrical 11 | 8 |
 | flow meter | instrument | 7 | 0.41 | 0 | 1 | vlm+geometry 7 | instrument 7 | 4 |
 | valve actuator | valve | 6 | 0.79 | 5 | 5 | vlm+geometry 6 | valve 6 | 4 |
-| pressure gauge | instrument | 5 | 0.43 | 0 | 1 | vlm+geometry 5 | instrument 5 | 4 |
 | manual valve | valve | 5 | 0.72 | 4 | 2 | vlm+geometry 5 | valve 5 | 3 |
+| pressure gauge | instrument | 5 | 0.43 | 0 | 1 | vlm+geometry 5 | instrument 5 | 4 |
 | pressure transmitter | instrument | 4 | 0.55 | 0 | 1 | vlm+geometry 4 | instrument 4 | 3 |
 | heat exchanger | vessel | 3 | 0.64 | 1 | 0 | vlm+geometry 3 | other 2, vessel 1 | 3 |
-| circulation pump | rotating | 2 | 0.69 | 1 | 0 | vlm+geometry 2 | rotating 2 | 1 |
 | wall-mounted board | structure-like | 2 | 0.46 | 0 | 0 | vlm+geometry 2 | structure 2 | 1 |
-| cable tray | electrical | 1 | 0.86 | 1 | 0 | vlm+geometry 1 | electrical 1 | 1 |
-| centrifugal pump | rotating | 1 | 0.69 | 0 | 0 | vlm+geometry 1 | rotating 1 | 0 |
+| circulation pump | rotating | 2 | 0.69 | 1 | 0 | vlm+geometry 2 | rotating 2 | 1 |
 | expansion vessel | vessel | 1 | 0.88 | 1 | 0 | vlm+geometry 1 | vessel 1 | 0 |
 | trolley / cart | logistics | 1 | 0.90 | 1 | 0 | human-verified 1 | logistics 1 | 0 |
+| centrifugal pump | rotating | 1 | 0.69 | 0 | 0 | vlm+geometry 1 | rotating 1 | 0 |
+| cable tray | electrical | 1 | 0.86 | 1 | 0 | vlm+geometry 1 | electrical 1 | 1 |
 
 | Family | Count | Confident | Mean conf. |
 |---|---:|---:|---:|
@@ -100,6 +100,8 @@ Fitted planes: floor × 1, ceiling × 1, wall × 4. 4 wall frames are shown in t
 
 ## Data-quality audit of candidates
 
+Visual check of the largest 'possible over-merge' frames: OBJ-005 (chair + upright device + clutter, labelled pump-motor unit and linked to a workbook pump), OBJ-007 (shelf with mixed items), OBJ-009 (metal rack with items, labelled pump-motor unit) and OBJ-020 (two overhead pipe runs in one frame) look merged; OBJ-010 (white cabinet) looks like one object.
+
 385 of 676 candidates trigger at least one rule below; 291 trigger none. Rules overlap (one object can be tiny, flat and low-support at once). Flags are review hints, not verdicts.
 
 | Flag | Count | Rule |
@@ -128,7 +130,112 @@ Fitted planes: floor × 1, ceiling × 1, wall × 4. 4 wall frames are shown in t
 
 Design: stratified by label, proportional allocation, >= 1 per label, seed 20261107; population: 416 objects with a specific VLM label (label_source 'vlm+geometry'). A second model (Claude) looked at the same crop renders the labeller saw (context + close-up with the magenta 3D frame) and recorded agree / disagree / can't tell with a one-line reason (`docs/label_audit_ai.csv`). It shares the labeller's handicap (sparse splat renders), so this measures *plausibility to a second model*, not correctness.
 
-_Audit incomplete: 60 of 60 sampled objects have no AI verdict yet._
+| Outcome | Count |
+|---|---:|
+| agree | 11 |
+| disagree | 17 |
+| can't tell | 32 |
+| **n** | 60 |
+
+- Agreement over all sampled (can't-tell counted as not agreeing): **11/60 = 18.3%**, 95% Wilson interval **10.6%–29.9%**.
+- Agreement among decidable crops: 11/28 = 39.3%, 95% Wilson 23.6%–57.6%.
+- Stratum-weighted point estimate (weights = label share of the pool): 19.1% (the Wilson interval above is for the unweighted sample).
+
+| Confidence band | n | agree | disagree | can't tell | Wilson 95% (agree/all) |
+|---|---:|---:|---:|---:|---|
+| 0.00-0.50 | 10 | 0 | 3 | 7 | 0.0%–27.8% |
+| 0.50-0.70 | 21 | 1 | 9 | 11 | 0.8%–22.7% |
+| 0.70-1.00 | 29 | 10 | 5 | 14 | 19.9%–52.7% |
+
+| Family | agree | disagree | can't tell |
+|---|---:|---:|---:|
+| electrical | 2 | 0 | 6 |
+| instrument | 0 | 4 | 3 |
+| piping | 9 | 0 | 6 |
+| piping (tag) | 0 | 5 | 7 |
+| rotating | 0 | 5 | 2 |
+| structure-like | 0 | 0 | 1 |
+| valve | 0 | 2 | 6 |
+| vessel | 0 | 1 | 1 |
+
+'other equipment' check (10 random, agree = nothing more specific is clearly visible in the crop): agree 10, disagree 0, can't tell 0.
+
+<details><summary>All sampled verdicts</summary>
+
+| id | label | conf. | AI verdict | reason |
+|---|---|---:|---|---|
+| OBJ-006 | heat exchanger | 0.74 | cant_tell | Frame spans cluttered red/white items behind a green chair; no vessel or exchanger shape visible |
+| OBJ-014 | insulated pipe (vertical) | 0.95 | agree | Frames part of a vertical insulated column/pipe |
+| OBJ-019 | expansion vessel | 0.88 | disagree | Frame encloses a step ladder / step stool; no vessel visible |
+| OBJ-032 | electrical cabinet | 0.78 | cant_tell | Whitish flat item with orange pattern behind a hose; could be a poster or board |
+| OBJ-033 | pump-motor unit | 0.74 | disagree | Clearly a small table or bench with wooden legs |
+| OBJ-051 | control valve | 0.55 | cant_tell | Yellow disc could be a handwheel but the frame spans about 1 m of pipe and wall |
+| OBJ-053 | circulation pump | 0.59 | disagree | Looks like a curved insulated pipe section near the floor; no pump body visible |
+| OBJ-057 | electrical cabinet | 0.97 | cant_tell | Flat 5 cm white rectangle on a door or wall; cabinet door or notice |
+| OBJ-068 | insulated pipe (vertical) | 0.92 | agree | White vertical insulated pipe segment |
+| OBJ-070 | pipe elbow / fitting | 0.39 | cant_tell | Section of an overhead pipe run; joint not distinguishable |
+| OBJ-084 | electrical cabinet | 0.68 | agree | White wall-mounted box about 25x40x12 cm consistent with a small enclosure |
+| OBJ-088 | pipe label / tag | 0.71 | disagree | 1.5 m thin vertical element: a rod or thin pipe not a tag |
+| OBJ-098 | pipe label / tag | 0.92 | disagree | 1.2 m horizontal element under the ceiling: pipe or beam segment not a tag |
+| OBJ-117 | insulated pipe (horizontal) | 0.90 | agree | Thin horizontal pipe under the ceiling |
+| OBJ-118 | flow meter | 0.68 | cant_tell | Small teal/blue item on a pipe; type not identifiable at this resolution |
+| OBJ-123 | pipe label / tag | 0.82 | disagree | 1.1 m thin vertical element: conduit or thin pipe not a tag |
+| OBJ-124 | centrifugal pump | 0.69 | cant_tell | Small (19 cm) red item on a pipe; could be an inline circulator or a handwheel |
+| OBJ-125 | pipe label / tag | 0.56 | disagree | 1.2 m vertical strip along a red column: pipe/column section not a tag |
+| OBJ-131 | pipe label / tag | 0.78 | cant_tell | Underside of a large overhead pipe; no tag distinguishable |
+| OBJ-143 | pump-motor unit | 0.78 | cant_tell | Same red item region as OBJ-124; too small to judge pump vs fitting |
+| OBJ-162 | control panel | 0.86 | cant_tell | 16 cm box with a dark face; small electrical box but control panel vs junction box unclear |
+| OBJ-163 | insulated pipe (horizontal) | 0.81 | agree | Horizontal insulated pipe section |
+| OBJ-165 | electric motor | 0.55 | disagree | Frame sits on a white insulated pipe surface; no motor visible |
+| OBJ-184 | insulated pipe (horizontal) | 0.91 | agree | Horizontal pipe at low height |
+| OBJ-187 | valve actuator | 0.82 | cant_tell | Orange item on a vertical pipe; actuator plausible but not identifiable |
+| OBJ-201 | pump-motor unit | 0.55 | disagree | 30x12x7 cm flat fragment; no pump or motor visible and too small for a pump set |
+| OBJ-207 | insulated pipe (horizontal) | 0.90 | agree | Thin horizontal pipe under the ceiling |
+| OBJ-221 | insulated pipe (vertical) | 0.92 | agree | Short piece of a white vertical pipe (fragment) |
+| OBJ-238 | electric motor | 0.39 | disagree | Thin dark vertical object next to a ladder; not a motor |
+| OBJ-240 | flow meter | 0.34 | cant_tell | White wall/box region; no device distinguishable |
+| OBJ-244 | cable tray | 0.86 | cant_tell | Flat tray-shaped item at low height; could be a shelf or board |
+| OBJ-246 | valve actuator | 0.82 | cant_tell | Dark item above an orange device on a vertical pipe; plausible but not identifiable |
+| OBJ-271 | temperature sensor | 0.27 | disagree | Frame contains plain insulated pipe surface |
+| OBJ-282 | pipe elbow / fitting | 0.44 | cant_tell | Small region near the floor by a hose; too sparse |
+| OBJ-284 | pipe elbow / fitting | 0.42 | cant_tell | Straight section of an overhead pipe; coupling not distinguishable |
+| OBJ-303 | temperature sensor | 0.54 | disagree | Frame is on a step-ladder leg |
+| OBJ-313 | control valve | 0.52 | cant_tell | Small yellow item on a wall or door; sticker or handwheel |
+| OBJ-340 | pressure transmitter | 0.63 | disagree | Thin vertical stick or handle next to a bale; not an instrument |
+| OBJ-342 | pipe label / tag | 0.88 | cant_tell | Thin 36 cm horizontal bar near the floor; bar or small pipe; no tag visible |
+| OBJ-344 | junction box | 0.82 | agree | Small box on the wall near the ceiling consistent with a junction box |
+| OBJ-354 | pipe label / tag | 0.64 | cant_tell | Very sparse white strip (52 splats) |
+| OBJ-357 | pipe label / tag | 0.62 | cant_tell | Small object on the underside of an overhead pipe; tag plausible but not visible |
+| OBJ-371 | control valve | 0.57 | disagree | Region by a hose and a chair leg near the floor; no valve |
+| OBJ-380 | control valve | 0.42 | disagree | Region on a chair / hose near the floor; no valve |
+| OBJ-385 | insulated pipe (horizontal) | 0.91 | agree | Thin horizontal pipe under the overhead run |
+| OBJ-401 | pipe label / tag | 0.78 | cant_tell | Top of a white beam or pipe at the ceiling; no tag visible |
+| OBJ-431 | control panel | 0.45 | cant_tell | 9 cm item on a white wall; maybe a switch; not a panel-sized object |
+| OBJ-461 | pipe label / tag | 0.67 | disagree | Frame is on the surface of the red vessel beside a yellow strap |
+| OBJ-462 | pipe elbow / fitting | 0.76 | cant_tell | Small region below the large overhead pipe; nothing distinct |
+| OBJ-477 | wall-mounted board | 0.58 | cant_tell | Small item near the ceiling with a yellow spot |
+| OBJ-483 | pipe label / tag | 0.76 | cant_tell | Red horizontal strip near the floor; part of a red object |
+| OBJ-486 | pipe elbow / fitting | 0.53 | cant_tell | Dark region at the foot of a purple pipe; too sparse |
+| OBJ-548 | pipe label / tag | 0.62 | cant_tell | On top of an overhead pipe or beam; too sparse (25 splats) |
+| OBJ-581 | insulated pipe (horizontal) | 0.93 | agree | Fragment of a horizontal overhead pipe |
+| OBJ-596 | temperature sensor | 0.54 | disagree | Frames a thin hanging cable or hose |
+| OBJ-601 | pipe elbow / fitting | 0.62 | cant_tell | Dark region below the ceiling; too sparse (24 splats) |
+| OBJ-614 | manual valve | 0.88 | cant_tell | Small item on a vertical pipe; valve plausible but not identifiable |
+| OBJ-622 | junction box | 0.66 | cant_tell | Sparse dark region between white pipes (37 splats) |
+| OBJ-635 | pressure gauge | 0.34 | cant_tell | Small region on a white vertical pipe; gauge face not visible |
+| OBJ-658 | control valve | 0.46 | cant_tell | Very sparse (19 splats) region by a cable |
+| OBJ-042 | other equipment | 0.22 | agree | Cluttered region with yellow items; nothing specific identifiable |
+| OBJ-060 | other equipment | 0.34 | agree | Region between white pipes near the floor; nothing specific |
+| OBJ-348 | other equipment | 0.31 | agree | Region below orange devices with a dark hose; nothing specific |
+| OBJ-395 | other equipment | 0.32 | agree | Very sparse region (43 splats) |
+| OBJ-405 | other equipment | 0.18 | agree | Small region on a vertical pipe above a green band; nothing specific |
+| OBJ-434 | other equipment | 0.24 | agree | Bar of a white stand or table |
+| OBJ-489 | other equipment | 0.24 | agree | Thin upright on a white stand; nothing specific |
+| OBJ-503 | other equipment | 0.18 | agree | Small region among white hoses; nothing specific |
+| OBJ-518 | other equipment | 0.21 | agree | Small item at the top of a white vertical pipe |
+| OBJ-633 | other equipment | 0.32 | agree | Very sparse region under the large overhead pipe (28 splats) |
+
+</details>
 
 ### Real precision check at the event (human)
 
@@ -138,6 +245,18 @@ _Audit incomplete: 60 of 60 sampled objects have no AI verdict yet._
 
 These are for the team lead to accept or reject via `config/scene_annotations.json` review entries (then `python scripts/step2_semantics.py`). Nothing was changed in the data.
 
+- **OBJ-005 (linked to workbook pump P-002 / ASSET-014)** 'pump-motor unit' 0.78: the 1.6 x 1.1 x 1.3 m frame contains an office chair, an upright black device and clutter. Check in person before demoing this asset binding; likely over-merged.
+- **OBJ-009** 'pump-motor unit' 0.74 -> 'shelving' (crop shows a metal rack with items on it).
+- **OBJ-033** 'pump-motor unit' 0.74 -> 'other equipment' (a small table / bench).
+- **OBJ-019** 'expansion vessel' 0.88 -> 'ladder' (crop shows a step ladder). Caution: it is the only object labelled 'expansion vessel' and tests/test_core.py::test_scene_search_finds_objects_by_meaning expects a search for 'expansion vessel' to return a label containing 'vessel'; update that test in the same change.
+- **OBJ-034, OBJ-088, OBJ-098, OBJ-123, OBJ-125** 'pipe label / tag' -> 'insulated pipe (horizontal/vertical)' (1.1-1.9 m long thin runs; seen in the crops). The other 22 tags >= 0.6 m long (label_size_mismatch flag) should be reviewed the same way.
+- **OBJ-165, OBJ-238** 'electric motor' -> 'other equipment' (pipe surface; thin object next to a ladder).
+- **OBJ-201** 'pump-motor unit' -> 'other equipment' (30 x 12 x 7 cm flat fragment).
+- **OBJ-303, OBJ-340, OBJ-596, OBJ-271** instrument labels -> 'other equipment' (ladder leg, stick/handle, hanging cable, bare pipe surface).
+- **OBJ-371, OBJ-380** 'control valve' -> 'other equipment' (chair / hose region near the floor).
+- **OBJ-053** 'circulation pump' -> 'pipe elbow / fitting' (curved insulated pipe).
+- **OBJ-124 + OBJ-143** two labels (centrifugal pump / pump-motor unit) on the same small red item 0.28 m apart; OBJ-143 is linked to a workbook pump. Likely one physical object (or a fitting): keep at most one.
+- **Category field** normalise the VLM 'category' per label (e.g. 4 'pipe label / tag' have category 'other', 'electric motor' appears as rotating and electrical, 'heat exchanger' as other and vessel). Display-only, but it affects category filters and search.
 
 ## How to talk about it
 
