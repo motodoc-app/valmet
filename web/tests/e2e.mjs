@@ -152,7 +152,7 @@ async function copilot() {
     await p.evaluate(() => { const s = document.querySelector("#sheet"); s.classList.add("hidden"); });
     await p.evaluate((q) => window.__ask(q), q);
     await sleep(400);
-    const a = await p.evaluate(() => ({ text: document.querySelector("#pop").innerText, selected: window.__plan.selected?.asset?.tag, route: !!window.__plan.route,
+    const a = await p.evaluate(() => ({ text: (document.querySelector("#pop .cp-last .cp-a") || document.querySelector("#pop")).innerText, selected: window.__plan.selected?.asset?.tag, route: !!window.__plan.route,
       nav: window.__plan.navObject?.asset?.tag, card: document.querySelector("#right").textContent, sheet: !document.querySelector("#sheet").classList.contains("hidden") }));
     ok(`Copilot: “${q}”`, check(a) && !/went wrong/.test(a.text), a.text.replace(/\s+/g, " ").slice(0, 110));
   }

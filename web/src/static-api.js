@@ -1,5 +1,6 @@
 // Serverless backend for the hosted demo. Mirrors backend/xray/api.py using data exported by
 // scripts/export_static.py. Routes are planned live with a JS port of backend/xray/navigation.py.
+import { indexFaq, matchFaq, compose, detectIntent, TAG_RE } from "./faq-match.js";
 const base = "./static/";
 const get = async (p) => (await fetch(base + p)).json();
 let cache = {};
@@ -170,6 +171,13 @@ const ctx = () => once("ctx", async () => {
   return { scene, nav: new Nav(grid), goals, assets, corpus, search: bm25(corpus), answers, manifest };
 });
 
+// pre-generated copilot answers (scripts/export_faq.py); optional: without it free questions use document search
+const faqIdx = () => once("faq", async () => {
+  try { const r = await fetch(base + "faq.json"); if (!r.ok) return null; return indexFaq(await r.json()); } catch { return null; }
+});
+const QUESTION = /^(what|what's|why|how|is|are|should|can|could|does|do|did|has|have|which|when|who|tell|list|give|any)\b|\?\s*$/;
+const FEATURE_WORDS = /robot|route|path|\bplan\b|support|\bapp\b|copilot|label|scan|\bdata\b|pilot|\bmode\b|\bai\b/;   // questions about the prototype, not the selected asset
+const COMMAND_WORDS = /send|go to|navigate|dispatch|\broute\b|drive|walk|\bwhere\b|locate|\bfind\b|show me|x-?ray|explode|inside|internal|practi[cs]e|exercise|rehears|learn|tutorial|teach|manual|document|\bdocs?\b|knowledge|procedure|explain|what does|what is this|how does/;
 const SIGNAL_WORDS = { vibration: "vibration_mm_s", temperature: "bearing_temp_c", temp: "bearing_temp_c", current: "motor_current_a", pressure: "process_pressure_bar", flow: "process_flow_pct", stiction: "stiction_index", position: "position_actual_pct", overheat: "bearing_temp_c" };
 const ANOMALY = /abnormal|high|unusual|anomal|elevated|highest|find|overheat|hot\b|worst|most/, XRAY_WORDS = /x-?ray|explode|inside|internal|component|parts/;
 const COND_RANK = { attention_required: 0, degraded: 1, watch: 2, healthy: 3 };
@@ -223,7 +231,34 @@ export const staticApi = {
     const scope = c.assets.find((a) => a.asset_id === asset_id)?.asset_class;
     const hits = c.search(question + (component ? " " + component : ""), 6, scope);
     if (component) { const kb = c.corpus.find((d) => d.id === `KB-XRAY-${scope}#${component}`); if (kb && !hits.some((h) => h.id === kb.id)) hits.unshift(kb); }
-    return { text: hits.slice(0, 3).map((h) => `${h.text} [${h.id}]`).join(" ") || "No supporting document found in the builder pack.", sources: hits, mode: "retrieval (offline demo)" };
+    return { text: compose(hits) || "No supporting document found in the builder pack.", sources: hits, mode: "docsearch" };
+  },
+  /** Free question in the hosted demo: the closest pre-generated answer (same asset, same intent or a similar
+   *  question), otherwise a short answer composed from document search. Never a live LLM. */
+  async answer(question, asset_id, history = []) {
+    const c = await ctx(), idx = await faqIdx();
+    const tagM = question.match(TAG_RE), named = tagM && c.assets.find((a) => a.tag.toLowerCase() === tagM[1].toLowerCase());
+    const ctxAsset = named || c.assets.find((a) => a.asset_id === asset_id) || null;
+    const m = matchFaq(idx, question, { tag: named?.tag || null, contextTag: ctxAsset?.tag || null });
+    if (m) return { text: m.entry.text, sources: m.entry.sources, mode: "faq", matched_q: m.entry.q, faq_id: m.entry.id,
+      score: +m.score.toFixed(2), asset_id: m.entry.asset_id || ctxAsset?.asset_id || null };
+    const prev = history?.length && question.split(/\s+/).length <= 7 ? ` ${history.at(-1).q}` : "";
+    const hits = c.search(question + prev, 5, ctxAsset?.asset_class);
+    // weak matches (one rare word of four) are not answers: require most of the question's words in the top source
+    const QSTOP = new Set(["what", "how", "does", "the", "this", "that", "with", "for", "are", "can", "should", "which", "when", "where", "why", "who", "about", "there", "any", "you", "tell"]);
+    const qw = tok(question).filter((w) => !QSTOP.has(w)), top = hits[0] ? tok(`${hits[0].title} ${hits[0].text}`) : [];
+    const covered = qw.filter((w) => top.some((x) => x === w || x.startsWith(w.slice(0, 5)))).length;
+    if (hits.length && qw.length && covered < 2 && covered / qw.length < 0.5) hits.length = 0;
+    if (!hits.length) return { text: `Nothing in the builder pack or the product documentation matches “${question}”. Try naming an asset (“What should I check first on P-005?”), a symptom (“Which motor is overheating?”) or a feature (“How does the robot plan routes?”).`, sources: [], mode: "docsearch", asset_id: ctxAsset?.asset_id ?? null };
+    let lead = "";
+    if (ctxAsset && (named || detectIntent(question) || /\b(it|this|that)\b/i.test(question))) {
+      const d = await staticApi.diagnose(ctxAsset.asset_id), a = d.asset, nxt = d.next_steps[1];
+      lead = `${a.tag}: ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score}, ${String(a.issue_summary).replace(/\.$/, "")} [${a.asset_id}]. ` +
+        `Leading hypothesis: ${d.hypotheses[0].hypothesis}. Recommended next check: ${nxt.step} [${nxt.source}]`;
+    }
+    const rest = compose(hits.filter((h) => !lead || h.id !== `DOC-ASSET-${ctxAsset.asset_id.slice(-3)}`), lead ? 2 : 3);
+    return { text: [lead, rest].filter(Boolean).join("\n") || "No supporting document found in the builder pack or the product documentation.",
+      sources: hits, mode: "docsearch", asset_id: ctxAsset?.asset_id ?? null };
   },
   search: async (q) => (await ctx()).search(q || "pump fouling flow current", 8),
   doc: async (id) => { const d = (await ctx()).corpus.find((x) => x.id === id); if (!d) throw new Error("not found"); return d; },
@@ -236,8 +271,11 @@ export const staticApi = {
       knowledge_doc_id: d.documents.find((x) => x.kind === "knowledge_doc")?.id, safety_prerequisites: ["Work permit", "Isolation and lockout/tagout per site procedure", "OEM or site-approved procedure", "Qualified personnel"],
       confidence: d.confidence.overall, control_actions: "none (draft only)" };
   },
-  async command(text, selected) {
+  async command(text, selected, history = []) {
     const c = await ctx(), t = text.toLowerCase(), A = Object.fromEntries(c.assets.map((a) => [a.asset_id, a]));
+    history = (history || []).slice(-3);
+    // follow-ups ("and what should I check first?") keep the asset of the previous turn when nothing is selected
+    const histAsset = [...history].reverse().map((h) => h.asset_id).find((id) => A[id]) || null;
     const cls = Object.entries(CLASS_WORDS).find(([w]) => t.includes(w))?.[1];
     const sig = Object.entries(SIGNAL_WORDS).find(([w]) => t.includes(w))?.[1];
     let asset_id = selected, reason = "";
@@ -247,10 +285,26 @@ export const staticApi = {
       asset_id = named;
       // "what's wrong with P-005?" / "why is P-005 flagged?": show its diagnosis
       if (STATUS_WORDS.test(t) && !/send|go to|navigate|dispatch/.test(t) && !XRAY_WORDS.test(t)) {
-        const a = A[named];
+        const a = A[named], ans = await staticApi.answer(text, named, history);
+        const canned = `${a.tag}: ${a.issue_summary}. Condition ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score}, criticality ${a.criticality} [${a.asset_id}]. Opening its diagnosis with the evidence.`;
+        const pre = ans.mode === "faq";
         return { intent: "command", asset_id: named, actions: [{ type: "select", asset_id: named, object_id: a.object_id }, { type: "diagnose", asset_id: named }],
-          text: `${a.tag}: ${a.issue_summary}. Condition ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score}, criticality ${a.criticality} [${a.asset_id}]. Opening its diagnosis with the evidence.` };
+          text: pre ? ans.text : canned, sources: pre ? ans.sources : [], mode: pre ? "faq" : "rules", matched_q: ans.matched_q };
       }
+    }
+    // "which parts of P-005 are suspect?" / "show the suspect parts": the diagnosis' leading hypothesis on the X-Ray model
+    const focusId = asset_id || histAsset;
+    if (focusId && /\b(parts?|components?)\b/.test(t) && /suspect|faulty|broken|likely|which|affected|implicated/.test(t)) {
+      const d = await staticApi.diagnose(focusId), a = d.asset, h0 = d.hypotheses[0], lib = (await staticApi.xrayModel()).classes[a.asset_class] || { components: [] };
+      const names = Object.fromEntries(lib.components.map((x) => [x.id, x.name.toLowerCase()])), comps = (h0.components || []).filter((x) => names[x]);
+      const alts = d.hypotheses.slice(1, 3).map((x) => x.hypothesis).join("; ");
+      const txt = comps.length
+        ? `${a.tag}'s leading hypothesis is “${h0.hypothesis}” [${a.asset_id}], which points at the ${comps.map((x) => names[x]).join(" and ")} of the ${String(lib.label || "").toLowerCase()} teaching model ${comps.map((x) => `[KB-XRAY-${a.asset_class}#${x}]`).join("")}.` +
+          (alts ? ` Alternatives are not excluded: ${alts}.` : "") + " Opening the X-Ray view with those parts highlighted (illustrative model, not from the scan)."
+        : `${a.tag} is ${a.condition_state.replaceAll("_", " ")} with no fault hypothesis linked to a component [${a.asset_id}]. Opening the X-Ray view of its equipment type.`;
+      const acts = focusId !== selected ? [{ type: "select", asset_id: focusId, object_id: A[focusId].object_id }] : [];
+      acts.push({ type: "xray", asset_id: focusId, ...(comps.length ? { focus: comps } : {}) });
+      return { intent: "command", asset_id: focusId, actions: acts, text: txt, mode: "rules" };
     }
     const actions = [];
     // a question about a named component ("what does the impeller do?"): answer it for that device type and show the part
@@ -268,6 +322,11 @@ export const staticApi = {
       const ans = await staticApi.query(text, asset_id, comp.id);
       return { intent: "component", text: ans.text, sources: ans.sources, actions: asset_id ? [{ type: "xray", asset_id, focus: [comp.id] }] : [], asset_id, component: comp.id, mode: ans.mode };
     }
+    // a question that names a tag but is not a command ("is P-005 safe to keep running?"): answer it about that asset
+    if (named && QUESTION.test(t) && !COMMAND_WORDS.test(t)) {
+      const ans = await staticApi.answer(text, named, history);
+      return { intent: "question", ...ans, actions: named === selected ? [] : [{ type: "select", asset_id: named, object_id: A[named].object_id }], asset_id: named };
+    }
     const sigQ = !!(sig && ANOMALY.test(t));       // "where is the vibration sensor?" names a device, not a symptom
     if (sigQ) {
       let best = null;
@@ -282,7 +341,7 @@ export const staticApi = {
       if (same.length) asset_id = same[0].asset_id;
     }
     let m = t.match(/(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$/);
-    if (m && (/manual|document|\bdocs?\b|knowledge|procedure|guide/.test(m[1]) || XRAY_WORDS.test(t))) m = null;   // library / X-Ray requests are not scene searches
+    if (m && (/manual|document|\bdocs?\b|knowledge|procedure|guide/.test(m[1]) || XRAY_WORDS.test(t) || /^(how (does|is|are|was|were|did)|why)\b/.test(t))) m = null;   // library / X-Ray requests are not scene searches
     // "where are the control valves?" names what to look for: the current selection must not answer it
     if (m && !reason && !sigQ && !/\b(it|this|that|here|selected)\b/.test(m[1])) asset_id = null;
     if (!asset_id && m && !sigQ) {
@@ -308,9 +367,9 @@ export const staticApi = {
       if (!reason) reason = `${a.tag} is ${/^[aeio]/i.test(a.asset_class) ? "an" : "a"} ${a.asset_class.replaceAll("_", " ").toLowerCase()} in ${a.area_name}, ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score} [${a.asset_id}].`;
       if (a.object_id) { const o = c.scene.objects.find((x) => x.id === a.object_id); reason += ` Mapped to scene object ${a.object_id} (${o.label}, ${o.label_source}), mapping confidence ${a.mapping_confidence}.`; }
     }
-    if (/send|go to|navigate|inspect|dispatch|walk|drive|route/.test(t) && asset_id && !/practi[cs]e|learn|train|rehears|how do i|how to/.test(t)) { actions.push({ type: "navigate", asset_id }); reason += " Dispatching the inspection robot on a collision-free route."; }
+    if (/send|go to|navigate|inspect|dispatch|walk|drive|route/.test(t) && asset_id && !/practi[cs]e|learn|train|rehears|how do i|how to|how (does|is|are|was|were)|what (is|are|does)|why/.test(t)) { actions.push({ type: "navigate", asset_id }); reason += " Dispatching the inspection robot on a collision-free route."; }
     if (/x-?ray|explode|inside|internal|component|parts/.test(t)) actions.push({ type: "xray", asset_id });
-    if (/explain|what does|what is this|how does/.test(t) && asset_id) {
+    if (/explain|what does|what is this|how does/.test(t) && asset_id && (named || cls || /\b(this|it|that|selected)\b/.test(t) || !FEATURE_WORDS.test(t))) {
       const a = A[asset_id], lib = (await staticApi.xrayModel()).classes[a.asset_class];
       if (lib) reason = `${a.tag} is ${/^[aeiou]/i.test(lib.label) ? "an" : "a"} ${lib.label.toLowerCase()}. ${lib.function} Its main components: ${lib.components.slice(0, 8).map((x) => x.name.toLowerCase()).join(", ")}. Current condition: ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score} [${a.asset_id}]. ` + reason;
     }
@@ -319,7 +378,8 @@ export const staticApi = {
     if (/manual|document|doc|knowledge|procedure/.test(t)) actions.push({ type: "knowledge" });
     if (!reason && !actions.length) {
       const tag = t.match(/\b([a-z]{1,3}-\d{3})\b/), named = tag && c.assets.find((x) => x.tag.toLowerCase() === tag[1])?.asset_id;
-      const a = await staticApi.query(text, named || selected); return { intent: "question", text: a.text, actions: [], mode: a.mode }; }
+      const scope = named || selected || histAsset, a = await staticApi.answer(text, scope, history);
+      return { intent: "question", ...a, actions: [], asset_id: a.asset_id ?? scope ?? null }; }
     if (!reason) reason = actions.map((a) => ({ xray: "Opening the X-Ray view.", practice: "Opening Practice: a fictional case, with a safety check first.", learn: "Opening the guided lessons.", knowledge: "Opening the library." }[a.type] || "")).join(" ");
     return { intent: "command", text: reason.trim(), actions, asset_id };
   },
