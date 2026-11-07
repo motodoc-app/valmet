@@ -34,6 +34,7 @@ console.log("testing", BASE);
 async function page(browser, opts = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...opts });
   const p = await ctx.newPage();
+  p.setDefaultNavigationTimeout(120000); p.setDefaultTimeout(60000);   // generous: CI boxes and shared CPUs are slow
   p.errors = [];
   p.on("pageerror", (e) => p.errors.push(e.message));
   p.on("console", (m) => { if (m.type() === "error" && !/favicon|Failed to load resource/.test(m.text())) p.errors.push(m.text()); });
@@ -52,7 +53,7 @@ async function threeD() {
     await p.evaluate(() => window.__app.fac.scanSource));
   await p.screenshot({ path: `${SHOTS}/3d-home.png` });
   // Interactions run without the 1.2 M-splat scan: a software GPU renders it at < 1 fps, which would only test patience.
-  await p.goto(BASE + "?scan=off");
+  await p.goto(BASE + "?scan=off", { waitUntil: "domcontentloaded" });
   await waitFor(p, () => window.__app?.fac && !document.querySelector("#loading"));
   await p.evaluate(() => document.querySelector(".toast")?.remove());
   // Learn / Practice straight from a cold start (before X-Ray was ever opened)
@@ -269,7 +270,7 @@ async function topbar() {
   const browser = await chromium.launch({ args: GL });
   for (const [name, opts] of [["iPad Mini", devices["iPad Mini"]], ["1280x720", { viewport: { width: 1280, height: 720 } }], ["900x700", { viewport: { width: 900, height: 700 } }]]) {
     const p = await page(browser, opts);
-    await p.goto(BASE + "?scan=off");
+    await p.goto(BASE + "?scan=off", { waitUntil: "domcontentloaded" });
     await waitFor(p, () => window.__app?.fac && !document.querySelector("#loading"));
     const blocked = await p.evaluate(() => [...document.querySelectorAll(".modes button, #tourBtn, #libBtn, #ask")].filter((b) => {
       const r = b.getBoundingClientRect(); if (!r.width) return true;
@@ -287,7 +288,7 @@ async function topbar() {
 async function tour() {
   const browser = await chromium.launch({ args: GL });
   const p = await page(browser);
-  await p.goto(BASE + "?scan=off");
+  await p.goto(BASE + "?scan=off", { waitUntil: "domcontentloaded" });
   await waitFor(p, () => window.__app?.fac && !document.querySelector("#loading"));
   await p.click("#tourBtn");
   const n = +(await p.textContent(".tour .h span")).match(/of (\d+)/)[1];

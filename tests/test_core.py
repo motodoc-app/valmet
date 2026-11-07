@@ -37,7 +37,7 @@ def test_objects_are_framed_and_labelled(world):
     for o in objs:
         assert len(o["center"]) == 3 and all(s > 0 for s in o["size"])
         assert 0 <= o["confidence"] <= 1
-        assert o["label_source"] in {"geometry-heuristic", "vlm+geometry", "human-verified"}
+        assert o["label_source"] in {"geometry-heuristic", "vlm+geometry", "review-corrected"}
 
 
 def test_mapping_is_one_to_one_and_target_reachable(world):
@@ -142,12 +142,12 @@ def test_scene_quality_tiers_are_consistent_with_scene_json():
     # subset relations
     assert tiers["categorised"] <= tiers["candidates"]
     assert tiers["confident"] <= tiers["categorised"]
-    assert tiers["human_verified"] <= tiers["candidates"]
+    assert tiers["review_corrected"] <= tiers["candidates"]
     assert tiers["linked"] <= tiers["candidates"]
     # counts agree with scene.json's own fields
     assert len(tiers["candidates"]) == scene["stats"]["n_objects"] == len(objs)
     assert len(tiers["linked"]) == scene["n_bound_assets"] == sum("asset" in o for o in objs.values())
-    assert len(tiers["human_verified"]) == sum(o["label_source"] == "human-verified" for o in objs.values())
+    assert len(tiers["review_corrected"]) == sum(o["label_source"] == "review-corrected" for o in objs.values())
     assert all(objs[i]["label"] != "other equipment" and objs[i]["confidence"] >= shipped["threshold"]
                for i in tiers["confident"])
     # flags and the audit sample only reference real candidates; the sample is unique and complete

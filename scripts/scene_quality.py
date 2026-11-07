@@ -119,9 +119,9 @@ def compute_tiers(scene: dict) -> dict:
     t1 = [o["id"] for o in objs]
     t2 = [o["id"] for o in objs if specific(o)]
     t3 = [o["id"] for o in objs if specific(o) and o["confidence"] >= CONF_T]
-    t4 = [o["id"] for o in objs if o["label_source"] == "human-verified"]
+    t4 = [o["id"] for o in objs if o["label_source"] == "review-corrected"]
     t5 = [o["id"] for o in objs if o.get("asset")]
-    return {"candidates": t1, "categorised": t2, "confident": t3, "human_verified": t4, "linked": t5}
+    return {"candidates": t1, "categorised": t2, "confident": t3, "review_corrected": t4, "linked": t5}
 
 
 def fragment_groups(objs: list[dict]) -> list[list[str]]:
@@ -192,6 +192,22 @@ def draw_sample(objs: list[dict]) -> tuple[list[dict], list[dict], dict]:
     """Stratified (by label) random sample of VLM-labelled specific objects, proportional allocation with at
     least one per label (largest remainder), fixed seed. Plus a small simple random sample of 'other equipment'."""
     rng = random.Random(SEED)
+    if AI_AUDIT_CSV.exists():
+        # Frozen sample: once audited, the sample must not change when later review corrections shrink the pool.
+        # Objects are reported with the label they had when audited (the VLM label being evaluated).
+        rows = list(csv.DictReader(AI_AUDIT_CSV.open()))
+        byid = {o["id"]: o for o in objs}
+        if rows and all(r["id"] in byid for r in rows):
+            mk = lambda r: {**byid[r["id"]], "label": r["label"]}
+            sample = [mk(r) for r in rows if r["label"] != "other equipment"]
+            other = [mk(r) for r in rows if r["label"] == "other equipment"]
+            audited_vlm = {**{o["id"]: o["label"] for o in objs if specific(o) and o["label_source"] == "vlm+geometry"},
+                           # objects corrected because of this audit still belong to the audited population
+                           **{o["id"]: o.get("auto_label") or o["label"] for o in objs if o["label_source"] == "review-corrected"
+                              and "scene-quality audit" in (o.get("review_note") or "")}}
+            sizes = Counter(audited_vlm.values())
+            return sorted(sample, key=lambda o: o["id"]), sorted(other, key=lambda o: o["id"]), {
+                "pool": len(audited_vlm), "strata": dict(sizes), "alloc": dict(Counter(o["label"] for o in sample)), "frozen": True}
     pool = [o for o in objs if specific(o) and o["label_source"] == "vlm+geometry"]
     strata = defaultdict(list)
     for o in pool:
@@ -283,7 +299,7 @@ def build() -> dict:
     hist = []
     for k in range(10):
         lo, hi = k / 10, (k + 1) / 10
-        sel = [o for o in objs if o["label_source"] != "human-verified" and lo <= o["confidence"] < (hi if k < 9 else 1.01)]
+        sel = [o for o in objs if o["label_source"] != "review-corrected" and lo <= o["confidence"] < (hi if k < 9 else 1.01)]
         hist.append({"lo": round(lo, 1), "hi": round(hi, 1), "specific": sum(specific(o) for o in sel),
                      "other": sum(not specific(o) for o in sel)})
 
@@ -388,19 +404,19 @@ def build() -> dict:
             {"id": "categorised", "n": t["categorised"], "name": "Given a specific type",
              "rule": "label is a specific taxonomy class, i.e. not 'other equipment' / unknown"},
             {"id": "confident", "n": t["confident"], "name": "Confidently identified",
-             "rule": f"specific type and confidence >= {CONF_T} (VLM self-reported, or 0.9 after human review)"},
-            {"id": "human_verified", "n": t["human_verified"], "name": "Human-verified",
-             "rule": "label_source == 'human-verified' (config/scene_annotations.json review layer)"},
+             "rule": f"specific type and confidence >= {CONF_T} (VLM self-reported, or 0.9 after a review correction)"},
+            {"id": "review_corrected", "n": t["review_corrected"], "name": "Review-corrected",
+             "rule": "label_source == 'review-corrected' (config/scene_annotations.json review layer)"},
             {"id": "linked", "n": t["linked"], "name": "Linked to a workbook asset",
              "rule": "has a procedural binding to one of the synthetic workbook assets (mapping.py)"},
         ],
         "tier_ids": tiers,
         "human_review": {
-            "n": t["human_verified"],
-            "specific_after_review": sum(specific(byid[i]) for i in tiers["human_verified"]),
+            "n": t["review_corrected"],
+            "specific_after_review": sum(specific(byid[i]) for i in tiers["review_corrected"]),
             "corrections": [{"id": i, "auto": byid[i].get("auto_label"), "final": byid[i]["label"],
                              "merged_from": byid[i].get("merged_from"), "note": byid[i].get("review_note")}
-                            for i in tiers["human_verified"]],
+                            for i in tiers["review_corrected"]],
             "review_entries": len(ann.get("merge_regions", [])) + len(ann.get("relabel_near", [])),
         },
         "histogram": hist,
@@ -414,7 +430,7 @@ def build() -> dict:
         "caveat": ("676 is the number of segmented 3D candidates, not the number of correctly recognised physical "
                    "objects. Candidates include fragments of one object (pipe runs split into pieces), small tags "
                    "and clutter. Confidence is the vision model's own estimate and is not calibrated; only a few "
-                   "objects have been checked by a person. Workbook links are procedural to synthetic records."),
+                   "labels were corrected in a team review of renders (AI-assisted), and none has been verified on site. Workbook links are procedural to synthetic records."),
         "_sample_rows": sample, "_other_rows": other, "_strata": strata,
     }
 
@@ -441,7 +457,7 @@ def write_md(q: dict) -> None:
     L = []
     L.append("# Scene understanding: what was actually recognised\n")
     L.append("_Generated by `python scripts/scene_quality.py` from `web/public/static/scene.json`. "
-             "Numbers here are exact counts; no accuracy figure in this document is human-verified unless it says so._\n")
+             "Numbers here are exact counts; no accuracy figure in this document is verified by a person unless it says so._\n")
     L.append("## Plain-English summary\n")
     L.append(f"> {q['caveat']}\n")
     L.append("We should say: *\"The pipeline segments the scan into "
@@ -455,12 +471,12 @@ def write_md(q: dict) -> None:
     for t in q["tiers"]:
         L.append(f"| {t['name']} | {t['n']} | {pct(t['n'] / n1)} | {t['rule']} |")
     L.append("")
-    L.append(f"Subset relations: categorised ⊆ candidates; confident ⊆ categorised; human-verified ⊆ candidates "
-             f"({q['human_review']['specific_after_review']} of {q['human_review']['n']} human-verified objects "
-             "carry a specific type, the other two were corrected *to* 'other equipment'); linked ⊆ candidates "
+    L.append(f"Subset relations: categorised ⊆ candidates; confident ⊆ categorised; review-corrected ⊆ candidates "
+             f"({q['human_review']['specific_after_review']} of {q['human_review']['n']} review-corrected objects "
+             f"carry a specific type, the other {q['human_review']['n'] - q['human_review']['specific_after_review']} were corrected *to* 'other equipment'); linked ⊆ candidates "
              f"({q['linking']['linked_and_confident']} of {q['linking']['n']} linked objects are also in the confident tier).\n")
     L.append(f"**Threshold.** {q['threshold_why']}\n")
-    L.append("### Confidence histogram (VLM-labelled candidates; the 4 human-verified objects are excluded)\n")
+    L.append("### Confidence histogram (VLM-labelled candidates; the 4 review-corrected objects are excluded)\n")
     L.append("| Confidence | Specific type | 'other equipment' |\n|---|---:|---:|")
     for h in q["histogram"]:
         L.append(f"| {h['lo']:.1f}–{h['hi']:.1f} | {h['specific']} | {h['other']} |")
@@ -495,7 +511,7 @@ def write_md(q: dict) -> None:
              f"of {lk['n']} have mapping confidence ≥ {q['threshold']:.2f}. {lk['note']}\n")
     hr = q["human_review"]
     L.append("## Human review layer\n")
-    L.append(f"{hr['n']} objects carry `label_source: human-verified` from {hr['review_entries']} entries in "
+    L.append(f"{hr['n']} objects carry `label_source: review-corrected` from {hr['review_entries']} entries in "
              "`config/scene_annotations.json`:\n")
     for c in hr["corrections"]:
         m = f" (merged from {', '.join(c['merged_from'])})" if c["merged_from"] else ""

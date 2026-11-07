@@ -78,7 +78,7 @@ def apply_annotations(objs: list[dict], path: Path) -> list[dict]:
         keep.update({"center": np.round((mins + maxs) / 2, 3).tolist(), "size": np.round(maxs - mins, 3).tolist(),
                      "yaw": 0.0, "n_points": int(sum(o["n_points"] for o in grp)),
                      "auto_label": keep["label"], "label": m["label"], "category": m["category"],
-                     "label_source": "human-verified", "confidence": 0.9, "review_note": m["note"],
+                     "label_source": "review-corrected", "confidence": 0.9, "review_note": m["note"],
                      "vlm_rationale": None, "heuristic_label": None,
                      "merged_from": [o["id"] for o in grp]})
         drop = {o["id"] for o in grp[1:]}
@@ -89,7 +89,7 @@ def apply_annotations(objs: list[dict], path: Path) -> list[dict]:
         o = min(cand, key=lambda o: np.linalg.norm(np.array(o["center"]) - pt))
         if np.linalg.norm(np.array(o["center"]) - pt) < 0.3:
             o.update({"auto_label": o["label"], "label": r["label"], "category": r["category"],
-                      "label_source": "human-verified", "confidence": 0.9, "review_note": r["note"],
+                      "label_source": "review-corrected", "confidence": 0.9, "review_note": r["note"],
                       "vlm_rationale": None})
     return objs
 

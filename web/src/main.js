@@ -217,7 +217,7 @@ function renderOverviewCard() {
       ${step(has("plan") ? 4 : 3, "Practice", "Rehearse the inspection on the teaching model.", 'data-goto="practice"', "Practise")}
       ${has("support") ? step(has("plan") ? 5 : 4, "Support", "Hand the context to a remote specialist.", 'data-goto="support"', "Share") : ""}
     </div>
-    <div class="section stack"><button class="btn primary block" data-act="dispatch">${icon("play")}Send the inspection robot to check the route</button></div>
+    <div class="section stack"><button class="btn primary block" data-act="dispatch">${icon("play")}Send robot to check the route</button></div>
     <div class="section">${kv("Criticality", esc(t.criticality))}${kv("Linked scene object", `${esc(S.target.label)} · ${Math.round(t.mapping_confidence * 100)}% (procedural link)`)}</div>
     <div class="section"><div class="label">See inside any device</div>
       <div class="row">${Object.entries(S.kb.classes).map(([cls, c]) => `<button class="chip" data-xclass="${cls}">${esc(SHORT[cls] || c.label)}</button>`).join("")}</div>
@@ -270,7 +270,7 @@ function deviceOptions() {
 }
 
 function identityRows(o) {
-  return `${kv("Label", `${esc(o.label)} · ${Math.round(o.confidence * 100)}%`)}${kv("Source", { "vlm+geometry": "Vision model + geometry", "human-verified": "Human verified", "geometry-heuristic": "Geometry rules" }[o.label_source] || o.label_source)}
+  return `${kv("Label", `${esc(o.label)} · ${Math.round(o.confidence * 100)}%`)}${kv("Source", { "vlm+geometry": "Vision model + geometry", "review-corrected": "Review-corrected (team visual check, not field-verified)", "geometry-heuristic": "Geometry rules" }[o.label_source] || o.label_source)}
     ${kv("Frame", `${o.size.map((v) => v.toFixed(2)).join(" × ")} m`)}${o.asset ? kv("Mapping", `${Math.round(o.asset.mapping_confidence * 100)}%`) : ""}
     ${o.review_note ? `<p class="note" style="margin-top:8px">${esc(o.review_note)}</p>` : o.vlm_rationale ? `<p class="note" style="margin-top:8px">${esc(o.vlm_rationale)}</p>` : ""}`;
 }

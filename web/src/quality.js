@@ -111,7 +111,7 @@ function body() {
     <div class="section"><div class="label"><span>Data-quality flags</span><span>review hints, not verdicts</span></div>${dataQuality()}</div>
     <div class="section"><div class="label">Label audit (AI second opinion)</div>${audit()}</div>
     <div class="section"><div class="label">Review and linking</div>
-      ${kv("Human-verified (review layer)", `${hr.n} <span class="q-ci">(${hr.specific_after_review} with a specific type)</span>`)}
+      ${kv("Review-corrected (team visual check of renders)", `${hr.n} <span class="q-ci">(${hr.specific_after_review} with a specific type)</span>`)}
       ${kv("Linked to workbook assets", `${lk.n} of ${lk.workbook_assets}`)}
       ${kv("Mapping confidence ≥ " + Q.threshold.toFixed(2), `${lk.mapping_confidence_ge_T} of ${lk.n}`)}
       ${kv("Structure (not counted)", `${Object.entries(st.planes).map(([k, v]) => `${v} ${k}`).join(", ")}`)}

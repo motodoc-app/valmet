@@ -235,9 +235,9 @@
   {
    "id": "OBJ-005",
    "kind": "object",
-   "label": "pump-motor unit",
-   "label_source": "vlm+geometry",
-   "confidence": 0.78,
+   "label": "other equipment",
+   "label_source": "review-corrected",
+   "confidence": 0.9,
    "center": [
     2.734,
     0.606,
@@ -271,8 +271,10 @@
    },
    "alt_labels": [],
    "heuristic_label": "equipment (unclassified)",
-   "category": "rotating",
-   "vlm_rationale": "Skid-mounted machinery with connected pump and motor housing."
+   "category": "other",
+   "vlm_rationale": null,
+   "auto_label": "pump-motor unit",
+   "review_note": "Over-merged frame: office chair, buckets and clutter. The vision model proposed 'pump-motor unit' (0.78); corrected in review after the scene-quality audit. It had been linked to workbook pump P-002."
   },
   {
    "id": "OBJ-006",
@@ -403,9 +405,9 @@
   {
    "id": "OBJ-009",
    "kind": "object",
-   "label": "pump-motor unit",
-   "label_source": "vlm+geometry",
-   "confidence": 0.74,
+   "label": "shelving / rack",
+   "label_source": "review-corrected",
+   "confidence": 0.9,
    "center": [
     2.586,
     0.506,
@@ -442,8 +444,10 @@
     "crate"
    ],
    "heuristic_label": "pump / motor unit",
-   "category": "rotating",
-   "vlm_rationale": "Compact skid-mounted pump assembly with motor and piping connections."
+   "category": "other",
+   "vlm_rationale": null,
+   "auto_label": "pump-motor unit",
+   "review_note": "Metal shelving. The vision model proposed 'pump-motor unit' (0.74); corrected in review after the scene-quality audit."
   },
   {
    "id": "OBJ-010",
@@ -539,7 +543,7 @@
    "id": "OBJ-012",
    "kind": "object",
    "label": "other equipment",
-   "label_source": "human-verified",
+   "label_source": "review-corrected",
    "confidence": 0.9,
    "center": [
     -0.446,
@@ -763,7 +767,7 @@
    "id": "OBJ-017",
    "kind": "object",
    "label": "other equipment",
-   "label_source": "human-verified",
+   "label_source": "review-corrected",
    "confidence": 0.9,
    "center": [
     1.884,
@@ -1242,7 +1246,7 @@
    "id": "OBJ-028",
    "kind": "object",
    "label": "trolley / cart",
-   "label_source": "human-verified",
+   "label_source": "review-corrected",
    "confidence": 0.9,
    "center": [
     2.065,
@@ -1462,9 +1466,9 @@
   {
    "id": "OBJ-033",
    "kind": "object",
-   "label": "pump-motor unit",
-   "label_source": "vlm+geometry",
-   "confidence": 0.74,
+   "label": "other equipment",
+   "label_source": "review-corrected",
+   "confidence": 0.9,
    "center": [
     -1.368,
     0.276,
@@ -1501,8 +1505,10 @@
     "crate"
    ],
    "heuristic_label": "pump / motor unit",
-   "category": "rotating",
-   "vlm_rationale": "Compact pump assembly on frame, with motor-like white cylinder and pipe connections."
+   "category": "other",
+   "vlm_rationale": null,
+   "auto_label": "pump-motor unit",
+   "review_note": "Small table or stool. The vision model proposed 'pump-motor unit' (0.74); corrected in review after the scene-quality audit."
   },
   {
    "id": "OBJ-034",
@@ -11356,7 +11362,7 @@
    "id": "OBJ-256",
    "kind": "object",
    "label": "pump-motor unit",
-   "label_source": "human-verified",
+   "label_source": "review-corrected",
    "confidence": 0.9,
    "center": [
     2.424,
@@ -30753,10 +30759,11 @@
   "n_structures": 4,
   "labels": {
    "wall": 4,
-   "pump-motor unit": 21,
+   "other equipment": 260,
    "heat exchanger": 3,
-   "other equipment": 258,
+   "shelving / rack": 1,
    "electrical cabinet": 18,
+   "pump-motor unit": 18,
    "insulated pipe (vertical)": 18,
    "insulated pipe (horizontal)": 50,
    "expansion vessel": 1,

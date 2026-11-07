@@ -22,7 +22,7 @@
    close-up render from our CPU splat renderer with the box drawn in, and picks from a 38-class industrial taxonomy
    (the "2-D foundation model lifted to 3-D" approach suggested in the brief). Results are cached in
    `vlm_labels.json` keyed by geometry signature. A review layer (`config/scene_annotations.json`) applies region-based
-   human corrections, tagged `human-verified`.
+   corrections from the team's visual review of renders, tagged `review-corrected` (not field-verified).
 
 ## 3. Navigation (`navigation.py`)
 * Height-field per cell: the lowest densely supported 5 cm slab, estimated on a 10 cm grid, outlier-filtered and

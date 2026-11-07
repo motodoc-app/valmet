@@ -33,7 +33,7 @@ for a one-minute guided walk-through: each step has a plain explanation and one 
 |---|---|---|
 | 3D environment | Gaussian-splat scan rendered in the browser; orbit, zoom, click any frame | Real scan |
 | Object frames (676) | Plane fitting + clustering on the point cloud, fully automatic | Automatic |
-| Object names | A vision model labels each cluster from rendered views; confidence shown; 258 left as "other equipment" | Automatic, 4 human corrections (marked) |
+| Object names | A vision model labels each cluster from rendered views; confidence shown; "other equipment" when unsure | Automatic, 7 review corrections (marked; team visual check, not field-verified). See `docs/SCENE_QUALITY.md` |
 | Scene search (“Where is the expansion vessel?”) | Searches those labels and workbook tags across the whole scan | Automatic |
 | Asset ↔ object link | Class-aware procedural mapping with a stated confidence (the brief allows this) | Procedural |
 | Navigation, reroute, proximity | Computed from the scan's floor and obstacles; every route validated | Automatic |
@@ -129,9 +129,11 @@ Short on time? Press **Tour**: it drives the same journey by itself. The one-pag
   distributed `Industrial Boiler Room.ply` was corrupt from record 502,483 onward, identically in the PLY, RAR and
   ZIP copies. That report is kept in `docs/integrity_original_boiler_room.md`.
 * **Labels.** Geometry proposes clusters and the vision model names them; 258 objects remain "other equipment"
-  rather than being guessed. The review layer (`config/scene_annotations.json`) records 4 corrections, each tagged
-  `human-verified` with a note: the pump set fragments were merged, and a pallet truck, a pressure washer and a
-  chair that the model had called pumps were relabelled.
+  rather than being guessed. The review layer (`config/scene_annotations.json`) records 7 corrections, each tagged
+  `review-corrected` with a note: the pump set fragments were merged, and a pallet truck, a pressure washer, a
+  chair, a cluttered corner (previously linked to P-002), a shelf and a small table that the model had called pumps
+  were relabelled. These come from the build team's visual check of rendered crops (AI-assisted), not from a person
+  on site; a human precision check is set up in `docs/label_review_sample.csv`.
 * **Mapping** is class-aware and procedural, as the brief allows. It prefers objects along the demo route, and
   every binding states its method and confidence.
 * **Scale** is treated as approximately metric (ceiling 2.05 units); it was not surveyed.

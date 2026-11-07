@@ -1,5 +1,5 @@
 {
-  "_doc": "Human review layer (DOC-3D-MAPPING: 'never silently guess identity'). Applied after automatic extraction + VLM labelling. Regions are in the canonical scene frame (metres, +Y up), so they survive pipeline re-runs. Every change is tagged label_source='human-verified' in the output.",
+  "_doc": "Review layer (DOC-3D-MAPPING: 'never silently guess identity'). Applied after automatic extraction + VLM labelling. Entries were made by the build team from a visual check of rendered crops (AI-assisted), not by a person in the field; outputs are tagged label_source='review-corrected'. Regions are in the canonical scene frame (metres, +Y up), so they survive pipeline re-runs.",
   "merge_regions": [
     {
       "name": "Pump set on concrete plinth (behind pallet truck)",
@@ -48,6 +48,36 @@
       "label": "other equipment",
       "category": "other",
       "note": "Wheeled stand or chair. The vision model proposed 'pump-motor unit' (0.78); corrected in review."
+    },
+    {
+      "point": [
+        2.734,
+        0.606,
+        -1.698
+      ],
+      "label": "other equipment",
+      "category": "other",
+      "note": "Over-merged frame: office chair, buckets and clutter. The vision model proposed 'pump-motor unit' (0.78); corrected in review after the scene-quality audit. It had been linked to workbook pump P-002."
+    },
+    {
+      "point": [
+        2.586,
+        0.506,
+        -2.934
+      ],
+      "label": "shelving / rack",
+      "category": "other",
+      "note": "Metal shelving. The vision model proposed 'pump-motor unit' (0.74); corrected in review after the scene-quality audit."
+    },
+    {
+      "point": [
+        -1.368,
+        0.276,
+        -0.735
+      ],
+      "label": "other equipment",
+      "category": "other",
+      "note": "Small table or stool. The vision model proposed 'pump-motor unit' (0.74); corrected in review after the scene-quality audit."
     }
   ]
 }

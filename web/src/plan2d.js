@@ -372,7 +372,7 @@ function renderTransit() {
 }
 function renderAsset(o) {
   const a = o.asset;
-  const ident = `${kv("Label", `${esc(o.label)} · ${Math.round(o.confidence * 100)}%`)}${kv("Source", { "vlm+geometry": "Vision model + geometry", "human-verified": "Human verified", "geometry-heuristic": "Geometry rules" }[o.label_source] || esc(o.label_source))}${kv("Frame", `${o.size.map((v) => v.toFixed(2)).join(" × ")} m`)}`;
+  const ident = `${kv("Label", `${esc(o.label)} · ${Math.round(o.confidence * 100)}%`)}${kv("Source", { "vlm+geometry": "Vision model + geometry", "review-corrected": "Review-corrected (team visual check, not field-verified)", "geometry-heuristic": "Geometry rules" }[o.label_source] || esc(o.label_source))}${kv("Frame", `${o.size.map((v) => v.toFixed(2)).join(" × ")} m`)}`;
   if (!a) return card(withMin(`${header(nice(o.category), esc(o.label), "", true)}<div class="sub">Scene object · not linked to a workbook asset</div><div class="section">${ident}</div></div>`));
   card(withMin(`${header(nice(a.asset_class), a.tag, '<span class="tag syn">Synthetic</span>', true)}
     <div class="sub"><span class="status s-${a.condition_state}">${nice(a.condition_state)}</span> · ${esc(a.issue_summary)}</div>

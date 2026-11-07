@@ -15,7 +15,7 @@ function steps(A) {
       run: () => { A.setMode("facility"); A.pause(); A.setFrames("none"); A.setCamera("chase"); A.flyHome(); } },
     { title: "What the software found",
       plain: `The scan was split into ${n} object candidates, each with a box, a name and a confidence. Not every candidate is a verified object: the Scene understanding panel on the right rail shows how many are categorised, confident, human-checked and linked to records.`,
-      eng: "Room-envelope RANSAC planes, recursive DBSCAN, gravity-aligned oriented boxes, vision-model labels from rendered crops, a human review layer.",
+      eng: "Room-envelope RANSAC planes, recursive DBSCAN, gravity-aligned oriented boxes, vision-model labels from rendered crops, a review layer of corrections (team visual check, not field-verified).",
       run: () => A.setFrames("all") },
     { title: `Find ${t.tag}`,
       plain: `Ask the copilot where the pump is. It finds the workbook record and the scene object it is linked to, and flies you there.`,
