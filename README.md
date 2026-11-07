@@ -73,6 +73,13 @@ scan chunks (`web/public/static/scan-*.wasm` + `scan.json`) from the committed `
 splat count and SHA-256 (`web/scripts/check-manifest.mjs`, run on `public/` before and on `dist/` after the build)
 and fails if one does not. If the chunks are ever missing at runtime, the app loads `scene.splat` instead.
 
+**Full-fidelity scan.** The 3D view renders the supplied Gaussian-splat model at full fidelity: 1,669,970 of
+1,676,481 splats with view-dependent colour (SH degree 3), as 18 compressed SPZ chunks in `web/public/static/hq/`
+(37 MB, built by `web/scripts/build-hq-scan.mjs` from the raw PLY, verified by `check-manifest.mjs`). Phones load the
+most important 730 k splats. `?render=classic` (or any loading failure) falls back to the earlier compact scan, then to
+`scene.splat`. Before/after images from identical camera poses and the measurements are in
+[`docs/RENDERING.md`](docs/RENDERING.md).
+
 **Works without 3D graphics.** The entry point (`web/src/boot.js`) checks for WebGL 2 before any 3D code loads. If it
 is missing, if the 3D renderer fails to start, or if the GPU drops the context mid-session, the app opens a **2D floor
 plan** instead: the same assets, dispatch, live route and reroute, proximity reads, P-005 diagnosis with its evidence

@@ -88,7 +88,8 @@ Browser-based: no install, a shareable link — advantages over current tools ar
 | 3:20 | Support tab → Share | "Send everything to an expert as a link; they reply with a recommendation and a draft work order." |
 | 3:45 | Value / About | "These benefits are proposals — here is how a pilot measures them, and here is what this prototype is not." |
 
-## Recorded demo
-A frame-by-frame backup recording is produced by `web/tests/record-demo.cjs` (scene list in
-`web/tests/record-script.cjs`), with on-screen captions following the table above. Record the main video on a laptop
-with a GPU using the same order; [`DEMO_GUIDE.md`](DEMO_GUIDE.md) has the shot list.
+## Recorded demo (organisers' format: about 2 minutes)
+Problem 0–13 s · Solution 14–37 s · Live demo 37–83 s · Business impact 83–110 s. Narration lines, the AI voice-over,
+English subtitles and per-line timing are in `docs/video/` (see [`DEMO_GUIDE.md`](DEMO_GUIDE.md)). A captioned,
+narrated backup recording is rendered frame by frame by `web/tests/record-demo.cjs`; the main video should be
+recorded on a laptop with a GPU following the same timeline.
