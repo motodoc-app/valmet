@@ -63,10 +63,15 @@ function decorateTabs() {
     b.setAttribute("aria-label", `${g.name}: ${g.purpose}`);
     if (!b.querySelector(".gd-ti")) b.insertAdjacentHTML("afterbegin", `<span class="gd-ti">${ICON[b.dataset.mode] || ""}</span>`);
   });
-  if (!document.getElementById("guideBtn")) {
-    nav.insertAdjacentHTML("beforeend", `<button type="button" id="guideBtn" class="gd-q" title="How to use this page" aria-label="How to use this page">${ICON.help}</button>`);
-    document.getElementById("guideBtn").addEventListener("click", (e) => { e.stopPropagation(); openCoach(APP.S.mode, true); });
-  }
+  phoneHelp();
+}
+/** Phones have no purpose strip: a "?" at the end of the tab bar reopens the guide. Only present on phones. */
+function phoneHelp() {
+  const nav = document.querySelector(".modes"), b = document.getElementById("guideBtn");
+  if (innerWidth > 820) { b?.remove(); return; }
+  if (b || !nav) return;
+  nav.insertAdjacentHTML("beforeend", `<button type="button" id="guideBtn" class="gd-q" title="How to use this page" aria-label="How to use this page">${ICON.help}</button>`);
+  document.getElementById("guideBtn").addEventListener("click", (e) => { e.stopPropagation(); openCoach(APP.S.mode, true); });
 }
 function strip(mode) {
   let el = document.getElementById("gdStrip");
@@ -125,7 +130,7 @@ on("boot", () => {
   strip(APP.S.mode);
   document.body.classList.add(`ux-mode-${APP.S.mode}`);
   APP.guide = { open: (m = APP.S.mode) => openCoach(m, true), close: closeCoach, GUIDES };
-  addEventListener("resize", () => requestAnimationFrame(placeCoach));
+  addEventListener("resize", () => requestAnimationFrame(() => { placeCoach(); phoneHelp(); }));
   addEventListener("keydown", (e) => { if (e.key === "Escape") closeCoach(); });
   // the tour explains everything itself: no coach cards on top of it
   new MutationObserver(() => { if (document.body.classList.contains("touring")) closeCoach(); }).observe(document.body, { attributes: true, attributeFilter: ["class"] });

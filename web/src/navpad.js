@@ -44,25 +44,27 @@ function rig() {
 let steered = false;
 /** The user takes the wheel: stop a running camera tween and leave the robot-follow cameras. */
 function takeWheel(r) {
-  if (steered) return;
+  if (steered) return false;
   steered = true;
-  APP.flyTo?.(r.cam.position.clone(), r.ctl.target.clone(), 0.001, r.cam, r.ctl);
   const S = APP.S;
   if (r.fac && (S.cam === "chase" || S.cam === "broadcast") && (S.robot.moving || S.robot.follow > 0)) {
     S.cam = "free"; S.robot.follow = 0;
     try { APP.renderDock(); } catch {}
   }
+  return true;
 }
+/** Replace a running camera tween by one that ends exactly here, so the next frame does not pull the camera back. */
+const settle = (r) => APP.flyTo?.(r.cam.position.clone(), r.ctl.target.clone(), 0.001, r.cam, r.ctl);
 const V = () => new APP.THREE.Vector3();
 /** Apply one continuous action for dt seconds. */
 function act(name, dt) {
   const r = rig(); if (!r || (r.fac && APP.S.mode === "plan" && !r.ctl.enabled)) return false;
-  takeWheel(r);
+  const first = takeWheel(r);
   const { cam, ctl } = r, T = APP.THREE, tgt = ctl.target;
   const off = V().subVectors(cam.position, tgt), dist = off.length();
   if (name === "turnL" || name === "turnR") {
     // turn left = the view swings left: the camera circles to its right around the target
-    const a = (name === "turnL" ? 1 : -1) * 1.25 * dt;
+    const a = (name === "turnL" ? 1 : -1) * 1.4 * dt;
     off.applyAxisAngle(new T.Vector3(0, 1, 0), a);
     cam.position.copy(tgt).add(off);
   } else if (name === "up" || name === "down") {
@@ -96,6 +98,7 @@ function act(name, dt) {
     const real = nt.sub(tgt);
     tgt.add(real); cam.position.add(real);
   }
+  if (first) settle(r);
   return true;
 }
 function resetView() {
@@ -116,7 +119,7 @@ function press(a) {
 function release(a) { const n = (held.get(a) || 0) - 1; if (n > 0) held.set(a, n); else held.delete(a); }
 function releaseAll() { held.clear(); }
 function loop(t) {
-  const dt = Math.min(0.05, Math.max(0, (t - last) / 1000)); last = t;
+  const dt = Math.min(0.1, Math.max(0, (t - last) / 1000)); last = t;
   for (const a of held.keys()) act(a, dt);
   if (held.size) raf = requestAnimationFrame(loop); else { raf = 0; steered = false; }
 }
@@ -158,12 +161,15 @@ function padHTML() {
       <div class="np-cl np-zoom"><small>Zoom</small><div class="np-col">${btn("in", I.plus, "Zoom in", "+")}${btn("out", I.minus, "Zoom out", "−")}</div></div>
     </div>`;
 }
-function isOpen() { return el && !el.classList.contains("hidden"); }
+// open state: the user's explicit choice ("1"/"0", remembered) or, without one, automatic: open on computers,
+// folded into a "Move" button on phones and when the screen is too short to fit it beside the asset list
+let pref = null;
+const wantOpen = () => (pref != null ? pref === "1" : !(coarse() || phone()));
+function isOpen() { return !!el && !el.classList.contains("hidden"); }
+function show(open) { el.classList.toggle("hidden", !open); openBtn.classList.toggle("hidden", open); }
 function setOpen(open, save = true) {
   if (!el) return;
-  el.classList.toggle("hidden", !open);
-  openBtn.classList.toggle("hidden", open || !rig());
-  if (save) store.set("xr.navpad", open ? "1" : "0");
+  if (save) { pref = open ? "1" : "0"; store.set("xr.navpad", pref); }
   place();
   try { APP.renderRail?.(); } catch {}
 }
@@ -173,7 +179,7 @@ function build() {
   el.innerHTML = padHTML();
   openBtn = document.createElement("button");
   openBtn.type = "button"; openBtn.className = "np-open hidden"; openBtn.id = "navpadOpen";
-  openBtn.innerHTML = `${I.pad}<span>Move</span>`; openBtn.title = "Show the navigation pad"; openBtn.setAttribute("aria-label", "Show the navigation pad");
+  openBtn.innerHTML = `${I.pad}<span>Move buttons</span>`; openBtn.title = "Show the navigation pad"; openBtn.setAttribute("aria-label", "Show the navigation pad");
   const app = document.getElementById("app");
   app.append(el, openBtn);
   // press and hold (mouse, pen, touch); keyboard Enter/Space on a focused button gives one step
@@ -195,20 +201,26 @@ function build() {
   });
   el.addEventListener("contextmenu", (e) => e.preventDefault());
   openBtn.onclick = () => setOpen(true);
-  const saved = store.get("xr.navpad");
-  setOpen(saved == null ? !(coarse() || phone()) : saved === "1", false);
+  pref = store.get("xr.navpad");
+  setOpen(wantOpen(), false);
 }
 
 // ------------------------------------------------------------------ placement: never on top of the other panels
 function rectOf(sel) { const n = document.querySelector(sel); if (!n || n.classList.contains("hidden")) return null; const r = n.getBoundingClientRect(); return r.width && r.height ? r : null; }
 function place() {
   if (!el) return;
-  const show = !!rig() && !document.body.classList.contains("focus");
-  el.style.display = show ? "" : "none";
-  openBtn.style.display = show ? "" : "none";
+  const vis = !!rig() && !document.body.classList.contains("focus");
+  el.style.display = vis ? "" : "none";
+  openBtn.style.display = vis ? "" : "none";
   const left = document.getElementById("left");
   if (left) left.style.maxHeight = "";
-  if (!show || phone()) { el.style.bottom = ""; openBtn.style.bottom = ""; return; }
+  show(wantOpen());
+  if (!vis) { el.style.bottom = ""; openBtn.style.bottom = ""; return; }
+  if (phone()) {     // just above the bottom sheet, whatever its height
+    const rc = rectOf("#right"), bt = rc ? Math.max(10, innerHeight - rc.top + 10) : 10;
+    el.style.bottom = bt + "px"; openBtn.style.bottom = bt + "px";
+    return;
+  }
   let bottom = 24;
   const mm = rectOf("#minimap");
   if (mm) bottom = innerHeight - mm.top + 10;
@@ -221,9 +233,10 @@ function place() {
     el.style.bottom = bottom + "px"; openBtn.style.bottom = bottom + "px";
     r = target.getBoundingClientRect();
   }
-  // the left card gives way to the pad (it scrolls inside)
+  // the left card gives way to the pad (it scrolls inside); on short screens the automatic pad folds instead
   if (left && getComputedStyle(left).display !== "none") {
     const top = left.getBoundingClientRect().top;
+    if (pref == null && isOpen() && r.top - top - 12 < 230) { show(false); r = openBtn.getBoundingClientRect(); }
     left.style.maxHeight = Math.max(120, r.top - top - 12) + "px";
   }
 }
@@ -262,7 +275,7 @@ on("boot", () => {
   addEventListener("resize", () => requestAnimationFrame(place));
   // the dock and left card change size with every render: keep the pad clear of them
   const ro = new ResizeObserver(() => place());
-  for (const id of ["dock", "minimap", "left"]) { const n = document.getElementById(id); if (n) ro.observe(n); }
+  for (const id of ["dock", "minimap", "left", "right"]) { const n = document.getElementById(id); if (n) ro.observe(n); }
   new MutationObserver(() => place()).observe(document.body, { attributes: true, attributeFilter: ["class"] });
   setTimeout(place, 0);
   const q = new URLSearchParams(location.search);

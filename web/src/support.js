@@ -423,7 +423,7 @@ function cardHTML() {
   const shareLabel = role === "expert" ? "Send back to the technician" : ST.round && ST.from === "technician" ? "Share again (new round)" : "Share with expert";
   return `${header("Remote support", `${esc(a.tag)} hand-off`, `<span class="tag syn">Synthetic</span>${ST.example ? '<span class="pill amber">Example</span>' : ""}`)}
     <div class="sub">${ROLE[role]} view · ${ST.round ? `round ${ST.round}` : "draft"}${lastLog ? ` · last sent by the ${lastLog.role} ${hhmm(lastLog.ts)}` : ""}</div>
-    <div class="sup-actions"><button class="btn ${V.arm ? "on" : ""} sup-big" data-sa="pin" aria-pressed="${V.arm}">${icon("pin")}${V.arm ? "Now click the scene…" : "Pin a note"}</button>
+    <div class="sup-actions"><button class="btn ${V.arm ? "on" : ""} sup-big" data-sa="pin" aria-pressed="${V.arm}">${icon("pin")}${V.arm ? "Click the room…" : "Pin a note"}</button>
       <button class="btn primary sup-big" data-sa="share">${icon("share")}${shareLabel}</button></div>
     ${V.arm ? '<p class="sup-armed">Click a machine or the floor in the 3D view to place your pin.</p>' : ""}
     <div class="sup-phone sup-row2"><div class="seg" role="group" aria-label="View as">${["technician", "expert"].map((r) => `<button data-srole="${r}" class="${role === r ? "on" : ""}">${ROLE[r]}</button>`).join("")}</div><button class="btn" data-sa="new">${icon("reset")}Start new</button></div>
