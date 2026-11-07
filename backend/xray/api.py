@@ -203,7 +203,11 @@ def work_order_draft(req: DraftReq):
 # ---------------------------------------------------------------- natural-language commands
 SIGNAL_WORDS = {"vibration": "vibration_mm_s", "temperature": "bearing_temp_c", "temp": "bearing_temp_c",
                 "current": "motor_current_a", "pressure": "process_pressure_bar", "flow": "process_flow_pct",
-                "stiction": "stiction_index", "position": "position_actual_pct"}
+                "stiction": "stiction_index", "position": "position_actual_pct", "overheat": "bearing_temp_c"}
+ANOMALY = r"abnormal|high|unusual|anomal|elevated|highest|find|overheat|hot\b|worst|most"
+COND_RANK = {"attention_required": 0, "degraded": 1, "watch": 2, "healthy": 3}
+XRAY_WORDS = r"x-?ray|explode|inside|internal|component|parts"
+STATUS_WORDS = r"wrong|why|flag|status|health|condition|issue|diagnos|problem|fault"
 def find_component(t: str, cls: str | None, selected_cls: str | None):
     """Longest component name mentioned in the text, restricted to a named device type; ties go to the selection's type."""
     hits = []
@@ -262,6 +266,13 @@ def command(req: CommandReq):
     named = next((a["asset_id"] for a in assets.values() if tag_m and a["tag"].lower() == tag_m.group(1)), None)
     if named:
         asset_id = named
+        # "what's wrong with P-005?" / "why is P-005 flagged?": show its diagnosis
+        if re.search(STATUS_WORDS, t) and not re.search(r"send|go to|navigate|dispatch|" + XRAY_WORDS, t):
+            a = assets[named]
+            return {"intent": "command", "asset_id": named,
+                    "actions": [{"type": "select", "asset_id": named, "object_id": a["object_id"]}, {"type": "diagnose", "asset_id": named}],
+                    "text": (f"{a['tag']}: {a['issue_summary']}. Condition {a['condition_state'].replace('_', ' ')}, health "
+                             f"{a['health_score']}, criticality {a['criticality']} [{a['asset_id']}]. Opening its diagnosis with the evidence.")}
     # a question about a named component ("what does the impeller do?"): answer it for that device type and show the part
     comp = find_component(t, cls, assets.get(asset_id, {}).get("asset_class"))
     if comp and re.search(r"what (does|is|are)|what's|explain|how (does|do i|to)|inspect|fail|faulty|evidence|purpose|why", t) \
@@ -270,13 +281,14 @@ def command(req: CommandReq):
         from .metadata import priority_score
         if assets.get(asset_id, {}).get("asset_class") != ccls:
             same = sorted((a for a in assets.values() if a["asset_class"] == ccls),
-                          key=lambda a: -priority_score(WORLD.pack.asset(a["asset_id"])))
+                          key=lambda a: (COND_RANK.get(a["condition_state"], 9), -priority_score(WORLD.pack.asset(a["asset_id"]))))
             asset_id = same[0]["asset_id"] if same else None
         ans = WORLD.copilot.answer(req.text, asset_id, c["id"])
         acts = [{"type": "xray", "asset_id": asset_id, "focus": [c["id"]]}] if asset_id else []
         return {"intent": "component", "text": ans["text"], "sources": ans.get("sources", []), "actions": acts,
                 "asset_id": asset_id, "component": c["id"], "mode": ans.get("mode")}
-    if sig and re.search(r"abnormal|high|unusual|anomal|elevated|highest|find", t):
+    sig_q = bool(sig and re.search(ANOMALY, t))     # "where is the vibration sensor?" names a device, not a symptom
+    if sig_q:
         best = None
         for aid, a in assets.items():
             if cls and a["asset_class"] != cls:
@@ -306,17 +318,17 @@ def command(req: CommandReq):
             and re.search(r"explain|what does|how does|component|parts|x-?ray|inside|practi|learn|this", t):
         from .metadata import priority_score
         same = sorted((a for a in assets.values() if a["asset_class"] == cls),
-                      key=lambda a: -priority_score(WORLD.pack.asset(a["asset_id"])))
+                      key=lambda a: (COND_RANK.get(a["condition_state"], 9), -priority_score(WORLD.pack.asset(a["asset_id"]))))
         if same:
             asset_id = same[0]["asset_id"]
     # "where is the expansion vessel / circulation pump / P-002?" -> semantic search over the scene
     m = re.search(r"(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$", t)
-    if m and re.search(r"manual|document|\bdocs?\b|knowledge|procedure|guide", m.group(1)):
-        m = None          # "show me the manual" is a library request, not a scene search
+    if m and (re.search(r"manual|document|\bdocs?\b|knowledge|procedure|guide", m.group(1)) or re.search(XRAY_WORDS, t)):
+        m = None          # "show me the manual" / "show me inside the motor" are not scene searches
     # "where are the control valves?" names what to look for: the current selection must not answer it
-    if m and not reason and not sig and not re.search(r"\b(it|this|that|here|selected)\b", m.group(1)):
+    if m and not reason and not sig_q and not re.search(r"\b(it|this|that|here|selected)\b", m.group(1)):
         asset_id = None
-    if not asset_id and m and not sig:
+    if not asset_id and m and not sig_q:
         tag = re.search(r"\b([a-z]{1,2}-\d{3})\b", t)
         if tag:
             hit = next((a for a in assets.values() if a["tag"].lower() == tag.group(1)), None)
@@ -359,7 +371,8 @@ def command(req: CommandReq):
             reason += (f" It is mapped to scene object {a['object_id']} ('{o['label']}', {o['label_source']}) at "
                        f"x={o['center'][0]:.1f}, z={o['center'][2]:.1f} m — mapping confidence "
                        f"{a['mapping_confidence']}.")
-    if re.search(r"send|go to|navigate|inspect|dispatch|walk|drive|route", t) and asset_id:
+    if re.search(r"send|go to|navigate|inspect|dispatch|walk|drive|route", t) and asset_id \
+            and not re.search(r"practi[cs]e|learn|train|rehears|how do i|how to", t):
         actions.append({"type": "navigate", "asset_id": asset_id, "object_id": assets[asset_id]["object_id"]})
         reason += " Dispatching the inspection robot along a collision-free route."
     if re.search(r"x-?ray|explode|inside|internal|component|parts", t):
@@ -384,6 +397,9 @@ def command(req: CommandReq):
         ans = WORLD.copilot.answer(req.text, named or req.selected_asset_id)
         return {"intent": "question", "text": ans["text"], "sources": ans.get("sources", []), "actions": [],
                 "mode": ans.get("mode")}
+    if not reason and actions and all(a["type"] in ("practice", "learn", "xray", "knowledge") for a in actions):
+        reason = " ".join({"xray": "Opening the X-Ray view.", "practice": "Opening Practice: a fictional case, with a safety check first.",
+                           "learn": "Opening the guided lessons.", "knowledge": "Opening the library."}[a["type"]] for a in actions)
     if not reason:
         ans = WORLD.copilot.answer(req.text, asset_id)
         reason = ans["text"]

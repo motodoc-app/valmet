@@ -86,7 +86,7 @@ function fit() {
   c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
   const vis = (el) => el && getComputedStyle(el).display !== "none" && !el.classList.contains("hidden");
   const L = $("#left"), R = $("#right"), D = $("#dock");
-  const mobile = innerWidth <= 760;
+  const mobile = innerWidth <= 820;
   let x0 = 16, x1 = innerWidth - 16, y0 = mobile ? 150 : 128, y1 = innerHeight - 16;
   if (!mobile) {
     if (vis(L)) x0 = L.getBoundingClientRect().right + 16;
@@ -167,7 +167,7 @@ function progressUI() {
   const sc = $("#scrub"); if (sc && document.activeElement !== sc) sc.value = Math.round(u * 1000);
   const t = $("#rProg"); if (t) t.textContent = P.path ? `${P.robot.s.toFixed(1)} of ${P.path.len.toFixed(1)} m` : "";
   const n = seenIds().size;
-  if (n !== lastSeenCount) { lastSeenCount = n; if (!P.diag || !P.robot.done) renderTransit(); }
+  if (n !== lastSeenCount) { lastSeenCount = n; if (!P.cardLock && (!P.diag || !P.robot.done)) renderTransit(); }   // never replace a card the user opened
 }
 
 function draw(t) {
@@ -320,6 +320,7 @@ function bind() {
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === "/") { e.preventDefault(); askIn.focus(); }
     if (e.key === " " && P.path) { e.preventDefault(); togglePlay(); }
+    if (e.key === "Escape") { $("#sheet").classList.add("hidden"); pop.classList.add("hidden"); }
   });
   document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".ask")) pop.classList.add("hidden"); });
 }
@@ -388,6 +389,7 @@ function renderDiagnosis() {
     <p class="note" style="margin-top:10px;text-align:center">Decision support only. No control actions.</p></div>`));
 }
 async function renderParts(assetId) {
+  P.cardLock = true;
   P.lib = P.lib || (await api.xrayModel());
   const o = P.data.objects.find((x) => x.asset?.asset_id === assetId), a = o.asset, lib = P.lib.classes[a.asset_class];
   if (!lib) return toast(`No component model for ${nice(a.asset_class)} yet.`);
@@ -403,12 +405,12 @@ async function renderParts(assetId) {
 async function onCard(e) {
   const t = e.target;
   const tab = t.closest("[data-tab]"); if (tab) { P.tab = tab.dataset.tab; return renderDiagnosis(); }
-  if (t.closest("[data-close-card]")) { P.selected = null; renderLeft(); return P.diag && P.robot.arrived ? renderDiagnosis() : P.path ? renderTransit() : renderOverview(); }
+  if (t.closest("[data-close-card]")) { P.cardLock = false; P.selected = null; renderLeft(); return P.diag && P.robot.arrived ? renderDiagnosis() : P.path ? renderTransit() : renderOverview(); }
   const row = t.closest("[data-obj]"); if (row) return selectObject(P.data.objects.find((o) => o.id === row.dataset.obj));
   const act = t.closest("[data-act]")?.dataset.act;
   if (act === "dispatch") restart(P.target.asset.asset_id);
   if (act === "dispatch-sel") restart(P.selected.asset.asset_id);
-  if (act === "diagnose-sel") { P.diag = await api.diagnose(P.selected.asset.asset_id); P.tab = "overview"; renderDiagnosis(); }
+  if (act === "diagnose-sel") { P.cardLock = true; P.diag = await api.diagnose(P.selected.asset.asset_id); P.tab = "overview"; renderDiagnosis(); }
   if (act === "parts-sel") renderParts(P.selected.asset.asset_id);
   if (act === "parts") renderParts(P.diag.asset.asset_id);
   if (act === "result") renderDiagnosis();
@@ -475,7 +477,7 @@ async function applyRoute(res) {
 export async function dispatch(assetId) {
   const o = P.data.objects.find((x) => x.asset?.asset_id === assetId);
   if (!o) return null;
-  P.navObject = o; P.diag = null; P.robot.arrived = false; P.robot.v = 0;
+  P.navObject = o; P.diag = null; P.cardLock = false; P.robot.arrived = false; P.robot.v = 0;
   const res = await api.plan({ object_id: o.id, start: [P.robot.x, P.robot.z], blocks: P.blocks });
   if (!res.ok) { toast(esc(res.reason)); return null; }
   await applyRoute(res);
@@ -487,18 +489,26 @@ export async function dispatch(assetId) {
 async function blockAisle() {
   if (!P.path || P.robot.done) return;
   const prev = P.path, prevLeft = prev.len - P.robot.s, start = [P.robot.x, P.robot.z];
+  const v = P.robot.v; P.robot.playing = false;                    // hold still while re-planning
+  let best = null;
   for (const ahead of [0.9, 1.5, 2.2, 3.0, 3.8, 4.6]) {
     const s = P.robot.s + ahead;
     if (s > prev.len - 0.6) break;
     const p = at(prev, s);
     const b = { x: +p.x.toFixed(2), z: +p.z.toFixed(2), w: 0.9, d: 0.35, yaw: p.yaw + Math.PI / 2 };
     const res = await api.plan({ object_id: P.navObject.id, start, blocks: [...P.blocks, b] });
-    if (!res.ok) continue;
-    P.blocks.push(b);
+    if (res.ok && (!best || res.length_m > best.res.length_m)) best = { b, res };
+    if (best && best.res.length_m - prevLeft > 0.8) break;
+  }
+  if (best) {
+    P.blocks.push(best.b);
+    const res = await api.plan({ object_id: P.navObject.id, start, blocks: P.blocks });
     P.prevRoute = prev.pts;
     P.seenBefore = seenIds();
-    const v = P.robot.v; await applyRoute(res); P.robot.v = v;
-    toast(`Aisle blocked. New route in <b>${res.compute_ms} ms</b>: ${res.length_m} m instead of ${prevLeft.toFixed(1)} m, still collision-free.`, 6000);
+    await applyRoute(res); P.robot.v = v;
+    renderTransit();
+    const extra = res.length_m - prevLeft;
+    toast(`Aisle blocked. New collision-free route in <b>${res.compute_ms} ms</b>: ${res.length_m} m to go${extra > 0.05 ? `, a ${extra.toFixed(1)} m detour` : ", squeezing past the barrier"}.`, 6000);
     return;
   }
   P.robot.playing = false;
@@ -529,6 +539,7 @@ export async function ask(q) {
       if (a.type === "navigate") await restart(a.asset_id);
       if (a.type === "xray") await renderParts(a.asset_id || P.selected?.asset?.asset_id || P.target.asset.asset_id);
       if (a.type === "knowledge") openLibrary(a.query || "");
+      if (a.type === "diagnose") { P.cardLock = true; P.diag = await api.diagnose(a.asset_id); P.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }
       if (a.type === "learn" || a.type === "practice") toast("Learn and Practice use the 3D model. Try the 3D view on a device with WebGL.");
     }
   } catch (e) { pop.innerHTML = `<div class="reply">Something went wrong: ${esc(e.message)}</div>`; }

@@ -55,6 +55,12 @@ async function threeD() {
   await p.goto(BASE + "?scan=off");
   await waitFor(p, () => window.__app?.fac && !document.querySelector("#loading"));
   await p.evaluate(() => document.querySelector(".toast")?.remove());
+  // Learn / Practice straight from a cold start (before X-Ray was ever opened)
+  for (const m of ["learn", "practice"]) {
+    await p.click(`.modes [data-mode="${m}"]`);
+    ok(`3D: ${m} works from a cold start`, await waitFor(p, (m) => window.__app.mode === m && window.__app.xClass && document.querySelector("#left [data-comp]") && !/Loading/.test(document.querySelector("#right").textContent), m, 15000));
+    await p.click('.modes [data-mode="facility"]');
+  }
   // dispatch
   await p.click('#right [data-act="dispatch"]');
   ok("3D: route planned", await waitFor(p, () => window.__app.route?.ok && window.__app.robot.moving));
@@ -136,13 +142,17 @@ async function copilot() {
     ["Send the robot to M-006", (a) => a.route && a.nav === "M-006"],
     ["Why is it losing flow?", (a) => !/Mapped to scene object/.test(a.text) && a.text.length > 40],
     ["asdfgh", (a) => a.text.length > 5],
+    ["What's wrong with P-005?", (a) => /P-005 diagnosis/.test(a.card)],
+    ["Which motor is overheating?", (a) => a.selected === "M-006"],
+    ["Where is the vibration sensor?", (a) => /Found \d+ object/.test(a.text)],
+    ["Can I practise inspecting this equipment?", (a) => !/went wrong/.test(a.text) && /Practice/.test(a.text)],
   ];
   for (const [q, check] of cases) {
     await p.evaluate(() => { const s = document.querySelector("#sheet"); s.classList.add("hidden"); });
     await p.evaluate((q) => window.__ask(q), q);
     await sleep(400);
     const a = await p.evaluate(() => ({ text: document.querySelector("#pop").innerText, selected: window.__plan.selected?.asset?.tag, route: !!window.__plan.route,
-      nav: window.__plan.navObject?.asset?.tag, sheet: !document.querySelector("#sheet").classList.contains("hidden") }));
+      nav: window.__plan.navObject?.asset?.tag, card: document.querySelector("#right").textContent, sheet: !document.querySelector("#sheet").classList.contains("hidden") }));
     ok(`Copilot: “${q}”`, check(a) && !/went wrong/.test(a.text), a.text.replace(/\s+/g, " ").slice(0, 110));
   }
   ok("Copilot: no page errors", p.errors.length === 0, p.errors.slice(0, 3).join(" | "));
@@ -254,8 +264,27 @@ async function phone() {
   await browser.close();
 }
 
+// ------------------------------------------------------------------ 7. top bar reachable on tablet and laptop widths
+async function topbar() {
+  const browser = await chromium.launch({ args: GL });
+  for (const [name, opts] of [["iPad Mini", devices["iPad Mini"]], ["1280x720", { viewport: { width: 1280, height: 720 } }], ["900x700", { viewport: { width: 900, height: 700 } }]]) {
+    const p = await page(browser, opts);
+    await p.goto(BASE + "?scan=off");
+    await waitFor(p, () => window.__app?.fac && !document.querySelector("#loading"));
+    const blocked = await p.evaluate(() => [...document.querySelectorAll(".modes button, #tourBtn, #libBtn, #ask")].filter((b) => {
+      const r = b.getBoundingClientRect(); if (!r.width) return true;
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !(hit === b || b.contains(hit) || hit?.closest("label")?.contains(b));
+    }).map((b) => b.dataset.mode || b.id));
+    ok(`Top bar ${name}: every control reachable`, blocked.length === 0, blocked.join(", "));
+    await p.screenshot({ path: `${SHOTS}/topbar-${name.replace(/\W/g, "")}.png` });
+    await p.context().close();
+  }
+  await browser.close();
+}
+
 const only = process.argv.slice(2);
-const suites = { threeD, copilot, noWebGL, contextLoss, chunkFallback, phone };
+const suites = { threeD, copilot, noWebGL, contextLoss, chunkFallback, phone, topbar };
 try {
   for (const [k, f] of Object.entries(suites)) if (!only.length || only.includes(k)) { console.log(`\n— ${k}`); try { await f(); } catch (e) { ok(`${k}: crashed`, false, e.message.split("\n").slice(0, 12).join(" / ")); } }
 } finally { server?.kill(); }

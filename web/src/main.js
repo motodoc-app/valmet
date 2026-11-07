@@ -271,13 +271,13 @@ $("#right").addEventListener("click", async (e) => {
   const tab = t.closest("[data-tab]"); if (tab) { S.tab = tab.dataset.tab; return renderDiagnosis(); }
   const xt = t.closest("[data-xtab]"); if (xt) { S.xTab = xt.dataset.xtab; return renderPartCard(); }
   const pq = t.closest("[data-partq]"); if (pq) { $("#partQ").value = pq.dataset.partq; return askPart(); }
-  if (t.closest("[data-close-card]")) { S.selected = null; S.fac.setHighlighted([], { target: S.target.id }); renderLeft(); return S.diag && S.robot.arrived ? renderDiagnosis() : S.curve && !S.robot.done ? renderTransitCard() : S.diag ? renderDiagnosis() : renderOverviewCard(); }
+  if (t.closest("[data-close-card]")) { S.cardLock = false; S.selected = null; S.fac.setHighlighted([], { target: S.target.id }); renderLeft(); return S.diag && S.robot.arrived ? renderDiagnosis() : S.curve && !S.robot.done ? renderTransitCard() : S.diag ? renderDiagnosis() : renderOverviewCard(); }
   const row = t.closest("[data-obj]"); if (row) return selectObject(S.data.objects.find((o) => o.id === row.dataset.obj));
   const act = t.closest("[data-act]")?.dataset.act;
   if (act === "dispatch") dispatch(S.target.asset.asset_id);
   if (act === "locate") selectObject(S.target, { fly: true });
   if (act === "dispatch-sel") dispatch(S.selected.asset.asset_id);
-  if (act === "diagnose-sel") { S.diag = await api.diagnose(S.selected.asset.asset_id); S.tab = "overview"; renderDiagnosis(); }
+  if (act === "diagnose-sel") { S.cardLock = true; S.diag = await api.diagnose(S.selected.asset.asset_id); S.tab = "overview"; renderDiagnosis(); }
   if (act === "xray") enterXRay(null, S.diag?.asset?.asset_id);
   if (act === "xray-sel") enterXRay(null, S.selected.asset.asset_id);
   if (act === "wo") showWorkOrder(S.diag.asset.asset_id);
@@ -433,7 +433,7 @@ async function dispatch(assetId, { start = null, quiet = false } = {}) {
   const p = S.fac.robot.position;
   const res = await api.plan({ object_id: o.id, start: start || [p.x, p.z], blocks: S.blocks });
   if (!res.ok) { toast(esc(res.reason)); return null; }
-  S.seenBefore = new Set(); S.seen.clear(); S.robot.arrived = false;
+  S.seenBefore = new Set(); S.seen.clear(); S.robot.arrived = false; S.cardLock = false;
   await applyRoute(res, { keepSpeed: quiet });
   S.diag = null;
   S.diagPromise = api.diagnose(assetId);
@@ -446,21 +446,30 @@ async function blockAisle() {
   if (!S.curve || S.robot.done) return;
   // Drop the barrier on the route ahead. If that spot cuts the only corridor, try further along, so the demo
   // shows a real detour; if no placement leaves a safe route, the robot stops instead of driving through.
-  const prev = S.route, prevCurve = S.curve, prevLeft = S.route.length_m - S.robot.s;
+  const prev = S.route, prevCurve = S.curve, prevLeft = S.robot.len - S.robot.s;
+  const v0 = S.robot.v; S.robot.moving = false;      // hold still while re-planning
   const p0 = S.fac.robot.position, start = [p0.x, p0.z];
+  let best = null;
   for (const ahead of [0.9, 1.5, 2.2, 3.0, 3.8, 4.6]) {
     const s = S.robot.s + ahead;
     if (s > S.robot.len - 0.6) break;
     const u = s / S.robot.len, p = prevCurve.getPointAt(u), tan = prevCurve.getTangentAt(u);
     const b = { x: +p.x.toFixed(2), z: +p.z.toFixed(2), w: 0.9, d: 0.35, yaw: Math.atan2(tan.z, tan.x) + Math.PI / 2 };
     const res = await api.plan({ object_id: S.navObject.id, start, blocks: [...S.blocks, b] });
-    if (!res.ok) continue;
-    S.blocks.push(b);
+    if (res.ok && (!best || res.length_m > best.res.length_m)) best = { b, res };
+    if (best && best.res.length_m - prevLeft > 0.8) break;                          // a clear detour: good enough
+  }
+  if (best) {
+    S.blocks.push(best.b);
+    const res = await api.plan({ object_id: S.navObject.id, start, blocks: S.blocks });   // planner state = chosen barrier
     S.fac.setBlocks(S.blocks);
     S.prevRoute = prev.waypoints;
     S.seenBefore = new Set(S.seen.keys());
+    S.robot.v = v0;
     await applyRoute(res);
-    toast(`Aisle blocked. New route in <b>${res.compute_ms} ms</b>: ${res.length_m} m instead of ${prevLeft.toFixed(1)} m, still collision-free.`, 6000);
+    if (!S.robot.arrived) renderTransitCard();
+    const extra = res.length_m - prevLeft;
+    toast(`Aisle blocked. New collision-free route in <b>${res.compute_ms} ms</b>: ${res.length_m} m to go${extra > 0.05 ? `, a ${extra.toFixed(1)} m detour` : ", squeezing past the barrier"}.`, 6000);
     return;
   }
   S.robot.moving = false;
@@ -488,7 +497,7 @@ function updateRobot(dt, t) {
     if (proxClock > 0.1) { proxClock = 0; proximity(); progressUI(); }
   }
   transitClock += dt;
-  if (transitDirty && transitClock > 0.4) { transitDirty = false; transitClock = 0; if (!(S.diag && R.arrived)) renderTransitCard(); }
+  if (transitDirty && transitClock > 0.4) { transitDirty = false; transitClock = 0; if (!S.cardLock && !(S.diag && R.arrived)) renderTransitCard(); }   // never replace a card the user opened
   R.follow = Math.max(0, R.follow - dt);
   if (R.moving || R.follow > 0) followCamera(dt);
   if (R.moving && R.dir > 0 && R.s >= R.len - 1e-3) { R.moving = false; R.v = 0; R.done = true; camYaw = null; renderDock(); if (!R.arrived) arrive(); }
@@ -541,7 +550,8 @@ async function arrive() {
   S.robot.arrived = true;
   const o = S.navObject, c = new THREE.Vector3(...o.center), r = S.fac.robot.position.clone();
   const dir = c.clone().sub(r).setY(0).normalize();
-  if (S.cam === "chase" || S.cam === "free") flyTo(r.clone().addScaledVector(dir, -1.3).setY(1.55), c.clone().setY(Math.max(0.35, c.y)));
+  const side = new THREE.Vector3(-dir.z, 0, dir.x);
+  if (S.cam === "chase" || S.cam === "free") flyTo(r.clone().addScaledVector(dir, -0.9).addScaledVector(side, 1.0).setY(1.7), c.clone().setY(Math.max(0.35, c.y)));
   S.selected = o;
   S.fac.setHighlighted([], { selected: o.id, target: o.id });
   renderDock(); renderLeft();
@@ -744,9 +754,10 @@ async function askPart() {
   $("#partA").innerHTML = `<div class="narr">${cites(a.text)}</div><p class="note" style="margin-top:6px">${esc(a.mode)} · ${a.sources?.length ?? 0} sources</p>`;
 }
 
-export function focusPart(id, dist = 1.6) {
-  const c = S.xray.partCenter(id);
-  const dir = xHome().pos.clone().sub(xHome().tgt).normalize();
+export function focusPart(id, dist = null) {
+  const c = S.xray.partCenter(id), h = xHome();
+  dist = dist ?? h.pos.distanceTo(h.tgt) * 0.6;          // scaled to the model: small sensors and large pumps alike
+  const dir = h.pos.clone().sub(h.tgt).normalize();
   flyTo(c.clone().addScaledVector(dir, dist), c, 0.9, xCam, xControls);
 }
 function selectComponent(id) {
@@ -839,10 +850,10 @@ export function setMode(mode) {
   S.onComponentPick = null;
   if (mode === "facility") { S.xray.selected = null; renderLeft(); S.diag ? renderDiagnosis() : (S.robot.moving ? renderTransitCard() : renderOverviewCard()); }
   if (mode === "xray") { renderComponents(); renderPartCard(); }
-  if (mode === "learn" || mode === "practice") renderComponents();
   if (mode === "learn" || mode === "practice") {
-    const go = () => { const h = xHome(); xCam.position.copy(h.pos); xControls.target.copy(h.tgt); mode === "learn" ? S.training.learn() : S.training.practice(); };
-    if (!S.xClass) prepareXRay().then(go); else go();
+    // the device model must exist before the component list or the lesson can render
+    const go = () => { if (S.mode !== mode) return; renderComponents(); renderDock(); const h = xHome(); xCam.position.copy(h.pos); xControls.target.copy(h.tgt); mode === "learn" ? S.training.learn() : S.training.practice(); };
+    if (!S.xClass) { card(`<div class="card-b" style="padding-top:16px"><span class="note">Loading the device model…</span></div>`); prepareXRay().then(go); } else go();
   }
   renderDock();
 }
@@ -882,6 +893,7 @@ export async function ask(q) {
         S.selected = best; renderAssetCard(best); renderLeft();
         const c = new THREE.Vector3(...best.center); flyTo(c.clone().add(viewOffset(c)), c);
       }
+      if (a.type === "diagnose") { S.cardLock = true; if (S.mode !== "facility") setMode("facility"); S.diag = await api.diagnose(a.asset_id); S.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }
       if (a.type === "practice") setMode("practice");
       if (a.type === "learn") setMode("learn");
       if (a.type === "knowledge") openLibrary(a.query || "");
@@ -921,7 +933,7 @@ $("#tourBtn").onclick = () => startTour(TOUR_API);
 document.addEventListener("keydown", (e) => {
   if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
   if (e.key === "f" || e.key === "F") setFocus(!document.body.classList.contains("focus"));
-  if (e.key === "Escape") setFocus(false);
+  if (e.key === "Escape") { setFocus(false); $("#sheet").classList.add("hidden"); pop.classList.add("hidden"); }
   if (e.key === " " && S.curve && S.mode === "facility") { e.preventDefault(); togglePlay(1); }
 });
 document.addEventListener("click", (e) => {
@@ -999,7 +1011,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-const TOUR_API = { S, $, setMode, setCamera, dispatch: (id) => restart(id), blockAisle, enterXRay, openClass, flyHome: () => flyTo(S.home.pos, S.home.tgt), selectAsset, toast, renderDock,
+const TOUR_API = { S, $, setMode, setCamera: (m) => { setCamera(m); renderDock(); }, pause: () => { S.robot.moving = false; renderDock(); }, dispatch: (id) => restart(id), blockAisle, enterXRay, openClass, flyHome: () => flyTo(S.home.pos, S.home.tgt), selectAsset, toast, renderDock,
   setFrames: (f) => { S.frames = f; S.fac.setShowMode(f); renderDock(); }, setRate: (r) => { S.robot.rate = r; renderDock(); } };
 window.__app = S; window.__renderer = renderer; window.__decodeXq16 = decodeXq16;
 Object.assign(window, { __dispatch: dispatch, __enterXRay: enterXRay, __setMode: setMode, __ask: ask, __block: blockAisle, __select: selectAsset });

@@ -40,7 +40,7 @@ export function toast(msg, ms = 4200) {
 
 // Phones and low-memory devices get a lighter scan and a lower pixel ratio.
 export const LITE = (() => {
-  try { return matchMedia("(max-width: 760px)").matches || (navigator.deviceMemory && navigator.deviceMemory <= 4) || false; } catch { return false; }
+  try { return matchMedia("(max-width: 820px)").matches || (navigator.deviceMemory && navigator.deviceMemory <= 4) || false; } catch { return false; }
 })();
 
 // ------------------------------------------------------------------ cards shared by the 3D app and the floor plan

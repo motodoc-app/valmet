@@ -11,7 +11,7 @@ function steps(A) {
     { title: "This is a real room, scanned in 3D",
       plain: "What you see is not a drawing: it is a 3D scan of an equipment room, made of millions of tiny coloured blobs. Drag to look around, scroll to zoom.",
       eng: `${S.data.integrity.declared_vertex_count.toLocaleString()} Gaussian splats from the supplied PLY, integrity-checked and re-oriented to a Y-up frame with the floor at y = 0.`,
-      run: () => { A.setMode("facility"); A.setFrames("none"); A.setCamera("chase"); A.flyHome(); } },
+      run: () => { A.setMode("facility"); A.pause(); A.setFrames("none"); A.setCamera("chase"); A.flyHome(); } },
     { title: `The software found ${n} objects`,
       plain: "Every box is one thing the software separated from the scan by itself: pumps, pipes, valves, cabinets. Each one has a name and a confidence score.",
       eng: "Room-envelope RANSAC for walls and floor, recursive DBSCAN on the rest, gravity-aligned oriented boxes, names from a vision model on rendered crops, plus a human review layer.",
@@ -19,7 +19,7 @@ function steps(A) {
     { title: "Maintenance records are matched to the scan",
       plain: `The plant's asset list (synthetic data) is linked to the objects it describes. ${t.tag}, a ${t.asset_class.replaceAll("_", " ").toLowerCase()} with a simulated fault, is marked in red.`,
       eng: "Class-compatible assignment with a stated mapping confidence for every asset; nothing is matched without a compatible object.",
-      run: () => { A.setFrames("assets"); A.selectAsset(t.asset_id, { fly: true }); } },
+      run: () => { A.setMode("facility"); A.pause(); A.setFrames("assets"); A.selectAsset(t.asset_id, { fly: true }); } },
     { title: "A robot plans its own safe route",
       plain: "The inspection robot works out a path on the open floor that keeps clear of every machine, then drives it. The camera now watches from above, like a match broadcast.",
       eng: "2.5D multi-level heightfield, clearance-aware A* for a 0.2 m robot radius, line-of-sight smoothing, then a collision and clearance check of the final path.",
@@ -46,6 +46,8 @@ function steps(A) {
 let el = null;
 export async function startTour(A) {
   el?.remove();
+  document.querySelector(".toast")?.remove();
+  document.body.classList.add("touring");
   const list = steps(A);
   el = document.createElement("div");
   el.className = "tour"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Guided tour");
@@ -64,6 +66,6 @@ export async function startTour(A) {
     if (e.target.closest("[data-tour-b]") && i > 0) { i--; return show(); }
     if (e.target.closest("[data-tour-n]")) { if (i === list.length - 1) return end(); i++; return show(); }
   };
-  const end = () => { token++; el?.remove(); el = null; };
+  const end = () => { token++; el?.remove(); el = null; document.body.classList.remove("touring"); };
   show();
 }

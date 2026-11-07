@@ -304,7 +304,7 @@ body.plan-mode .dock { right: 24px; max-width: calc(100% - 328px); }
 body.plan-mode .card.left { max-height: calc(100% - 196px - 70px); }
 
 /* ---------- phones and small tablets ---------- */
-@media (max-width: 760px) {
+@media (max-width: 820px) {
   html, body { font-size: 13px; }
   .wordmark { top: 12px; left: 14px; }
   .wordmark .eyebrow { display: none; }
@@ -338,4 +338,27 @@ body.plan-mode .card.left { max-height: calc(100% - 196px - 70px); }
   .btn { height: 42px; }
   .list-row { padding: 11px 10px; }
 }
-@media (max-width: 1100px) and (min-width: 761px) { .plan-banner { left: 240px; right: 330px; font-size: 11.5px; } }
+@media (max-width: 1100px) and (min-width: 821px) { .plan-banner { left: 240px; right: 330px; font-size: 11.5px; } }
+
+/* ---------- mid-size screens: keep the top bar from colliding ---------- */
+.link { white-space: nowrap; }
+body.touring .toast { top: auto; bottom: 120px; }
+.tour { top: 76px; bottom: auto; }
+@media (max-width: 1320px) and (min-width: 821px) {
+  .iconbtn .lbl { display: none; }
+  .ask { width: 260px; }
+}
+@media (max-width: 1100px) and (min-width: 821px) {
+  .wordmark .eyebrow { display: none; }
+  .wordmark .name { font-size: 14px; letter-spacing: .1em; margin-top: 6px; }
+  .modes { left: 196px; transform: none; }
+  .modes button { padding: 6px 10px; }
+  .ask { width: 200px; }
+  .ask .kbd { display: none; }
+  .plan-banner .long { display: none; }
+  .plan-banner { left: 196px; right: 320px; }
+  .plan-legend { display: none; }
+  body.plan-mode .dock { left: 24px; right: 24px; max-width: calc(100% - 48px); }
+}
+@media (max-width: 960px) and (min-width: 821px) { .ask { width: 150px; } .modes button { padding: 6px 8px; } }
+@media (max-width: 820px) { .tour { top: auto; bottom: calc(46% + 12px); } }

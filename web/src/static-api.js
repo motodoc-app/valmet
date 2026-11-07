@@ -146,7 +146,11 @@ const ctx = () => once("ctx", async () => {
   return { scene, nav: new Nav(grid), goals, assets, corpus, search: bm25(corpus), answers, manifest };
 });
 
-const SIGNAL_WORDS = { vibration: "vibration_mm_s", temperature: "bearing_temp_c", temp: "bearing_temp_c", current: "motor_current_a", pressure: "process_pressure_bar", flow: "process_flow_pct", stiction: "stiction_index" };
+const SIGNAL_WORDS = { vibration: "vibration_mm_s", temperature: "bearing_temp_c", temp: "bearing_temp_c", current: "motor_current_a", pressure: "process_pressure_bar", flow: "process_flow_pct", stiction: "stiction_index", position: "position_actual_pct", overheat: "bearing_temp_c" };
+const ANOMALY = /abnormal|high|unusual|anomal|elevated|highest|find|overheat|hot\b|worst|most/, XRAY_WORDS = /x-?ray|explode|inside|internal|component|parts/;
+const COND_RANK = { attention_required: 0, degraded: 1, watch: 2, healthy: 3 };
+const byCondition = (a, b) => (COND_RANK[a.condition_state] ?? 9) - (COND_RANK[b.condition_state] ?? 9) || b.priority - a.priority;
+const STATUS_WORDS = /wrong|why|flag|status|health|condition|issue|diagnos|problem|fault/;
 const STOP = new Set(["the", "where", "is", "are", "find", "show", "me", "a", "an", "all", "of", "in", "this", "room", "please", "locate", "which"]);
 function findObjects(c, phrase) {
   const words = (phrase.toLowerCase().match(/[a-z0-9-]+/g) || []).filter((w) => !STOP.has(w));
@@ -213,7 +217,15 @@ export const staticApi = {
     let asset_id = selected, reason = "";
     // an asset named by tag ("send the robot to M-006") wins over the current selection
     const tagM = t.match(/\b([a-z]{1,3}-\d{3})\b/), named = tagM && c.assets.find((x) => x.tag.toLowerCase() === tagM[1])?.asset_id;
-    if (named) asset_id = named;
+    if (named) {
+      asset_id = named;
+      // "what's wrong with P-005?" / "why is P-005 flagged?": show its diagnosis
+      if (STATUS_WORDS.test(t) && !/send|go to|navigate|dispatch/.test(t) && !XRAY_WORDS.test(t)) {
+        const a = A[named];
+        return { intent: "command", asset_id: named, actions: [{ type: "select", asset_id: named, object_id: a.object_id }, { type: "diagnose", asset_id: named }],
+          text: `${a.tag}: ${a.issue_summary}. Condition ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score}, criticality ${a.criticality} [${a.asset_id}]. Opening its diagnosis with the evidence.` };
+      }
+    }
     const actions = [];
     // a question about a named component ("what does the impeller do?"): answer it for that device type and show the part
     const lib = await staticApi.xrayModel(), selCls = A[selected]?.asset_class;
@@ -226,11 +238,12 @@ export const staticApi = {
     hits.sort((x, y) => y[0] - x[0] || y[1] - x[1]);
     if (hits.length && /what (does|is|are)|what's|explain|how (does|do i|to)|inspect|fail|faulty|evidence|purpose|why/.test(t) && !/\bwhere\b/.test(t)) {
       const [, , ccls, comp] = hits[0];
-      if (A[asset_id]?.asset_class !== ccls) asset_id = c.assets.filter((a) => a.asset_class === ccls).sort((a, b) => b.priority - a.priority)[0]?.asset_id;
+      if (A[asset_id]?.asset_class !== ccls) asset_id = c.assets.filter((a) => a.asset_class === ccls).sort(byCondition)[0]?.asset_id;
       const ans = await staticApi.query(text, asset_id, comp.id);
       return { intent: "component", text: ans.text, sources: ans.sources, actions: asset_id ? [{ type: "xray", asset_id, focus: [comp.id] }] : [], asset_id, component: comp.id, mode: ans.mode };
     }
-    if (sig && /abnormal|high|unusual|anomal|elevated|highest|find/.test(t)) {
+    const sigQ = !!(sig && ANOMALY.test(t));       // "where is the vibration sensor?" names a device, not a symptom
+    if (sigQ) {
       let best = null;
       for (const a of c.assets) { if (cls && a.asset_class !== cls) continue; const s = a.signals.find((x) => x.signal === sig && x.z_vs_peers != null); if (s && (!best || s.z_vs_peers > best[1].z_vs_peers)) best = [a, s]; }
       if (best) { asset_id = best[0].asset_id; const s = best[1]; reason = `${best[0].tag} has the most abnormal ${sig}: ${s.recent_mean} ${s.unit} against a peer mean of ${s.peer_mean} ${s.unit} (z = ${s.z_vs_peers}) [Telemetry_Sample_3d].`; }
@@ -239,14 +252,14 @@ export const staticApi = {
       if (cand.length) { const a = cand[0]; asset_id = a.asset_id; reason = `${a.tag} has the highest maintenance priority${cls ? " among " + cls.replace("_", " ").toLowerCase() + "s" : ""}: ${a.condition_state.replace("_", " ")}, health ${a.health_score}, ${a.issue_code} (${a.criticality}) [${a.asset_id}].`; }
     }
     if (cls && !reason && (!asset_id || A[asset_id]?.asset_class !== cls) && /explain|what does|how does|component|parts|x-?ray|inside|practi|learn|this/.test(t)) {
-      const same = c.assets.filter((a) => a.asset_class === cls).sort((a, b) => b.priority - a.priority);
+      const same = c.assets.filter((a) => a.asset_class === cls).sort(byCondition);
       if (same.length) asset_id = same[0].asset_id;
     }
     let m = t.match(/(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$/);
-    if (m && /manual|document|\bdocs?\b|knowledge|procedure|guide/.test(m[1])) m = null;   // a library request, not a scene search
+    if (m && (/manual|document|\bdocs?\b|knowledge|procedure|guide/.test(m[1]) || XRAY_WORDS.test(t))) m = null;   // library / X-Ray requests are not scene searches
     // "where are the control valves?" names what to look for: the current selection must not answer it
-    if (m && !reason && !sig && !/\b(it|this|that|here|selected)\b/.test(m[1])) asset_id = null;
-    if (!asset_id && m && !sig) {
+    if (m && !reason && !sigQ && !/\b(it|this|that|here|selected)\b/.test(m[1])) asset_id = null;
+    if (!asset_id && m && !sigQ) {
       const tag = t.match(/\b([a-z]{1,2}-\d{3})\b/);
       if (tag) { const hit = c.assets.find((a) => a.tag.toLowerCase() === tag[1]); if (hit) { asset_id = hit.asset_id; reason = `${hit.tag} is ${/^[aeio]/i.test(hit.asset_class) ? "an" : "a"} ${hit.asset_class.replaceAll("_", " ").toLowerCase()} in ${hit.area_name} [${hit.asset_id}].`; } }
       else {
@@ -269,7 +282,7 @@ export const staticApi = {
       if (!reason) reason = `${a.tag} is ${/^[aeio]/i.test(a.asset_class) ? "an" : "a"} ${a.asset_class.replaceAll("_", " ").toLowerCase()} in ${a.area_name}, ${a.condition_state.replaceAll("_", " ")}, health ${a.health_score} [${a.asset_id}].`;
       if (a.object_id) { const o = c.scene.objects.find((x) => x.id === a.object_id); reason += ` Mapped to scene object ${a.object_id} (${o.label}, ${o.label_source}), mapping confidence ${a.mapping_confidence}.`; }
     }
-    if (/send|go to|navigate|inspect|dispatch|walk|drive|route/.test(t) && asset_id) { actions.push({ type: "navigate", asset_id }); reason += " Dispatching the inspection robot on a collision-free route."; }
+    if (/send|go to|navigate|inspect|dispatch|walk|drive|route/.test(t) && asset_id && !/practi[cs]e|learn|train|rehears|how do i|how to/.test(t)) { actions.push({ type: "navigate", asset_id }); reason += " Dispatching the inspection robot on a collision-free route."; }
     if (/x-?ray|explode|inside|internal|component|parts/.test(t)) actions.push({ type: "xray", asset_id });
     if (/explain|what does|what is this|how does/.test(t) && asset_id) {
       const a = A[asset_id], lib = (await staticApi.xrayModel()).classes[a.asset_class];
@@ -281,7 +294,7 @@ export const staticApi = {
     if (!reason && !actions.length) {
       const tag = t.match(/\b([a-z]{1,3}-\d{3})\b/), named = tag && c.assets.find((x) => x.tag.toLowerCase() === tag[1])?.asset_id;
       const a = await staticApi.query(text, named || selected); return { intent: "question", text: a.text, actions: [], mode: a.mode }; }
-    if (!reason) reason = actions.map((a) => ({ xray: "Opening the X-Ray view.", practice: "Opening practice.", learn: "Opening the guided lessons.", knowledge: "Opening the library." }[a.type] || "")).join(" ");
+    if (!reason) reason = actions.map((a) => ({ xray: "Opening the X-Ray view.", practice: "Opening Practice: a fictional case, with a safety check first.", learn: "Opening the guided lessons.", knowledge: "Opening the library." }[a.type] || "")).join(" ");
     return { intent: "command", text: reason.trim(), actions, asset_id };
   },
 };

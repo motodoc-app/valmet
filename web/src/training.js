@@ -64,7 +64,10 @@ export function initTraining(S, ui) {
         if (ok) { S.onComponentPick = null; document.getElementById("nx").onclick = next; }
       };
     } else if (task.type === "choice") {
-      body = `<p class="p" style="color:var(--text)">${esc(task.prompt)}</p><div class="quiz">${task.options.map((o, i) => `<button class="opt" data-i="${i}">${esc(o)}</button>`).join("")}</div><div id="fb"></div>`;
+      // stable shuffle (same order on every re-render), so the right answer is not always first
+      const hash = (x) => [...x].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+      const order = task.options.map((o, i) => i).sort((a, b) => hash(task.prompt + task.options[a]) - hash(task.prompt + task.options[b]));
+      body = `<p class="p" style="color:var(--text)">${esc(task.prompt)}</p><div class="quiz">${order.map((i) => `<button class="opt" data-i="${i}">${esc(task.options[i])}</button>`).join("")}</div><div id="fb"></div>`;
     } else {
       const dis = task.type === "disassembly", done = dis ? P.removed : P.reinstalled;
       if (dis && !P.removed.length) { S.xray.setExplode(0.15); S.xray.setHidden([]); }
@@ -81,7 +84,7 @@ export function initTraining(S, ui) {
         done.push(id); record(true, `${dis ? "Removed" : "Refitted"} ${comp(id).name}`);
         S.xray.setHidden(dis ? [...P.removed] : task.order.filter((x) => !P.reinstalled.includes(x)));
         if (done.length === task.order.length) {
-          if (dis) S.xray.highlight(["bearing_inboard", "bearing_outboard"]);
+          if (dis) S.xray.highlight(sc.tasks.find((t) => t.type === "select_component")?.answer || []);
           toast(dis ? esc(task.feedback_ok || "Done") : "Model reassembled");
           P.i++; setTimeout(practice, 400);
         } else practice();
@@ -116,6 +119,13 @@ export function initTraining(S, ui) {
     gates.forEach((g) => (g.onchange = () => (document.getElementById("pStart").disabled = !gates.every((x) => x.checked))));
     document.getElementById("pStart").onclick = () => { P = { sc, i: 0, score: 0, attempts: 0, log: [], removed: [], reinstalled: [], t0: Date.now() }; practice(); };
   }
+  // what this case teaches, taken from the scenario itself (works for every device type)
+  function takeaways(sc) {
+    const pick = sc.tasks.find((t) => t.type === "select_component");
+    const out = pick?.feedback_ok ? [pick.feedback_ok] : [];
+    for (const t of sc.tasks.filter((x) => x.type === "choice")) out.push(`${t.prompt.replace(/\?$/, "")}: ${t.options[t.answer].charAt(0).toLowerCase()}${t.options[t.answer].slice(1)}.`);
+    return out.slice(0, 3);
+  }
   function summary() {
     const pct = Math.round((100 * P.score) / Math.max(1, P.attempts));
     S.onComponentPick = null; S.xray.setHidden([]); S.xray.setExplode(0.5);
@@ -124,9 +134,9 @@ export function initTraining(S, ui) {
       <div class="meter" style="margin-top:12px"><i style="width:${pct}%"></i></div>
       <div class="section"><div class="label">Attempts</div>${P.log.map((l) => `<div class="kv"><span>Task ${l.task} · ${esc(l.what)}</span><span style="color:${l.ok ? "var(--ok)" : "var(--bad)"}">${l.ok ? "Correct" : "Wrong"}</span></div>`).join("")}</div>
       <div class="section"><div class="label">Takeaways</div>
-        <div class="step"><span class="k">1</span><span>Stable flow with rising vibration and temperature points to the bearings, not the impeller.</span></div>
-        <div class="step"><span class="k">2</span><span>Check sensor mounting and signal quality before trusting a trend <span class="cite" data-doc="DOC-VIBRATION_SENSOR-CORE">DOC-VIBRATION_SENSOR-CORE</span>.</span></div>
-        <div class="step"><span class="k">3</span><span>Real work needs authorisation, isolation and approved procedures <span class="cite" data-doc="DOC-FIELD-SAFETY">DOC-FIELD-SAFETY</span>.</span></div></div>
+        ${takeaways(P.sc).map((x, i) => `<div class="step"><span class="k">${i + 1}</span><span>${esc(x)}</span></div>`).join("")}
+        <div class="step"><span class="k">${takeaways(P.sc).length + 1}</span><span>Check sensor mounting and signal quality before trusting a trend <span class="cite" data-doc="DOC-VIBRATION_SENSOR-CORE">DOC-VIBRATION_SENSOR-CORE</span>.</span></div>
+        <div class="step"><span class="k">${takeaways(P.sc).length + 2}</span><span>Real work needs authorisation, isolation and approved procedures <span class="cite" data-doc="DOC-FIELD-SAFETY">DOC-FIELD-SAFETY</span>.</span></div></div>
       <div class="section row" style="flex-wrap:nowrap"><button class="btn" id="pAgain" style="flex:1">Try again</button><button class="btn primary" id="pBack" style="flex:1">Back to facility</button></div></div>`);
     document.getElementById("pAgain").onclick = () => { P = null; practice(); };
     document.getElementById("pBack").onclick = () => ui.setMode("facility");
