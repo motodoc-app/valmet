@@ -1,11 +1,11 @@
 // "Clean scan" classifier: marks the haze in a Gaussian-splat scan (no three.js, so it also runs in Node tests).
 // A splat counts as haze when it is
 //   · outside the room box (floaters beyond the walls, under the floor or above the ceiling),
-//   · very large (a blurry blob that smears colour over the room from a distance),
-//   · faint AND large (semi-transparent fog), or
+//   · a very large, fat blob above the floor (blurry fog that smears colour over the room from a distance),
+//   · a faint AND large fat blob (semi-transparent fog), or
 //   · isolated and small (almost alone in its 10 cm voxel: speckle floating in the aisles).
 // Works on standard 32-byte .splat records: xyz f32, scale xyz f32, rgba u8, quaternion u8.
-export const HAZE = { margin: 0.3, huge: 0.22, faintA: 32, faintScale: 0.035, voxel: 0.1, lonely: 2, lonelyScale: 0.03 };
+export const HAZE = { margin: 0.3, huge: 0.22, faintA: 32, faintScale: 0.035, voxel: 0.1, lonely: 2, lonelyScale: 0.03, flat: 0.2, floorBand: 0.15 };
 
 /**
  * @param {Uint8Array} splat 32-byte records
@@ -27,8 +27,11 @@ export function hazeMask(splat, bounds, opt = HAZE) {
   for (let i = 0; i < n; i++) {
     if (out[i]) continue;
     const o = i * 32, a = splat[o + 27];
-    const s = Math.max(dv.getFloat32(o + 12, true), dv.getFloat32(o + 16, true), dv.getFloat32(o + 20, true));
-    if (s > opt.huge || (a < opt.faintA && s > opt.faintScale) || (s < opt.lonelyScale && cells[cell[i]] <= opt.lonely)) out[i] = 1;
+    const sx = dv.getFloat32(o + 12, true), sy = dv.getFloat32(o + 16, true), sz = dv.getFloat32(o + 20, true);
+    const s = Math.max(sx, sy, sz);
+    // flat splats are surface (floor wash, wall paint): only fat blobs above the floor band count as fog
+    const blob = Math.min(sx, sy, sz) > opt.flat * s && dv.getFloat32(o + 4, true) > opt.floorBand;
+    if ((blob && (s > opt.huge || (a < opt.faintA && s > opt.faintScale))) || (s < opt.lonelyScale && cells[cell[i]] <= opt.lonely)) out[i] = 1;
   }
   return out;
 }

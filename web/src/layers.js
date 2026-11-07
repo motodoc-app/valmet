@@ -61,12 +61,12 @@ function renderLegend() {
 }
 function placeLegend() {
   if (!L.legend || L.legend.classList.contains("hidden")) return;
-  // centred over the dock, inside the gap between the left and right cards
+  // just above the dock, centred in the gap between the left and right cards
   const vis = (el) => el && getComputedStyle(el).display !== "none" && !el.classList.contains("hidden") && el.getBoundingClientRect().height > 0;
   const d = document.querySelector("#dock"), lc = document.querySelector("#left"), rc = document.querySelector("#right");
   const r = vis(d) ? d.getBoundingClientRect() : null;
   const x0 = vis(lc) ? lc.getBoundingClientRect().right + 12 : 24, x1 = vis(rc) ? rc.getBoundingClientRect().left - 12 : innerWidth - 64;
-  const cx = r ? (r.left + r.right) / 2 : (x0 + x1) / 2, half = Math.max(160, Math.min(cx - x0, x1 - cx));
+  const cx = (x0 + x1) / 2, half = Math.max(160, (x1 - x0) / 2);
   Object.assign(L.legend.style, { bottom: r ? `${Math.round(innerHeight - r.top + 10)}px` : "24px", left: `${Math.round(cx)}px`, maxWidth: `${Math.round(2 * half)}px` });
 }
 addEventListener("resize", placeLegend);
@@ -85,7 +85,7 @@ async function openSiteMap() {
   if (innerWidth > 820) Object.assign(sheet.style, { width: "min(760px, calc(100% - 48px))", maxHeight: "calc(100% - 108px)" });   // a plan needs room
   const draw = () => {
     if (!cv.isConnected) return;
-    const w = cv.clientWidth || 600, b = A.S.data.bounds, h = Math.round(Math.min(innerHeight - 268, Math.max(380, (w - 214) * ((b.max[2] - b.min[2]) / (b.max[0] - b.min[0])) + 56)));
+    const w = cv.clientWidth || 600, b = A.S.data.bounds, h = Math.round(Math.min(innerHeight - 300, Math.max(380, (w - 214) * ((b.max[2] - b.min[2]) / (b.max[0] - b.min[0])) + 56)));
     const dpr = Math.min(devicePixelRatio || 1, 2);
     cv.width = w * dpr; cv.height = h * dpr; cv.style.height = h + "px";
     const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -155,7 +155,7 @@ on("frame", () => {
   if (sel !== f.outlineId) f.setOutline(sel);
   if (!L.hoverDirty) return;
   L.hoverDirty = false;
-  if (!L.hoverNdc || A.S.robot?.moving) return f.setHover(null);
+  if (!L.hoverNdc || A.S.robot?.moving) { A.canvas.style.cursor = ""; return f.setHover(null); }
   L.ray.setFromCamera(L.ndc.set(L.hoverNdc.x, L.hoverNdc.y), A.camera);
   const id = f.pick(L.ray.ray);
   f.setHover(id);
