@@ -7,6 +7,9 @@ let cache = {};
 const once = (k, f) => (cache[k] ??= f());
 
 // ------------------------------------------------------------------ navigation (port of navigation.py)
+// same wording as navigation.py
+const NO_ROUTE_BLOCKED = "no collision-free route (walkway blocked)";
+const NO_ROUTE_UNREACHABLE = "no collision-free route: the floor next to this object is not connected to the robot's drivable area in the scan (for example behind other equipment, past a gap narrower than the robot, or up a step)";
 function bits(b64, n) {
   const s = atob(b64), out = new Uint8Array(n);
   for (let i = 0; i < n; i++) out[i] = (s.charCodeAt(i >> 3) >> (7 - (i & 7))) & 1;
@@ -138,7 +141,8 @@ class Nav {
     return out;
   }
   validate(cells) {
-    let samples = 0, minc = 1e9, hits = 0;
+    let samples = 0, minc = Infinity, hits = 0;
+    if (cells.length === 1) { const i = this.idx(...cells[0]); samples = 1; minc = this.clear[i]; if (this.obstacle(i) || !this.floor[i]) hits = 1; }   // already there
     for (let k = 0; k < cells.length - 1; k++) {
       const a = cells[k], b = cells[k + 1], n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) * 2 + 1;
       for (let s = 0; s < n; s++) {
@@ -146,7 +150,7 @@ class Nav {
         samples++; minc = Math.min(minc, this.clear[i]); if (this.obstacle(i) || !this.floor[i]) hits++;
       }
     }
-    return { samples, min_clearance_m: +minc.toFixed(3), collisions: hits, robot_radius_m: this.robot_radius, collision_free: hits === 0 && minc >= this.robot_radius - 1e-6 };
+    return { samples, min_clearance_m: +Math.min(minc, 99).toFixed(3), collisions: hits, robot_radius_m: this.robot_radius, collision_free: hits === 0 && minc >= this.robot_radius - 1e-6 };
   }
 }
 
@@ -215,11 +219,15 @@ export const staticApi = {
     if (clears.length) { const o = c.scene.objects.find((x) => x.id === object_id); if (o) g = nav.approachCell(o) || g; }
     if (g && !nav.walk[nav.idx(...g)]) { const [x, z] = nav.toWorld(...g); g = nav.nearestWalkable(x, z); }
     if (!s || !g) return { ok: false, reason: "start or goal not reachable on the walkable floor" };
+    // the start cell is snapped to the nearest drivable cell: report how far, so a blocked start is never silent
+    const sw = nav.toWorld(...s), start_snap_m = +Math.hypot(sw[0] - start[0], sw[1] - start[1]).toFixed(2);
     const raw = nav.astar(s, g);
-    if (!raw) return { ok: false, reason: "no collision-free route (walkway blocked)" };
+    // with no barriers or layout changes, a failed search means the goal lies in a floor area the robot cannot drive to
+    if (!raw) return { ok: false, reason: blocks.length || clears.length ? NO_ROUTE_BLOCKED : NO_ROUTE_UNREACHABLE };
     const sm = nav.smooth(raw), pts = sm.map(([r, cc]) => nav.toWorld(r, cc));
     let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
     return { ok: true, waypoints: pts.map(([x, z]) => [+x.toFixed(3), 0, +z.toFixed(3)]), raw_cells: raw.length, length_m: +len.toFixed(2),
+      start_snap_m, already_there: raw.length === 1,
       validation: nav.validate(sm), compute_ms: +(performance.now() - t0).toFixed(1), blocks, ...(clears.length ? { clears } : {}), object_id };
   },
   diagnose: (id) => once("d" + id, () => get(`diag/${id}.json`)),

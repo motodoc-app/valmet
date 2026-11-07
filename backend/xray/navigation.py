@@ -17,6 +17,10 @@ from scipy import ndimage
 
 from . import config
 
+NO_ROUTE_BLOCKED = "no collision-free route (walkway blocked)"
+NO_ROUTE_UNREACHABLE = ("no collision-free route: the floor next to this object is not connected to the robot's drivable "
+                        "area in the scan (for example behind other equipment, past a gap narrower than the robot, or up a step)")
+
 
 @dataclass
 class Grid:
@@ -317,7 +321,11 @@ class NavMap:
 
     def validate(self, cells: list[tuple[int, int]]) -> dict:
         """Densely re-check the final polyline against raw obstacles and object frames."""
-        samples, min_clear, hits = 0, 1e9, 0
+        samples, min_clear, hits = 0, math.inf, 0
+        if len(cells) == 1:   # already there: check the one cell instead of reporting no clearance at all
+            r, c = cells[0]
+            samples, min_clear = 1, float(self.clearance[r, c])
+            hits = int(bool(self.occupied[r, c] or not self.floor[r, c]))
         for a, b in zip(cells[:-1], cells[1:]):
             n = int(max(abs(b[0] - a[0]), abs(b[1] - a[1]))) * 2 + 1
             for t in np.linspace(0, 1, n):
@@ -326,7 +334,7 @@ class NavMap:
                 min_clear = min(min_clear, float(self.clearance[r, c]))
                 if self.occupied[r, c] or not self.floor[r, c]:
                     hits += 1
-        return {"samples": samples, "min_clearance_m": round(min_clear, 3), "collisions": hits,
+        return {"samples": samples, "min_clearance_m": round(min(min_clear, 99.0), 3), "collisions": hits,
                 "robot_radius_m": self.robot_radius, "collision_free": hits == 0 and min_clear >= self.robot_radius - 1e-6}
 
     def plan(self, start_xz: tuple[float, float], target_obj: dict) -> dict:
@@ -336,14 +344,20 @@ class NavMap:
             return {"ok": False, "reason": "start or goal not reachable on the walkable floor"}
         raw = self.astar(s, gcell)
         if raw is None:
-            return {"ok": False, "reason": "no collision-free route (walkway blocked)"}
+            # with no barriers or layout changes, a failed search means the goal lies in a floor area the robot
+            # cannot drive to (same wording as web/src/static-api.js)
+            changed = bool(self.blocked.any() or self.cleared.any())
+            return {"ok": False, "reason": NO_ROUTE_BLOCKED if changed else NO_ROUTE_UNREACHABLE}
         sm = self.smooth(raw)
         val = self.validate(sm)
         pts = [self.grid.to_world(r, c) for r, c in sm]
+        # the start is snapped to the nearest drivable cell: report how far, so a blocked start is never silent
+        snap = math.hypot(pts[0][0] - start_xz[0], pts[0][1] - start_xz[1])
         length = sum(math.dist(a, b) for a, b in zip(pts[:-1], pts[1:]))
         return {"ok": True, "waypoints": [[round(x, 3), 0.0, round(z, 3)] for x, z in pts],
                 "raw_cells": len(raw), "length_m": round(length, 2), "validation": val,
-                "goal_cell": list(gcell), "start_cell": list(s)}
+                "goal_cell": list(gcell), "start_cell": list(s), "start_snap_m": round(snap, 2),
+                "already_there": len(raw) == 1}
 
     def export(self) -> dict:
         g = self.grid

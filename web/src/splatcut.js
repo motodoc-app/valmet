@@ -65,7 +65,7 @@ export class SplatCut {
    *  per loaded scan. It lets Plan see things the segmentation missed (a second pallet truck, a loose box) when it
    *  suggests a spot: the object boxes and the navigation grid alone do not contain them. */
   standing({ cell = 0.1, y0 = 0.15, y1 = 1.2 } = {}) {
-    const key = this.srcKey();
+    const key = `${this.srcKey()}|${cell}|${y0}|${y1}`;
     if (this._standing?.key === key) return this._standing;
     const H = halfLUT(), cells = new Map();
     for (const src of this.sources()) {

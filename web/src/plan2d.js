@@ -356,7 +356,7 @@ function renderOverview() {
     <div class="sub">${nice(t.asset_class)} · ${esc(t.area_name)}</div>
     <p class="p" style="margin-top:12px">${esc(t.issue_summary)}. Prepare the visit before you travel: find the pump, check the route in, and read the cited diagnosis.</p>
     ${kv("Condition", `<span class="status s-${t.condition_state}">${nice(t.condition_state)}</span>`)}${kv("Health", t.health_score)}${kv("Criticality", esc(t.criticality))}
-    ${kv("Mapped to", `${esc(P.target.label)} · ${Math.round(t.mapping_confidence * 100)}%`)}
+    ${kv("Mapped to", `${esc(P.target.label)} · ${Math.round(t.mapping_confidence * 100)}% (procedural link)`)}
     <div class="section stack"><button class="btn primary block" data-act="dispatch">${icon("play")}Send inspection robot</button></div>
     <div class="section"><div class="label">How to read the plan</div>
       <div class="step"><span class="k">1</span><span>You are looking down on the scanned room. Light grey is floor the robot can drive on; darker grey is equipment.</span></div>
@@ -383,7 +383,7 @@ function renderAsset(o) {
   card(withMin(`${header(nice(a.asset_class), a.tag, '<span class="tag syn">Synthetic</span>', true)}
     <div class="sub"><span class="status s-${a.condition_state}">${nice(a.condition_state)}</span> · ${esc(a.issue_summary)}</div>
     <div class="section">${kv("Health", a.health_score)}${kv("Criticality", esc(a.criticality))}${kv("Area", esc(a.area_name))}</div>
-    <div class="section"><div class="label">3D identity</div>${ident}${kv("Mapping", `${Math.round(a.mapping_confidence * 100)}%`)}</div>
+    <div class="section"><div class="label">3D identity</div>${ident}${kv("Link to workbook asset", `${Math.round(a.mapping_confidence * 100)}% · procedural, not field-verified`)}</div>
     <div class="section stack"><button class="btn primary block" data-act="dispatch-sel">${icon("play")}Send robot here</button>
       <button class="btn block" data-act="diagnose-sel">${icon("spark")}Diagnose now</button>
       <button class="btn block" data-act="parts-sel">${icon("layers")}List its components</button></div></div>`));
