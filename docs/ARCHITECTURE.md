@@ -57,6 +57,11 @@
 * **Narration**: the LLM follows the `DOC-RAG-GUIDE` contract (Observation / Evidence / Hypothesis / Uncertainty /
   Next safe step). A server-side citation checker removes any ID that is not in the evidence package and reports it.
   A template fallback keeps the same structure.
+* **Live LLM and its failure mode**: free questions in server mode are answered live with the last 3 turns as
+  context. The client uses a 12 s timeout and no retries; a quota error, rate limit, timeout, connection or auth
+  failure trips a class-level circuit breaker (`_trip`) that skips the LLM for 5 minutes, so later fallbacks are
+  instant. The web client (`api.js`) then shows the narrative pre-generated at export time, labelled "Pre-generated …
+  (live AI unavailable)", or the closest pre-generated FAQ answer; the copilot badge reads *Live AI unavailable*.
 * **Knowledge Center**: BM25 over 99 documents (8 knowledge docs, 30 asset cards, 50 service cases, 11 illustrative
   component notes). Answers cite IDs.
 * **Command router**: transparent rules for "faulty / abnormal <signal> / send / x-ray / practise / manual". Anything
@@ -72,7 +77,10 @@ The command router adds semantic scene search ("where is …") over all 676 obje
 
 ## 6. Hosted mode (`scripts/export_static.py`, `web/src/static-api.js`)
 The export writes the scene, nav grid (floor, obstacle and height bitmaps), approach cells, all 30 diagnoses
-(LLM-narrated at export time and citation-checked), pre-answered component questions, the BM25 corpus. The splat chunks are built
+(LLM-narrated at export time and citation-checked), pre-answered component questions, the BM25 corpus, and the
+copilot FAQ (`scripts/export_faq.py`: 320 answers, 9 per asset + 50 general, citation-checked). `faq-match.js`
+matches a typed question to an entry (a named tag must match; otherwise IDF-weighted token similarity above a
+threshold) and the answer is labelled "Pre-generated answer to a similar question". The splat chunks are built
 from the committed `web/public/data/scene.splat` by the web build (`web/scripts/scan-chunks.mjs`: quantised 17-byte
 records, most visible splats first, ≤ 15 MB per file), and `web/scripts/check-manifest.mjs` fails the build if any
 manifest entry is missing or its byte size, splat count or SHA-256 differs. At runtime a missing chunk set falls
@@ -85,7 +93,20 @@ three.js 0.180 with **Spark 2.4** (Gaussian-splat renderer that composites with 
 and plain JS modules: `boot.js` (entry: checks WebGL 2 before any 3D code is loaded), `facility.js` (splats, frames,
 robot, route, blocks, floor map), `xray.js` (data-driven exploded models for every equipment type, with explode,
 see-through, isolate and labels), `training.js` (Learn and Practice), `tour.js` (guided tour), `ui.js` (formatting
-and the diagnosis card shared by both views), and `main.js` (state, cards, dock, playback, ask bar, transitions).
+and the diagnosis card shared by both views), `xray-overlay.js` (in-scene X-Ray panel and arrival prompt) and
+`main.js` (state, cards, dock, playback, camera modes, ask bar, transitions).
+
+**Camera modes.** Robot POV, Chase, Angled, Top and Free only move the viewing camera; they never touch the route or
+the robot. Robot POV sits 0.95 m above the floor just ahead of the robot, tilted 8° down, and follows the heading
+through a damped turn-rate filter so corners do not snap; the robot's own body is hidden and a HUD reads "Simulated
+robot camera — rendered from the 3D scan, not a live feed". Dragging or scrolling hands the camera over to Free.
+
+**In-scene X-Ray.** The asset card's *Explore internals (X-Ray)* (or *Inspect equipment* on the arrival prompt)
+draws the same `xray.js` scene into a panel over the room with a scissor viewport and its own camera and
+OrbitControls. On open it saves the room camera pose and mode, the robot's motion and the selection, and pauses the
+robot; × or Esc restores all of them exactly. Explode, see-through, labels, the component list, suspected parts in
+red, *Show only this part* and *Open full X-Ray view* work as in the full tab. Labelled "Illustrative teaching model
+— not reconstructed from the scan".
 
 **Graceful degradation.** `plan2d.js` is a 2D floor plan on a canvas with the same API client: it opens when WebGL 2
 is missing, when the renderer throws during start-up, or when the GPU loses the context and does not restore it
@@ -113,11 +134,21 @@ and hooks (`boot`, `frame`, `select`, `minimap`, `planExtras`, `modeChange`). Ev
 - **Layers** (`layers.js`, `semantic.js`, `scanfilter.js`, `sitemap.js`, Facility methods): category-coloured boxes
   in one `InstancedMesh` over a dimmed scan; "show uncertain"; a clean-scan filter that splits haze splats into
   their own layer at decode time (≈ 6 % of splats); an overhead site map with legend, click-to-fly and PNG export.
-- **Maintenance planning** (`planning.js`): a virtual proxy of an object (oriented footprint) dragged on the floor;
-  live collision checks against other objects' boxes and occupied grid cells (excluding the original footprint),
-  clearance from the grid distance transform, an assumed P-005 service zone, and the route re-planned on drop with
-  the proxy as an obstacle and the original footprint cleared (`clears` in `navigation.py`, `world.py`, `api.py`
-  and the browser planner). The scan is never modified. Export as Markdown/JSON.
+- **Maintenance planning** (`planning.js`, `splatcut.js`): grab any floor object, lift, drag, turn (wheel, R,
+  Q / E) and drop it; undo / redo; Top, Angled and Eye-level views. Live collision checks against other objects'
+  boxes and occupied grid cells (excluding the original footprint), clearance from the grid distance transform, an
+  assumed P-005 service zone, and the route re-planned on drop with the proxy as an obstacle and the original
+  footprint cleared (`clears` in `navigation.py`, `world.py`, `api.py` and the browser planner); before and after
+  routes are both drawn. **Scan cut-out:** the splats inside the object's (slightly padded) box are copied once into
+  a small splat mesh that follows the proxy, and the original spot is hidden by a render-time Spark SDF edit. It is
+  approximate: nearby fragments can move along and holes or ghosting can remain; collisions always use the boxes. The
+  scan data is never modified. Known gap: *Suggest a good spot* can place the pallet truck next to a second scanned
+  pallet truck at about (2.75, 0.90) that was not segmented, so it is not among the obstacles. Export as Markdown/JSON.
+- **Label review** (`review.js`): from *Scene understanding* → *Review labels*, a queue of 481 low-confidence or
+  "other equipment" candidates, uncertain first; confirm (Y), rename (R) or reject (N), skip and undo. Decisions stay
+  in the browser and export as a `relabel_near` layer in the `config/scene_annotations.json` format plus a CSV with the
+  columns of `docs/label_review_sample.csv`; `scripts/merge_review.py` merges the layer into the config. The shown
+  agreement rate (with a Wilson interval) describes the reviewed queue, which is not a random sample.
 - **Remote support** (`support.js`): pins on objects or the floor, a question, the shared asset context and plan,
   serialised (deflate + base64url) into a `#support=` link, a code or a JSON/Markdown package with an optional
   view snapshot; the expert view adds pins, an AI-drafted recommendation that must be reviewed, and a work-order
