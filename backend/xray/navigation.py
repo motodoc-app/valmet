@@ -75,6 +75,7 @@ class NavMap:
         self.height_filled = hf
         self.levels = self._levels()
         self.blocked = np.zeros_like(occ)          # dynamic, user-introduced blockages
+        self.cleared = np.zeros_like(occ)          # planning: footprints of equipment moved away (free floor again)
         self.rebuild()
 
     def _floor_heightfield(self, pts: np.ndarray, coarse: float = 0.1) -> tuple[np.ndarray, np.ndarray]:
@@ -170,8 +171,13 @@ class NavMap:
         inside = (np.abs(lx) <= hx) & (np.abs(lz) <= hz)
         out[r0:r1, c0:c1] |= inside
 
+    @property
+    def occupied(self) -> np.ndarray:
+        """Obstacles the planner uses: scan + frames, minus cleared footprints, plus user blockages."""
+        return (self.occupied_raw & ~self.cleared) | self.blocked
+
     def rebuild(self) -> None:
-        occ = self.occupied_raw | self.blocked
+        occ = self.occupied
         self.clearance = ndimage.distance_transform_edt(~occ) * self.res     # metres to nearest obstacle
         walk = self.floor & (self.clearance > self.robot_radius)
         # cells where the floor jumps by more than a step are borders between levels
@@ -191,12 +197,21 @@ class NavMap:
                                "floor_height_m": round(float(np.median(hf[m])), 2)})
 
     # -------------------------------------------------------------- dynamic obstacles
-    def set_blockages(self, blocks: list[dict]) -> None:
+    @staticmethod
+    def _box(b: dict) -> dict:
+        return {"kind": "structure", "center": [b["x"], 0.5, b["z"]], "size": [b.get("w", 0.6), 1.0, b.get("d", 0.6)],
+                "yaw": b.get("yaw", 0.0)}
+
+    def set_blockages(self, blocks: list[dict], clears: list[dict] | None = None) -> None:
+        """blocks: footprints {x, z, w, d, yaw} that become obstacles (barriers, planned equipment positions).
+        clears: footprints of equipment moved away in a layout plan; their cells become free where floor exists."""
         self.blocked[:] = False
+        self.cleared[:] = False
         for b in blocks:
-            box = {"kind": "structure", "center": [b["x"], 0.5, b["z"]], "size": [b.get("w", 0.6), 1.0, b.get("d", 0.6)],
-                   "yaw": b.get("yaw", 0.0)}
-            self._rasterise_box(box, self.blocked)
+            self._rasterise_box(self._box(b), self.blocked)
+        for c in clears or []:
+            self._rasterise_box(self._box(c), self.cleared)
+        self.cleared &= self.floor
         self.rebuild()
 
     # -------------------------------------------------------------- queries
@@ -309,7 +324,7 @@ class NavMap:
                 r = int(round(a[0] + (b[0] - a[0]) * t)); c = int(round(a[1] + (b[1] - a[1]) * t))
                 samples += 1
                 min_clear = min(min_clear, float(self.clearance[r, c]))
-                if self.occupied_raw[r, c] or self.blocked[r, c] or not self.floor[r, c]:
+                if self.occupied[r, c] or not self.floor[r, c]:
                     hits += 1
         return {"samples": samples, "min_clearance_m": round(min_clear, 3), "collisions": hits,
                 "robot_radius_m": self.robot_radius, "collision_free": hits == 0 and min_clear >= self.robot_radius - 1e-6}
@@ -334,5 +349,5 @@ class NavMap:
         g = self.grid
         enc = lambda m: np.packbits(m.astype(np.uint8)).tobytes().hex()  # noqa: E731
         return {"x0": g.x0, "z0": g.z0, "res": g.res, "W": g.W, "H": g.H,
-                "walkable": enc(self.walkable), "occupied": enc(self.occupied_raw | self.blocked),
+                "walkable": enc(self.walkable), "occupied": enc(self.occupied),
                 "floor": enc(self.floor)}
