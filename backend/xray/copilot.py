@@ -22,6 +22,10 @@ from .metadata import BuilderPack, priority_score, telemetry_evidence
 # Equipment library: one entry per asset class (exploded model, component knowledge, fault hypotheses,
 # lessons, practice scenario). Adding a device type is a data change, not a code change.
 LIBRARY = json.loads(config.LIBRARY_PATH.read_text())
+# Product documentation (how the prototype works), so general questions ("how does the robot plan routes?",
+# "what data is synthetic?") are answered from citable text instead of the model's own knowledge.
+APP_DOCS_PATH = config.LIBRARY_PATH.parent / "app_docs.json"
+APP_DOCS = json.loads(APP_DOCS_PATH.read_text()) if APP_DOCS_PATH.exists() else {"docs": [], "provenance": ""}
 
 
 def kb_id(cls: str, component: str) -> str:
@@ -73,6 +77,9 @@ class Corpus:
                          "text": f"{comp['name']}: {comp['function']} Typical symptoms: "
                                  f"{'; '.join(comp['failure_symptoms'])}. Signals: {', '.join(comp['evidence_signals'])}.",
                          "kind": "training_kb", "source": "Industrial X-Ray AI educational knowledge base (non-OEM)"})
+        for d in APP_DOCS["docs"]:
+            docs.append({"id": d["id"], "title": d["title"], "scope": "APP", "text": d["text"], "kind": "app_doc",
+                         "source": "Industrial X-Ray product documentation (README / docs)"})
         self.docs = docs
         self.tf = [Counter(_tok(d["title"] + " " + d["text"] + " " + d.get("scope", ""))) for d in docs]
         self.dl = [sum(t.values()) for t in self.tf]
@@ -196,7 +203,7 @@ class Copilot:
         bad = []
 
         def repl(m):
-            ids = [x.strip() for x in m.group(1).split(",")]
+            ids = [x.strip() for x in re.split(r"[,;]", m.group(1)) if x.strip()]
             keep = [i for i in ids if i in allowed]
             bad.extend(i for i in ids if i not in allowed)
             return f"[{', '.join(keep)}]" if keep else ""
@@ -257,38 +264,129 @@ class Copilot:
         return ev
 
     # ------------------------------------------------------------------ free-form questions
-    def answer(self, question: str, asset_id: str | None = None, component: str | None = None) -> dict:
+    def fleet(self) -> list[dict]:
+        """Compact view of every workbook asset, highest maintenance priority first (citable by asset ID)."""
+        if getattr(self, "_fleet", None) is not None:
+            return self._fleet
+        ev = self.pack.events
+        open_ev = ev[ev.status == "open"] if "status" in ev else ev.iloc[0:0]
+        n_open = open_ev.groupby("asset_id").size().to_dict()
+        n_open_high = open_ev[open_ev.severity == "high"].groupby("asset_id").size().to_dict()
+        rows = []
+        for a in self.pack.assets.to_dict("records"):
+            rows.append({"asset_id": a["asset_id"], "tag": a["tag"], "class": a["asset_class"], "area": a["area_name"],
+                         "criticality": a["criticality"], "condition": a["condition_state"], "health": a["health_score"],
+                         "issue": a["issue_code"], "summary": a["issue_summary"], "urgency": a["urgency"],
+                         "last_service": str(a["last_service_date"])[:10], "service_interval_days": a["service_interval_days"],
+                         "open_alarms_events": int(n_open.get(a["asset_id"], 0)),
+                         "open_high_severity": int(n_open_high.get(a["asset_id"], 0)),
+                         "priority": priority_score(a), "card": f"DOC-ASSET-{a['asset_id'][-3:]}"})
+        self._fleet = sorted(rows, key=lambda r: -r["priority"])
+        return self._fleet
+
+    def retrieve(self, question: str, scope: str | None = None, component: str | None = None,
+                 general: bool = False) -> list[dict]:
+        """Top documents for a question: workbook docs/cards/cases (scoped to the asset class) + product docs."""
+        q = question + (f" {component}" if component else "")
+        hits = self.corpus.search(q, k=5, scope=scope)
+        for h in self.corpus.search(q, k=4 if general else 2, kinds=["app_doc"]):
+            if h["score"] >= (1.0 if general else 2.0) and all(h["id"] != x["id"] for x in hits):
+                hits.append(h)
+        if component:
+            kb = self.corpus.get(kb_id(scope, component)) if scope else next(
+                (d for d in self.corpus.docs if d.get("component") == component), None)
+            if kb and all(kb["id"] != h["id"] for h in hits):
+                hits.insert(0, kb)
+        return hits
+
+    @staticmethod
+    def compose(hits: list[dict], n: int = 3) -> str:
+        """Readable answer from the top documents: one or two sentences per source, each with its [ID]."""
+        out = []
+        for h in hits[:n]:
+            sents = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", str(h["text"]).strip())
+            body = " ".join(sents[:2]).strip()
+            if len(body) > 320:
+                body = body[:300].rsplit(" ", 1)[0] + "…"
+            out.append(f"{h['title']}: {body} [{h['id']}]")
+        return "\n".join(out) or "No supporting document found in the builder pack."
+
+    def offline_text(self, ev: dict | None, hits: list[dict]) -> str:
+        """No LLM: the selected asset's key evidence (if any) followed by the top documents, all cited."""
+        if not ev:
+            return self.compose(hits)
+        a, h0, nxt = ev["asset"], ev["hypotheses"][0], ev["next_steps"][1]
+        lead = (f"{a['tag']}: {a['condition_state'].replace('_', ' ')}, health {a['health_score']}, "
+                f"{str(a['issue_summary']).rstrip('.')} [{a['asset_id']}]. Leading hypothesis: {h0['hypothesis']}. "
+                f"Recommended next check: {nxt['step']} [{nxt['source']}] No physical work without permit and "
+                f"lockout/tagout [DOC-FIELD-SAFETY].")
+        rest = [h for h in hits if h["id"] not in (nxt["source"], a["asset_id"])]
+        return lead + "\n" + self.compose(rest, 2)
+
+    def answer(self, question: str, asset_id: str | None = None, component: str | None = None,
+               history: list[dict] | None = None, hint: str | None = None) -> dict:
+        """Free question -> grounded answer. Context = the selected asset's evidence (if any) + retrieved documents +
+        the fleet table; the last turns of the conversation make follow-ups ("and what should I check first?") work.
+        Every [ID] in the LLM's text is checked against that context and removed if unknown."""
         scope = None
         ev = None
         if asset_id:
             ev = self.evidence(asset_id)
             scope = ev["asset"]["asset_class"]
-        q = question + (f" {component}" if component else "")
-        hits = self.corpus.search(q, k=6, scope=scope)
-        if component:
-            kb = self.corpus.get(kb_id(scope, component)) if scope else next(
-                (d for d in self.corpus.docs if d.get("component") == component), None)
-            if kb and kb not in hits:
-                hits.insert(0, kb)
+        history = [h for h in (history or []) if isinstance(h, dict) and h.get("q")][-3:]
+        rq = question
+        if history and len(_tok(question)) <= 6:          # short follow-up: retrieve with the previous question too
+            rq = f"{question} {history[-1]['q']}"
+        if hint:                                           # extra retrieval words (paraphrases), never shown to the LLM
+            rq += f" {hint}"
+        if ev:
+            rq += f" {ev['asset']['issue_code'].replace('_', ' ').lower()}"
+        hits = self.retrieve(rq, scope, component, general=ev is None)
+        fleet = self.fleet()
         allowed = {h["id"] for h in hits} | (self.valid_ids(ev) if ev else set())
+        allowed |= {r["asset_id"] for r in fleet} | {r["tag"] for r in fleet} | {r["card"] for r in fleet}
+        allowed |= {"Telemetry_Sample_3d", "DOC-FIELD-SAFETY", "DOC-RAG-GUIDE", "DOC-3D-MAPPING"}
         client = self._client()
         if client is None:
-            body = " ".join(f"{h['text']} [{h['id']}]" for h in hits[:3])
-            return {"text": body or "No supporting document found in the builder pack.", "sources": hits,
-                    "mode": "retrieval-only"}
-        context = json.dumps({"retrieved": [{k: h[k] for k in ("id", "title", "text", "source")} for h in hits],
-                              "asset_evidence": ({k: v for k, v in ev.items() if k not in ("telemetry",)}
-                                                 if ev else None)}, default=str)[:20000]
-        sys_prompt = ("Answer the technician's question using ONLY the context. Cite IDs in square brackets. "
-                      "If the context does not support an answer, say so. Mark illustrative/training (KB-XRAY-...) "
-                      "content as general training knowledge, not OEM instructions. No step-by-step repair or "
-                      "disassembly procedures. Max 120 words.")
+            return {"text": self.offline_text(ev, hits), "sources": hits, "mode": "retrieval-only", "asset_id": asset_id}
+        slim = None
+        if ev:
+            slim = {k: v for k, v in ev.items() if k not in ("telemetry", "documents")}
+            slim["telemetry"] = [{k: s[k] for k in s if k != "series"} for s in ev["telemetry"]["signals"]]
+            slim["documents"] = [{"id": d["id"], "title": d["title"], "text": d["text"]} for d in ev["documents"]]
+        context = json.dumps({"selected_asset_evidence": slim,
+                              "retrieved_documents": [{k: h[k] for k in ("id", "title", "text")} for h in hits],
+                              "fleet_by_priority": fleet}, default=str)[:32000]
+        sys_prompt = (
+            "You are the copilot of Industrial X-Ray, a pre-visit tool for field technicians. Answer the question "
+            "using ONLY the context JSON (the selected asset's evidence package, retrieved documents and the fleet "
+            "table). Start with the direct answer, then the key evidence. Plain, calm English, 2 to 5 short sentences, "
+            "at most 110 words; no headings; a short list only if the question asks for several items. Write codes in "
+            "plain words (say 'fouling', 'attention required', not FOULING). Every factual statement must end with "
+            "the ID of its source in square brackets exactly as given, e.g. [ASSET-017], [EVT-00037], [CASE-025], "
+            "[DOC-APP-NAV], [Telemetry_Sample_3d]; never invent an ID, number or fact. If the context does not "
+            "answer the question, say so plainly and say what it does contain. The asset data is synthetic (builder "
+            "pack); KB-XRAY notes are general training knowledge, not OEM instructions. This is decision support "
+            "only: never decide that equipment is safe, never give repair, disassembly or control instructions; "
+            "recommend verification and escalation under site procedures and lockout/tagout [DOC-FIELD-SAFETY]; "
+            "asked whether something is safe, say the tool cannot judge that and the decision belongs to site "
+            "procedures and qualified personnel, then give the evidence. "
+            "Name assets by their tag (P-005, M-006) and cite fleet-table rows by their asset_id (one ID per bracket "
+            "or comma-separated); the table's name is not an ID. Never name people, roles or teams that are not in "
+            "the context. Do not offer to do more work and do not end with a question. "
+            "Earlier turns are given for follow-up questions; resolve 'it', 'this' or 'that' from them.")
+        msgs = [{"role": "system", "content": sys_prompt}]
+        for h in history:
+            msgs.append({"role": "user", "content": str(h["q"])[:300]})
+            msgs.append({"role": "assistant", "content": str(h.get("a", ""))[:700]})
+        sel = f"{ev['asset']['tag']} ({ev['asset']['asset_id']})" if ev else "none"
+        msgs.append({"role": "user", "content": f"Question: {question}\nSelected asset: {sel}\n"
+                                                 f"Selected component: {component or 'none'}\nContext: {context}"})
         try:
-            r = client.chat.completions.create(model=config.LLM_MODEL, messages=[
-                {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": f"Question: {question}\nSelected component: {component}\nContext: {context}"}])
+            r = client.chat.completions.create(model=config.LLM_MODEL, messages=msgs)
             text, bad = self._check_citations(r.choices[0].message.content.strip(), allowed)
-            return {"text": text, "sources": hits, "mode": f"llm:{config.LLM_MODEL}", "invalid_citations": bad}
+            return {"text": text, "sources": hits, "mode": f"llm:{config.LLM_MODEL}", "invalid_citations": bad,
+                    "asset_id": asset_id}
         except Exception as e:  # noqa: BLE001
-            body = " ".join(f"{h['text']} [{h['id']}]" for h in hits[:3])
-            return {"text": body, "sources": hits, "mode": f"retrieval-only ({type(e).__name__})"}
+            return {"text": self.offline_text(ev, hits), "sources": hits, "mode": f"retrieval-only ({type(e).__name__})",
+                    "asset_id": asset_id}

@@ -37,11 +37,13 @@ class QueryReq(BaseModel):
     question: str
     asset_id: str | None = None
     component: str | None = None
+    history: list[dict] = []
 
 
 class CommandReq(BaseModel):
     text: str
     selected_asset_id: str | None = None
+    history: list[dict] = []                  # last turns [{q, a, asset_id}] so follow-up questions keep their context
 
 
 class DraftReq(BaseModel):
@@ -158,7 +160,7 @@ def diagnose(asset_id: str):
 
 @app.post("/api/copilot/query")
 def copilot_query(req: QueryReq):
-    return WORLD.copilot.answer(req.question, req.asset_id, req.component)
+    return WORLD.copilot.answer(req.question, req.asset_id, req.component, req.history)
 
 
 @app.get("/api/knowledge/search")
@@ -209,6 +211,10 @@ ANOMALY = r"abnormal|high|unusual|anomal|elevated|highest|find|overheat|hot\b|wo
 COND_RANK = {"attention_required": 0, "degraded": 1, "watch": 2, "healthy": 3}
 XRAY_WORDS = r"x-?ray|explode|inside|internal|component|parts"
 STATUS_WORDS = r"wrong|why|flag|status|health|condition|issue|diagnos|problem|fault"
+QUESTION = r"^(what|what's|why|how|is|are|should|can|could|does|do|did|has|have|which|when|who|tell|list|give|any)\b|\?\s*$"
+COMMAND_WORDS = (r"send|go to|navigate|dispatch|\broute\b|drive|walk|\bwhere\b|locate|\bfind\b|show me|x-?ray|explode|"
+                 r"inside|internal|practi[cs]e|exercise|rehears|learn|tutorial|teach|manual|document|\bdocs?\b|"
+                 r"knowledge|procedure|explain|what does|what is this|how does")
 def find_component(t: str, cls: str | None, selected_cls: str | None):
     """Longest component name mentioned in the text, restricted to a named device type; ties go to the selection's type."""
     hits = []
@@ -265,15 +271,43 @@ def command(req: CommandReq):
     # an asset named by tag ("send the robot to M-006") wins over the current selection
     tag_m = re.search(r"\b([a-z]{1,3}-\d{3})\b", t)
     named = next((a["asset_id"] for a in assets.values() if tag_m and a["tag"].lower() == tag_m.group(1)), None)
+    history = [h for h in req.history if isinstance(h, dict)][-3:]
+    # follow-ups ("and what should I check first?") keep the asset of the previous turn when nothing is selected
+    hist_asset = next((h.get("asset_id") for h in reversed(history) if h.get("asset_id") in assets), None)
     if named:
         asset_id = named
-        # "what's wrong with P-005?" / "why is P-005 flagged?": show its diagnosis
+        # "what's wrong with P-005?" / "why is P-005 flagged?": a grounded answer + its diagnosis card
         if re.search(STATUS_WORDS, t) and not re.search(r"send|go to|navigate|dispatch|" + XRAY_WORDS, t):
             a = assets[named]
+            ans = WORLD.copilot.answer(req.text, named, history=history)
+            canned = (f"{a['tag']}: {a['issue_summary']}. Condition {a['condition_state'].replace('_', ' ')}, health "
+                      f"{a['health_score']}, criticality {a['criticality']} [{a['asset_id']}]. Opening its diagnosis with the evidence.")
+            live = str(ans.get("mode", "")).startswith("llm")
             return {"intent": "command", "asset_id": named,
                     "actions": [{"type": "select", "asset_id": named, "object_id": a["object_id"]}, {"type": "diagnose", "asset_id": named}],
-                    "text": (f"{a['tag']}: {a['issue_summary']}. Condition {a['condition_state'].replace('_', ' ')}, health "
-                             f"{a['health_score']}, criticality {a['criticality']} [{a['asset_id']}]. Opening its diagnosis with the evidence.")}
+                    "text": ans["text"] if live else canned, "sources": ans.get("sources", []) if live else [],
+                    "mode": ans.get("mode") if live else "rules"}
+    # "which parts of P-005 are suspect?" / "show the suspect parts": the diagnosis' leading hypothesis on the X-Ray model
+    focus_id = asset_id or hist_asset
+    if focus_id and re.search(r"\b(parts?|components?)\b", t) and re.search(r"suspect|faulty|broken|likely|which|affected|implicated", t):
+        ev = WORLD.copilot.evidence(focus_id)
+        a, h0 = ev["asset"], ev["hypotheses"][0]
+        lib = LIBRARY["classes"].get(a["asset_class"], {})
+        names = {c["id"]: c["name"].lower() for c in lib.get("components", [])}
+        comps = [c for c in h0["components"] if c in names]
+        if comps:
+            kb = "".join(f"[KB-XRAY-{a['asset_class']}#{c}]" for c in comps)
+            alts = "; ".join(x["hypothesis"] for x in ev["hypotheses"][1:3])
+            text = (f"{a['tag']}'s leading hypothesis is “{h0['hypothesis']}” [{a['asset_id']}], which points at the "
+                    f"{' and '.join(names[c] for c in comps)} of the {lib.get('label', '').lower()} teaching model {kb}."
+                    + (f" Alternatives are not excluded: {alts}." if alts else "")
+                    + " Opening the X-Ray view with those parts highlighted (illustrative model, not from the scan).")
+        else:
+            text = (f"{a['tag']} is {a['condition_state'].replace('_', ' ')} with no fault hypothesis linked to a "
+                    f"component [{a['asset_id']}]. Opening the X-Ray view of its equipment type.")
+        acts = [{"type": "select", "asset_id": focus_id, "object_id": assets[focus_id]["object_id"]}] if focus_id != req.selected_asset_id else []
+        acts.append({"type": "xray", "asset_id": focus_id, **({"focus": comps} if comps else {})})
+        return {"intent": "command", "asset_id": focus_id, "actions": acts, "text": text, "mode": "rules"}
     # a question about a named component ("what does the impeller do?"): answer it for that device type and show the part
     comp = find_component(t, cls, assets.get(asset_id, {}).get("asset_class"))
     if comp and re.search(r"what (does|is|are)|what's|explain|how (does|do i|to)|inspect|fail|faulty|evidence|purpose|why", t) \
@@ -288,6 +322,14 @@ def command(req: CommandReq):
         acts = [{"type": "xray", "asset_id": asset_id, "focus": [c["id"]]}] if asset_id else []
         return {"intent": "component", "text": ans["text"], "sources": ans.get("sources", []), "actions": acts,
                 "asset_id": asset_id, "component": c["id"], "mode": ans.get("mode")}
+    # a question that names a tag but is not a command ("is P-005 safe to keep running?", "what should I check first
+    # on M-006?"): a grounded answer about that asset, and select it
+    if named and re.search(QUESTION, t) and not re.search(COMMAND_WORDS, t):
+        a = assets[named]
+        ans = WORLD.copilot.answer(req.text, named, history=history)
+        acts = [] if named == req.selected_asset_id else [{"type": "select", "asset_id": named, "object_id": a["object_id"]}]
+        return {"intent": "question", "text": ans["text"], "sources": ans.get("sources", []), "actions": acts,
+                "asset_id": named, "mode": ans.get("mode")}
     sig_q = bool(sig and re.search(ANOMALY, t))     # "where is the vibration sensor?" names a device, not a symptom
     if sig_q:
         best = None
@@ -395,14 +437,15 @@ def command(req: CommandReq):
         # a free question that names a tag ("why is P-005 losing flow?") is scoped to that asset
         tag = re.search(r"\b([a-z]{1,3}-\d{3})\b", t)
         named = next((a["asset_id"] for a in assets.values() if tag and a["tag"].lower() == tag.group(1)), None)
-        ans = WORLD.copilot.answer(req.text, named or req.selected_asset_id)
+        scope = named or req.selected_asset_id or hist_asset
+        ans = WORLD.copilot.answer(req.text, scope, history=history)
         return {"intent": "question", "text": ans["text"], "sources": ans.get("sources", []), "actions": [],
-                "mode": ans.get("mode")}
+                "asset_id": scope, "mode": ans.get("mode")}
     if not reason and actions and all(a["type"] in ("practice", "learn", "xray", "knowledge") for a in actions):
         reason = " ".join({"xray": "Opening the X-Ray view.", "practice": "Opening Practice: a fictional case, with a safety check first.",
                            "learn": "Opening the guided lessons.", "knowledge": "Opening the library."}[a["type"]] for a in actions)
     if not reason:
-        ans = WORLD.copilot.answer(req.text, asset_id)
+        ans = WORLD.copilot.answer(req.text, asset_id, history=history)
         reason = ans["text"]
     return {"intent": "command", "text": reason.strip(), "actions": actions, "asset_id": asset_id}
 
