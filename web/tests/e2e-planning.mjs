@@ -267,7 +267,7 @@ try {
   ok("Gate: a pose far outside the room is off the scanned floor", far.status === "bad" && far.offScan && !far.collision);
   const imp = await p.evaluate(async (g) => {
     const A = window.__xr.planning;
-    const st = await A.setState({ moves: [{ id: "OBJ-028", x: 100, z: 100, yaw: 0 }, { id: "OBJ-NOPE", x: 0, z: 0, yaw: 0 }, g, { ...g, x: 1 }, { id: "OBJ-256", x: 1, z: 1, yaw: 0 }, { id: "OBJ-010", x: "a", z: 1, yaw: 0 }] });
+    const st = await A.setState({ moves: [{ id: "OBJ-028", x: 100, z: 100, yaw: 0 }, { id: "OBJ-NOPE", x: 0, z: 0, yaw: 0 }, g, { ...g, x: 1 }, { id: window.__app.target.id, x: 1, z: 1, yaw: 0 }, { id: "OBJ-010", x: "a", z: 1, yaw: 0 }] });
     return { st, imp: A.lastImport() };
   }, GOOD);
   ok("Gate: import drops out-of-bounds, unknown, duplicate, unmovable and malformed moves", imp.st.moves.length === 1 && imp.st.moves[0].x === GOOD.x && imp.imp.rejected.length === 5,

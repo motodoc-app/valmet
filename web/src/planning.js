@@ -34,6 +34,7 @@ const LIFT = 0.06;                      // picked-up objects float this high (m)
 const DROP_S = 0.26;                    // settle animation on release (s)
 const MOUNTED_Y = 0.6;                  // objects whose box starts higher than this are wall / pipe mounted
 const FIXED_CATS = new Set(["piping", "valve"]);   // part of the pipework: stays put in a plan
+const INSTALL_M = 0.6;                   // fixed parts this close to the serviced equipment count as part of its installation
 const CUT_NOTE = "Approximate cut-out of the scan inside the object's box — may include nearby fragments";
 const COL = { ok: 0x30d158, tight: 0xff9f0a, bad: 0xff453a, ghost: 0xa3a8b0, route: 0x0a84ff };
 const CSS = { ok: "#30d158", tight: "#ff9f0a", bad: "#ff453a" };
@@ -286,6 +287,9 @@ function zoneStatus(moves = P.moves) {
   for (const e of P.objs) {
     if (e.o.id === P.target.id || moved.has(e.o.id)) continue;
     if (overlap(tfp, e.fp)) continue;         // frames touching the pump's own frame are parts of it (motor, fittings)
+    // fixed or small fragments right next to the pump (its pipework, flanges, inlet valve) belong to the installation;
+    // movable equipment there (a pallet truck, a cart) is what the plan is about (same 0.6 m as the robot's line of sight)
+    if (boxDist(tfp, e.fp) <= INSTALL_M && (movable(e.o) || Math.max(e.o.size[0], e.o.size[2]) < 0.3)) continue;
     if (!(e.top > OBST_MIN && e.bottom < OBST_MAX)) continue;
     if (overlap(z, e.fp)) obstructions.push({ id: e.o.id, name: shortName(e.o), proxy: false });
   }
