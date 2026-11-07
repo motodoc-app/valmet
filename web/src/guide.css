@@ -1,0 +1,56 @@
+/* Mode guides (guide.js): purpose strip under the tabs, first-visit coach card, tab icons and "?" button. */
+.gd-ti { display: none; }
+.gd-ti svg.i { width: 15px; height: 15px; }
+@media (min-width: 1400px) {
+  .modes button[data-mode] { display: inline-flex; align-items: center; gap: 6px; }
+  .gd-ti { display: inline-flex; opacity: .75; }
+  .modes button.on .gd-ti { opacity: 1; }
+}
+.modes .gd-q { display: none; }
+.gd-strip { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; gap: 8px; align-items: center;
+  max-width: min(760px, calc(100% - 48px)); min-width: 0; padding: 3px 4px 3px 10px; border-radius: 999px; background: var(--surface);
+  border: 1px solid var(--line); font-size: 13px; color: var(--text-2); white-space: nowrap; animation: in .3s var(--ease); }
+.gd-strip b { color: var(--text); font-weight: 600; margin-right: 2px; }
+.gd-st { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.gd-si { display: inline-grid; place-items: center; color: var(--text-2); flex: none; }
+.gd-si svg.i { width: 16px; height: 16px; }
+.gd-how { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--surface-3); color: var(--text); font-size: 12.5px; font-weight: 500; }
+.gd-how:hover { background: rgba(255, 255, 255, .14); }
+.gd-how svg.i { width: 14px; height: 14px; }
+body.focus .gd-strip, body.touring .gd-strip, body.support-on .gd-strip { display: none; }
+@media (max-width: 1100px) and (min-width: 821px) { .gd-strip { left: 24px; transform: none; max-width: calc(100% - 48px); } }
+@media (max-width: 820px) {
+  .gd-strip { display: none; }
+  .modes .gd-q { display: inline-grid; place-items: center; flex: none !important; min-width: 40px; color: var(--text); }
+}
+
+.gd-coach { position: absolute; z-index: 8; left: 50%; bottom: 120px; width: 420px; display: flex; flex-direction: column; overflow: auto;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55); padding: 14px 16px 12px; animation: in .3s var(--ease); }
+.gd-ch { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; }
+.gd-ch .gd-si { width: 32px; height: 32px; border-radius: 9px; background: var(--surface-3); color: var(--text); }
+.gd-ch small { display: block; font-size: 12px; color: var(--text-2); }
+.gd-ch b { display: block; font-size: 17px; font-weight: 600; }
+.gd-x { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; color: var(--text-2); }
+.gd-x:hover { background: var(--surface-2); color: var(--text); }
+.gd-purpose { margin: 10px 0 6px; font-size: 14.5px; line-height: 1.5; color: var(--text); }
+.gd-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.gd-steps li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.gd-steps .k { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--text); color: #0a0b0d; font: 600 13px var(--font); }
+.gd-cf { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; }
+.gd-cf .btn { min-width: 110px; }
+body.focus .gd-coach { display: none; }
+@media (max-width: 820px) {
+  .gd-coach { left: 10px !important; right: 10px; width: auto !important; top: 160px; bottom: auto !important; max-height: calc(54% - 170px) !important; padding: 12px 14px 10px; }
+  .gd-purpose { font-size: 14px; margin-top: 8px; }
+  .gd-steps li { font-size: 13.5px; }
+}
+
+/* Tools sheet (mobile.js): the rail's actions on phones */
+.mt-btn { display: none; }
+@media (max-width: 820px) { .mt-btn { display: inline-flex; } }
+.mt-list { display: flex; flex-direction: column; gap: 4px; }
+.mt-row { display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: center; width: 100%; min-height: 48px; padding: 8px 12px; border-radius: 10px;
+  text-align: left; color: var(--text); background: var(--surface-2); font-size: 14px; }
+.mt-row:hover { background: var(--surface-3); }
+.mt-row svg.i { width: 20px; height: 20px; color: var(--text-2); }
+.mt-row small { font-size: 12px; color: var(--ok); }

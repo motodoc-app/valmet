@@ -1,0 +1,41 @@
+/* Navigation pad (navpad.js): big, labelled buttons for walking, turning, looking and zooming. */
+.np { position: absolute; left: 24px; bottom: 24px; z-index: 5; padding: 8px 10px 10px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: 0 20px 50px rgba(0, 0, 0, .35); user-select: none; -webkit-user-select: none; touch-action: none; }
+.np-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--text-2); margin-bottom: 6px; }
+.np-tools { display: inline-flex; gap: 4px; align-items: center; }
+.np-link { height: 28px; min-width: 28px; padding: 0 7px; gap: 4px; grid-auto-flow: column; border-radius: 6px; color: var(--text-2); font-size: 12px; display: inline-grid; place-items: center; }
+.np-link:hover { color: var(--text); background: var(--surface-2); }
+.np-link svg.i { width: 14px; height: 14px; }
+.np-b { display: flex; gap: 10px; align-items: flex-end; }
+.np-cl { display: flex; flex-direction: column; gap: 4px; }
+.np-cl > small { font-size: 11.5px; color: var(--text-2); text-align: center; }
+.np-grid { display: grid; grid-template-columns: repeat(3, var(--np, 38px)); grid-auto-rows: var(--np, 38px); gap: 3px; }
+.np-col { display: grid; grid-auto-rows: var(--np, 38px); gap: 3px; }
+.np-btn { width: var(--np, 38px); height: var(--np, 38px); border-radius: 9px; display: grid; place-items: center; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--line-2); transition: background .15s, transform .05s; touch-action: none; }
+.np-btn:hover { background: var(--surface-3); }
+.np-btn.down, .np-btn:active { background: var(--text); color: #0a0b0d; transform: scale(.96); }
+.np-btn svg.i { width: 18px; height: 18px; stroke-width: 2; }
+.np-mid { background: transparent; color: var(--text-2); }
+.np-eye { display: grid; place-items: center; color: var(--text-3); }
+.np-grid > i { display: block; }
+.np-open { position: absolute; left: 24px; bottom: 24px; z-index: 5; height: 40px; padding: 0 14px 0 10px; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 999px; color: var(--text); font-weight: 500; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+.np-open svg.i { width: 20px; height: 20px; }
+.np-hint { position: absolute; left: 24px; bottom: 260px; z-index: 9; width: 300px; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, .5); font-size: 13px; color: var(--text-2); animation: in .3s var(--ease); }
+.np-hint b { color: var(--text); font-weight: 500; }
+.np-hint .kbd { font-size: 11px; color: var(--text); margin-right: 2px; }
+.np-hint .btn { align-self: flex-end; height: 34px; margin-top: 4px; }
+body.focus .np, body.focus .np-open, body.focus .np-hint { display: none !important; }
+@media (max-height: 760px) and (min-width: 821px) { .np { --np: 34px; } }
+@media (pointer: coarse) { .np { --np: 44px; } .np-link { min-width: 36px; height: 36px; } }
+@media (max-width: 1100px) and (min-width: 821px) { .np { --np: 36px; } }
+/* phones: above the bottom sheet, collapsed by default */
+@media (max-width: 820px) {
+  .np { --np: 44px; left: 10px; bottom: calc(46% + 10px); padding: 6px 8px 8px; }
+  .np-b { gap: 8px; }
+  .np-open { left: 10px; bottom: calc(46% + 10px); height: 44px; }
+  .np-hint { left: 10px; right: 10px; width: auto; bottom: calc(46% + 64px); }
+  body:has(#right.min) .np, body:has(#right.min) .np-open { bottom: 76px; }
+}

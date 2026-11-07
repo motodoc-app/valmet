@@ -9,6 +9,11 @@ import { APP, registerMode, on, withExtras } from "./ext.js";
 import { edt } from "./static-api.js";
 import { icon } from "./icons.js";
 import "./planning.css";
+// UX layer (navigation pad, mode guides, readability, phone Tools sheet). Loaded from here so main.js needs no change;
+// main.js could import them directly instead (see guide.js / navpad.js headers).
+import "./guide.js";
+import "./navpad.js";
+import "./mobile.js";
 
 // ------------------------------------------------------------------ constants
 const DISCLAIMER = "Planning simulation · approximate geometry (oriented boxes + occupancy grid) · not an engineering clearance check";
@@ -49,7 +54,11 @@ const P = {
   before: null, after: null, afterSeq: 0, routeBusy: false, routeMs: 0,
   occEff: null, clearMap: null, clearMask: null, dirtyField: true,
   three: null, drag: null, justDragged: false, cardTimer: 0, routeTimer: 0,
+  editing: false,             // step 2 "Move it": keys and the move pad drive the active proxy
+  hold: null,                 // press-and-hold on a move-pad button
 };
+/** True while the keyboard belongs to the proxy (Plan mode, a proxy is being moved). navpad.js reads this. */
+const keysOwned = () => APP.S?.mode === "plan" && !!P.active && P.editing;
 
 // ------------------------------------------------------------------ geometry (2D oriented boxes on the floor, x/z)
 /** Footprint of an object at a pose: { x, z, w, d, yaw } (same format as planner blocks). */
@@ -259,6 +268,7 @@ function ensureThree() {
   const root = new THREE.Group(); root.name = "planning";
   const proxies = new THREE.Group(), routes = new THREE.Group(), zone = new THREE.Group(), gauge = new THREE.Group();
   root.add(zone, proxies, routes, gauge);
+  zone.visible = APP.S?.mode === "plan";      // the service zone is a Plan-mode overlay only
   APP.scene.add(root);
   P.three = { root, proxies, routes, zone, gauge, items: new Map() };
   buildZone();
@@ -280,7 +290,11 @@ function buildZone() {
   const g = new THREE.Group(); g.add(plane, edge);
   g.position.set(z.x, 0.012, z.z); g.rotation.y = -z.yaw;
   const lab = tag(`<span class="d"></span>${esc(P.target.asset?.tag || "Target")} service zone<small>assumed</small>`, "zone");
-  lab.position.set(z.x, 0.05, z.z);
+  // at one end of the zone (not its centre), so it does not sit on top of the "Original position" tag of an object inside it
+  const long = z.w >= z.d, ax = long ? [Math.cos(z.yaw), Math.sin(z.yaw)] : [-Math.sin(z.yaw), Math.cos(z.yaw)], half = Math.max(z.w, z.d) / 2;
+  const ends = [1, -1].map((k) => [z.x + k * ax[0] * Math.max(0, half - 0.35), z.z + k * ax[1] * Math.max(0, half - 0.35)]);
+  const sug = objOf(SUGGESTED), far = sug ? ends.sort((a, b) => Math.hypot(b[0] - sug.center[0], b[1] - sug.center[2]) - Math.hypot(a[0] - sug.center[0], a[1] - sug.center[2]))[0] : [z.x, z.z];
+  lab.position.set(far[0], 0.05, far[1]);
   T.zone.add(g, lab);
   T.zoneParts = { plane, edge, lab };
 }
@@ -325,7 +339,7 @@ function proxyItem(id) {
   fl.renderOrder = ring.renderOrder = tick.renderOrder = 6;
   proxy.add(box, edges, fl, ring, tick);
   const ptag = tag(`<span class="d"></span><b>Planning proxy</b><small>${esc(shortName(o))}</small>`, "proxy");
-  ptag.position.set(0, bottom + h + 0.1, 0);
+  ptag.position.set(0, bottom + h + 0.42, 0);   // above the scene's own label of the same object
   proxy.add(ptag);
   // displacement arrow on the floor (dashed)
   const arrow = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, 1)]),
@@ -426,8 +440,8 @@ function highlight() {
 function createProxy(id) {
   const o = objOf(id);
   if (!o) return APP.toast(`${esc(id)} cannot be moved in a plan.`);
-  if (!moveOf(id)) P.moves.push({ id, x: snap(o.center[0]), z: snap(o.center[2]), yaw: o.yaw });
-  P.active = id; P.dirtyField = true;
+  if (!moveOf(id)) P.moves.push({ id, x: o.center[0], z: o.center[2], yaw: o.yaw });   // exactly where it is: "moved 0 m"
+  P.active = id; P.dirtyField = true; P.editing = true; P.toTop = true;
   refresh(); renderAll();
   scheduleRoute(0);
 }
@@ -446,8 +460,9 @@ function setPose(id, pose, { route = true, routeDelay = 0 } = {}) {
 function rotate(dr) { const m = moveOf(P.active); if (m) setPose(m.id, { ...m, yaw: m.yaw + dr }, { routeDelay: 300 }); }
 function nudge(dx, dz) { const m = moveOf(P.active); if (m) setPose(m.id, { ...m, x: m.x + dx, z: m.z + dz }, { routeDelay: 350 }); }
 function reset({ quiet = false } = {}) {
-  P.moves = []; P.active = null; P.after = null; P.dirtyField = true;
-  clearTimeout(P.routeTimer); P.afterSeq++;
+  P.moves = []; P.active = null; P.after = null; P.dirtyField = true; P.editing = false; P.query = ""; P.ev = null; P.zoneNow = null;
+  stopHold();
+  clearTimeout(P.routeTimer); P.afterSeq++; P.routeBusy = false;
   if (P.ready) { refresh(); drawRoutes(); }
   renderAll();
   if (APP.S?.curve && !APP.S.robot.done) APP.replan({ quiet: true });
@@ -489,7 +504,7 @@ function onPointerDown(e) {
   if (!hit) return;
   _plane.constant = -hit.y;
   if (!_ray.ray.intersectPlane(_plane, _hit)) return;
-  if (P.active !== hit.m.id) { P.active = hit.m.id; P.dirtyField = true; refresh(); renderAll(); }
+  if (P.active !== hit.m.id || !P.editing) { P.active = hit.m.id; P.dirtyField = true; P.editing = true; refresh(); renderAll(); }
   P.drag = { id: hit.m.id, pid: e.pointerId, y: hit.y, off: [hit.m.x - _hit.x, hit.m.z - _hit.z], moved: false, x0: e.clientX, y0: e.clientY };
   APP.controls.enabled = false;               // OrbitControls ignores this pointer
   try { APP.canvas.setPointerCapture(e.pointerId); } catch {}
@@ -523,17 +538,24 @@ function onPointerUp(e) {
   renderAll();
   if (moved) scheduleRoute(0);
 }
-function onKey(e) {
-  if (APP.S?.mode !== "plan" || !P.active || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
-  const step = e.shiftKey ? 0.25 : SNAP;
-  // arrows move in screen-aligned directions (the camera's forward/right on the floor)
+/** Screen-aligned floor directions (the camera's forward/right, snapped to the world axes). */
+function screenDir(name) {
   const fwd = new THREE.Vector3(); APP.camera.getWorldDirection(fwd); fwd.y = 0;
   if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1); fwd.normalize();
   const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
   const ax = Math.abs(fwd.x) > Math.abs(fwd.z) ? [Math.sign(fwd.x), 0] : [0, Math.sign(fwd.z)];   // snap to world axes
   const rx = Math.abs(right.x) > Math.abs(right.z) ? [Math.sign(right.x), 0] : [0, Math.sign(right.z)];
-  const k = { ArrowUp: [ax[0], ax[1]], ArrowDown: [-ax[0], -ax[1]], ArrowRight: [rx[0], rx[1]], ArrowLeft: [-rx[0], -rx[1]] }[e.key];
-  if (k) { e.preventDefault(); return nudge(k[0] * step, k[1] * step); }
+  return { fwd: [ax[0], ax[1]], back: [-ax[0], -ax[1]], right: [rx[0], rx[1]], left: [-rx[0], -rx[1]] }[name];
+}
+const KEYDIR = { ArrowUp: "fwd", KeyW: "fwd", ArrowDown: "back", KeyS: "back", ArrowRight: "right", KeyD: "right", ArrowLeft: "left", KeyA: "left" };
+function onKey(e) {
+  if (APP.S?.mode !== "plan" || !P.active || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
+  const step = e.shiftKey ? 0.25 : SNAP;
+  // arrows / W A S D move in screen-aligned directions while the proxy is being moved
+  const dn = KEYDIR[e.code];
+  if (dn && P.editing) { e.preventDefault(); const k = screenDir(dn); return nudge(k[0] * step, k[1] * step); }
+  if (P.editing && (e.code === "KeyQ" || e.code === "KeyE")) { e.preventDefault(); return rotate((e.code === "KeyQ" ? -1 : 1) * (e.shiftKey ? Math.PI / 4 : Math.PI / 12)); }
+  if (e.key === "Enter" && P.editing && !e.target.closest?.("button, a")) { e.preventDefault(); return done(); }
   if (e.key === "r" || e.key === "R") { e.preventDefault(); return rotate((e.shiftKey ? -1 : 1) * Math.PI / 2); }
   if (e.key === "[") return rotate(-Math.PI / 12);
   if (e.key === "]") return rotate(Math.PI / 12);
@@ -623,37 +645,112 @@ async function draftWorkOrder() {
     <p class="note" style="margin-top:8px">${esc(DISCLAIMER)}. Confirm the new position on site.</p></div>`);
 }
 
+// ------------------------------------------------------------------ stages: 1 Pick → 2 Move → 3 Check
+const stage = () => (!P.moves.length ? "pick" : P.editing ? "move" : "check");
+const movedAny = () => P.moves.some((m) => { const o = objOf(m.id); return Math.hypot(m.x - o.center[0], m.z - o.center[2]) > 0.04 || Math.abs(wrap(m.yaw - o.yaw)) > 0.01; });
+/** The plan is good: something moved, no collision, the service zone is clear and the robot still has a route. */
+const planGood = () => {
+  if (!P.moves.length || !P.after || P.routeBusy) return false;
+  const ev = P.ev || evaluate(P.moves[0].id, P.moves[0]), z = P.zoneNow || zoneStatus();
+  return movedAny() && ev.status !== "bad" && z.clear && P.after.ok;
+};
+function stepperHTML() {
+  const st = stage(), good = planGood();
+  const s = (n, label, key) => {
+    const order = { pick: 0, move: 1, check: 2 }, i = order[key], cur = order[st];
+    const state = key === "check" ? (st === "check" ? (good ? "done" : "cur") : "") : i < cur ? "done" : i === cur ? "cur" : "";
+    return `<div class="pl-st ${state}"><span class="k">${state === "done" ? icon("check") : n}</span><span>${label}</span></div>`;
+  };
+  return `<div class="pl-stepper" aria-label="Steps">${s(1, "Pick", "pick")}<i></i>${s(2, "Move", "move")}<i></i>${s(3, "Check", "check")}</div>`;
+}
+// big move pad for the proxy: hold to keep moving (works with mouse, touch and keyboard focus)
+const PADI = {
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>', down: '<path d="M12 5v14M6 13l6 6 6-6"/>', left: '<path d="M19 12H5M11 6l-6 6 6 6"/>', right: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+};
+const pi = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${PADI[n]}</svg>`;
+function movePadHTML() {
+  const b = (mv, ico, label) => `<button type="button" class="pl-mv" data-pl-mv="${mv}" title="${label}" aria-label="${label}">${ico}</button>`;
+  return `<div class="pl-pad" role="group" aria-label="Move the ${esc(shortName(objOf(P.active)))}">
+      ${b("l15", ic("rotL"), "Turn 15° left (Q)")}${b("fwd", pi("up"), "Move away from you (↑ or W)")}${b("r15", ic("rotR"), "Turn 15° right (E)")}
+      ${b("left", pi("left"), "Move left (← or A)")}${b("r90", ic("turn"), "Turn 90° (R)")}${b("right", pi("right"), "Move right (→ or D)")}
+      <span></span>${b("back", pi("down"), "Move towards you (↓ or S)")}<span></span>
+    </div>
+    <p class="pl-padnote">Press and hold an arrow to keep moving. Or drag it on the floor, or use the arrow keys / W A S D (Shift = bigger steps), Q E to turn.</p>`;
+}
+function padStep(mv, big = false) {
+  if (!P.active) return;
+  if (mv === "l15") return rotate(-Math.PI / 12);
+  if (mv === "r15") return rotate(Math.PI / 12);
+  if (mv === "r90") return rotate(Math.PI / 2);
+  const k = screenDir(mv); if (!k) return;
+  const s = big ? 0.25 : SNAP;
+  nudge(k[0] * s, k[1] * s);
+}
+function stopHold() { if (P.hold) { clearTimeout(P.hold.t); P.hold = null; } }
+function onPadDown(e) {
+  const b = e.target.closest?.("[data-pl-mv]"); if (!b || e.button > 0 || APP.S?.mode !== "plan") return;
+  e.preventDefault();
+  stopHold();
+  P.editing = true;
+  const mv = b.dataset.plMv, pid = e.pointerId;
+  padStep(mv);
+  if (mv === "r90") return;                               // 90° is one step per press
+  const tick = (n) => { if (!P.hold) return; padStep(mv); P.hold.t = setTimeout(() => tick(n + 1), n > 6 ? 60 : 110); };
+  P.hold = { pid, t: setTimeout(() => tick(0), 380) };
+}
+function onPadUp(e) { if (P.hold && (e.type === "blur" || e.pointerId === P.hold.pid)) stopHold(); }
+async function done() {
+  stopHold();
+  P.editing = false; P.toTop = true;
+  clearTimeout(P.routeTimer);
+  renderAll();
+  if (P.moves.length) await computeAfter();
+  const z = P.zoneNow || zoneStatus(), ev = P.ev;
+  APP.toast(planGood() ? `It fits: no collisions, ${esc(P.target.asset?.tag)} can be reached and the robot still has a route.`
+    : ev?.status === "bad" ? "It collides with something: press “Move it again” and find free floor." : !z.clear ? `${esc(P.target.asset?.tag)} service zone is still blocked: move it further away.` : "Checked. See the result in the card.", 4200);
+}
+async function suggest() {
+  if (!P.active || P.active === SUGGESTED || !moveOf(P.active)) return demo();
+  const id = P.active, spot = await findSpot(id);
+  if (!spot) return APP.toast("No free spot found nearby for this object. Try moving it by hand.");
+  setPose(id, spot, { route: false });
+  P.editing = false; P.toTop = true; clearTimeout(P.routeTimer);
+  await computeAfter(); renderAll();
+}
+
 // ------------------------------------------------------------------ UI: left card (steps + object choice)
 function step(n, label, state) { return `<div class="pl-step ${state}"><span class="k">${state === "done" ? icon("check") : n}</span><span>${label}</span></div>`; }
 function leftHTML() {
   if (!P.ready) return `<div class="card-h"><span class="t">Maintenance planning</span></div><div class="card-b"><span class="note">Loading the floor map…</span></div>`;
-  const has = P.moves.length > 0, moved = P.moves.some((m) => { const o = objOf(m.id); return Math.hypot(m.x - o.center[0], m.z - o.center[2]) > 0.04 || Math.abs(wrap(m.yaw - o.yaw)) > 0.01; });
-  const routed = !!P.after;
-  const st = (i) => { const done = [has, has, moved, moved && routed]; return done[i] ? "done" : done.findIndex((d) => !d) === i ? "cur" : ""; };
+  const st = stage(), good = planGood();
+  const s1 = P.moves.length ? "done" : "cur", s2 = st === "move" ? "cur" : st === "check" ? "done" : "", s3 = st === "check" ? (good ? "done" : "cur") : "";
   const act = P.active && objOf(P.active);
   let body;
   if (act) {
     body = `<div class="section"><div class="label"><span>Moving</span><span class="pl-pill ${P.ev?.status || "ok"}">${{ ok: "Clear", tight: "Tight", bad: "Collision" }[P.ev?.status || "ok"]}</span></div>
       <div class="pl-moving"><b>${esc(nameOf(act))}</b><small>${esc(act.label)} · ${act.label_source === "review-corrected" ? "review-corrected label" : Math.round(act.confidence * 100) + "% label confidence"}</small></div>
-      <div class="pl-keys"><span>${ic("move")}Drag the proxy on the floor</span><span><span class="kbd">←↑↓→</span> nudge 5 cm · <span class="kbd">Shift</span> 25 cm</span><span><span class="kbd">R</span> turn 90° · <span class="kbd">[</span> <span class="kbd">]</span> 15°</span></div></div>
-      ${P.moves.length > 1 ? `<div class="section"><div class="label">Proxies in this plan</div>${P.moves.map((m) => `<button class="list-row ${m.id === P.active ? "on" : ""}" data-pl-act="${m.id}"><span class="n">${ic("box")}</span><span class="nm"><b>${esc(shortName(objOf(m.id)))}</b><small>${m.id}</small></span><span class="link" data-pl-del="${m.id}" title="Remove proxy">${icon("close")}</span></button>`).join("")}</div>` : ""}
+      <div class="pl-keys"><span>${ic("move")}Use the arrow buttons in the card, or drag it on the floor</span><span><span class="kbd">←↑↓→</span> or <span class="kbd">W A S D</span> move 5 cm · <span class="kbd">Shift</span> 25 cm</span><span><span class="kbd">Q</span> <span class="kbd">E</span> turn 15° · <span class="kbd">R</span> turn 90°</span></div></div>
+      ${proxiesHTML()}
       <div class="section"><button class="link" data-pl-more>${icon("plus")}Move another object</button></div>`;
   } else body = choiceHTML();
   return `<div class="card-h"><span class="t">Maintenance planning</span><span class="card-tools"><span class="pill amber">Simulation</span><button class="link" data-min-card title="Minimise" aria-label="Minimise">${icon("minus")}</button></span></div>
     <div class="card-b">
-      <div class="pl-steps">${step(1, "Choose equipment", st(0))}${step(2, "Create a planning proxy", st(1))}${step(3, "Move it to the new spot", st(2))}${step(4, "Review route and export", st(3))}</div>
+      <div class="pl-steps">${step(1, "Pick the pallet truck (or any object)", s1)}${step(2, "Move it out of the way", s2)}${step(3, "Check the result", s3)}</div>
       ${body}
     </div>`;
 }
-function choiceHTML() {
+function proxiesHTML() {
+  return P.moves.length > 1 ? `<div class="section"><div class="label">Objects in this plan</div>${P.moves.map((m) => `<button class="list-row ${m.id === P.active ? "on" : ""}" data-pl-act="${m.id}"><span class="n">${ic("box")}</span><span class="nm"><b>${esc(shortName(objOf(m.id)))}</b><small>${m.id}</small></span><span class="link" data-pl-del="${m.id}" title="Remove from the plan">${icon("close")}</span></button>`).join("")}</div>` : "";
+}
+function choiceHTML(suffix = "") {
   const S = APP.S, sug = objOf(SUGGESTED), d = sug ? boxDist(footprint(sug), footprint(P.target)) : 0;
   const sel = S.selected && S.selected.kind === "object" && S.selected.id !== SUGGESTED ? S.selected : null;
-  return `${sug ? `<div class="section"><div class="label">Suggested for ${esc(P.target.asset?.tag || "the target")} service</div>
+  return `${sug && !suffix ? `<div class="section"><div class="label">Suggested for ${esc(P.target.asset?.tag || "the target")} service</div>
       <button class="pl-sugg" data-pl-pick="${SUGGESTED}"><span class="pl-sugg-i">${ic("box")}</span><span class="nm"><b>Hand pallet truck</b><small>${SUGGESTED} · ${gap(d)} from ${esc(P.target.asset?.tag)} · in its service zone</small></span>${icon("chev")}</button></div>` : ""}
     ${sel ? `<div class="section"><button class="btn block" data-pl-pick="${sel.id}">${icon("target")}Use current selection · ${esc(shortName(sel))}</button></div>` : ""}
     <div class="section"><div class="label">Or find any object</div>
-      <input class="search" id="plQ" placeholder="Search label or ID, e.g. cart, valve, OBJ-068" value="${esc(P.query)}" autocomplete="off"/>
-      <div id="plRes" class="pl-res">${resultsHTML()}</div>
+      <input class="search" id="plQ${suffix}" data-pl-q placeholder="Search label or ID, e.g. cart, valve, OBJ-068" value="${esc(P.query)}" autocomplete="off"/>
+      <div id="plRes${suffix}" class="pl-res">${resultsHTML()}</div>
       <p class="note" style="margin-top:6px">You can also click an object in the 3D view.</p></div>`;
 }
 function resultsHTML() {
@@ -664,21 +761,33 @@ function resultsHTML() {
   return res.map((o) => `<button class="list-row" data-pl-pick="${o.id}"><span class="n">${ic("box")}</span><span class="nm"><b>${esc(shortName(o))}</b><small>${o.id} · ${o.size.map((v) => v.toFixed(2)).join(" × ")} m</small></span>${icon("chev")}</button>`).join("")
     || '<p class="note" style="padding:6px 0">No matching object.</p>';
 }
+function bindSearch(root) {
+  root.querySelectorAll("[data-pl-q]").forEach((inp) => {
+    const res = inp.nextElementSibling;
+    inp.oninput = (e) => { P.query = e.target.value; res.innerHTML = resultsHTML(); };
+  });
+}
 function renderLeft() {
   if (APP.S?.mode !== "plan") return;
   const el = $("#left"), q = document.activeElement?.id === "plQ";
   el.classList.remove("tall");
   el.innerHTML = leftHTML();
   el.onclick = onLeftClick;
+  bindSearch(el);
   const inp = $("#plQ");
-  if (inp) { inp.oninput = (e) => { P.query = e.target.value; $("#plRes").innerHTML = resultsHTML(); }; if (q) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+  if (inp && q) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+/** Shared by the left card and the phone copy of it inside the bottom sheet. Returns true when handled. */
+function onListClick(e) {
+  const del = e.target.closest("[data-pl-del]"); if (del) { e.stopPropagation(); removeProxy(del.dataset.plDel); return true; }
+  const a = e.target.closest("[data-pl-act]"); if (a) { P.active = a.dataset.plAct; P.dirtyField = true; P.editing = true; refresh(); renderAll(); return true; }
+  if (e.target.closest("[data-pl-more]")) { P.active = null; P.editing = false; refresh(); renderAll(); return true; }
+  const p = e.target.closest("[data-pl-pick]"); if (p) { pick(p.dataset.plPick); return true; }
+  return false;
 }
 function onLeftClick(e) {
   if (e.target.closest("[data-min-card]")) return;
-  const del = e.target.closest("[data-pl-del]"); if (del) { e.stopPropagation(); return removeProxy(del.dataset.plDel); }
-  const a = e.target.closest("[data-pl-act]"); if (a) { P.active = a.dataset.plAct; P.dirtyField = true; refresh(); return renderAll(); }
-  if (e.target.closest("[data-pl-more]")) { P.active = null; refresh(); return renderAll(); }
-  const p = e.target.closest("[data-pl-pick]"); if (p) return pick(p.dataset.plPick);
+  onListClick(e);
 }
 function pick(id) {
   const o = objOf(id); if (!o) return;
@@ -686,11 +795,11 @@ function pick(id) {
   createProxy(id);
 }
 
-// ------------------------------------------------------------------ UI: right card (plan summary)
+// ------------------------------------------------------------------ UI: right card (actions first, then the summary)
 const verdict = (ev, z, after) => {
   if (!ev) return "";
   if (ev.status === "bad") return `<div class="pl-verdict bad">${icon("close")}<span><b>Collision</b> with ${ev.hits.length ? esc(ev.hits.slice(0, 2).map((h) => h.proxy ? `proxy ${h.id}` : `${h.id} (${h.label})`).join(", ")) : "scanned geometry"}${ev.hits.length > 2 ? ` +${ev.hits.length - 2}` : ""}. Move it to free floor.</span></div>`;
-  const zt = z.clear ? `${esc(P.target.asset?.tag)} service zone clear` : `Service zone still obstructed by ${esc(z.obstructions.map((o) => o.name).join(", "))}`;
+  const zt = z.clear ? `${esc(P.target.asset?.tag)} service zone clear` : `Service zone still blocked by ${esc(z.obstructions.map((o) => o.name).join(", "))}`;
   const rt = after && !after.ok ? " · <b>no robot route</b>" : "";
   return `<div class="pl-verdict ${ev.status === "tight" || !z.clear || rt ? "tight" : "ok"}">${icon(ev.status === "ok" && z.clear && !rt ? "check" : "help")}<span><b>${ev.status === "tight" ? "Fits, tight clearance" : "Fits"}</b> · no collisions · ${zt}${rt}</span></div>`;
 };
@@ -699,26 +808,37 @@ function routeRow(label, r, cls = "") {
   if (!r.ok) return `<div class="pl-rt ${cls}"><span>${label}</span><span class="pl-bad">No collision-free route</span></div>`;
   return `<div class="pl-rt ${cls}"><span>${label}</span><span><b>${f2(r.length_m)} m</b><small>clearance ${r.min_clearance_m} m · A* ${r.compute_ms} ms</small></span></div>`;
 }
+function resultHTML(ev, z) {
+  if (P.routeBusy || !P.after) return `<div class="pl-result wait">${icon("spark")}<span><b>Checking the route…</b></span></div>`;
+  if (planGood()) return `<div class="pl-result ok">${icon("check")}<span><b>It fits.</b> No collisions, the ${esc(P.target.asset?.tag)} service zone is clear and the robot can still reach it.</span></div>`;
+  if (!movedAny()) return `<div class="pl-result tight">${icon("help")}<span><b>Nothing moved yet.</b> Press “Move it again” and use the arrows.</span></div>`;
+  if (ev.status === "bad") return `<div class="pl-result bad">${icon("close")}<span><b>It hits something.</b> Move it to free floor.</span></div>`;
+  if (!z.clear) return `<div class="pl-result bad">${icon("close")}<span><b>Still in the way.</b> Part of it is inside the ${esc(P.target.asset?.tag)} service zone.</span></div>`;
+  return `<div class="pl-result bad">${icon("close")}<span><b>The robot has no route</b> with this layout. Try another spot.</span></div>`;
+}
 function cardHTML() {
-  const S = APP.S, t = P.target, a = t.asset;
+  const t = P.target, a = t.asset;
   const head = `<div class="card-h" style="padding-bottom:0"><span class="eyebrow-row">Maintenance planning<span class="tag">Simulation</span></span><span class="card-tools"><button class="link" data-min-card title="Minimise" aria-label="Minimise">${icon("minus")}</button></span></div>
-    <div class="card-b"><div class="h1">Service access for ${esc(a?.tag || t.id)}</div><p class="pl-disc">${esc(DISCLAIMER)}</p>`;
+    <div class="card-b"><div class="h1">Make room to service ${esc(a?.tag || t.id)}</div>`;
+  const disc = `<p class="pl-disc">${esc(DISCLAIMER)}. Nothing real moves.</p>`;
   if (!P.ready) return `${head}<p class="note">Loading…</p></div>`;
   const z0 = zoneStatus([]);
   if (!P.moves.length) {
     const sug = objOf(SUGGESTED);
-    return `${head}
-      <div class="plain"><b>Scenario:</b> a technician is preparing to service ${esc(a?.tag)}. ${sug ? `The hand pallet truck ${SUGGESTED} is parked ${gap(boxDist(footprint(sug), footprint(t)))} from the pump frame, inside its service zone.` : ""} Move it as a virtual proxy and check collisions, clearance, service access and the robot route before anyone touches it.</div>
+    return `${head}${stepperHTML()}
+      <div class="pl-actions">${sug ? `<button class="btn primary block pl-big" data-pl-pick="${SUGGESTED}">${ic("box")}Pick the pallet truck</button>` : ""}
+        <button class="btn block" data-pl="demo">${icon("spark")}Suggest a good spot for me</button></div>
+      ${disc}
+      <div class="plain"><b>Why:</b> ${sug ? `the hand pallet truck ${SUGGESTED} is parked ${gap(boxDist(footprint(sug), footprint(t)))} from ${esc(a?.tag)}, inside the space a technician needs to work on it.` : ""} Move a virtual copy of it and see at once whether it fits and whether the robot can still get to the pump.</div>
       <div class="section"><div class="label">${esc(a?.tag)} service zone now</div>
         ${kv("Status", z0.clear ? '<span class="pl-ok">Clear</span>' : `<span class="pl-bad">Obstructed by ${esc(z0.obstructions.map((o) => `${o.name} (${o.id})`).join(", "))}</span>`)}
         ${kv("Free floor in zone", `${z0.freePct}%`)}
-        <p class="note" style="margin-top:8px">Assumed illustrative clearance requirement: ${ZONE_DEPTH.toFixed(1)} m deep × pump width + ${ZONE_EXTRA.toFixed(1)} m, on the side facing the open floor. Not a Valmet or OEM figure.</p></div>
-      <div class="section stack">${sug ? `<button class="btn primary block" data-pl-pick="${SUGGESTED}">${ic("box")}Plan: move the pallet truck</button>` : ""}
-        <button class="btn block" data-pl="demo">${icon("play")}Run the example plan</button></div>
+        <p class="note" style="margin-top:8px">Assumed illustrative clearance requirement: ${ZONE_DEPTH.toFixed(1)} m deep × pump width + ${ZONE_EXTRA.toFixed(1)} m, on the side facing the open floor. The zone counts as clear only when nothing stands inside it. Not a Valmet or OEM figure.</p></div>
+      <div class="section pl-phone">${choiceHTML("M")}</div>
       <div class="section"><div class="label">How it works</div>
         <div class="step"><span class="k">1</span><span>Pick equipment. A labelled planning proxy appears; the scan itself never changes.</span></div>
-        <div class="step"><span class="k">2</span><span>Drag the proxy. Collisions with known objects and occupied floor cells are checked live.</span></div>
-        <div class="step"><span class="k">3</span><span>On release, the robot planner re-routes with the new layout: before and after are both drawn.</span></div></div></div>`;
+        <div class="step"><span class="k">2</span><span>Move the proxy with the arrows, the keys or by dragging. Collisions with known objects and occupied floor are checked live.</span></div>
+        <div class="step"><span class="k">3</span><span>Press Done: the robot planner re-routes with the new layout, and before and after are both drawn.</span></div></div></div>`;
   }
   const m = moveOf(P.active) || P.moves[0], o = objOf(m.id), ev = P.active === m.id && P.ev ? P.ev : evaluate(m.id, m), z = P.zoneNow || zoneStatus();
   const disp = Math.hypot(m.x - o.center[0], m.z - o.center[2]), rot = deg(wrap(m.yaw - o.yaw));
@@ -728,14 +848,24 @@ function cardHTML() {
     : '<span class="pl-ok">None with known obstacles</span>';
   const dl = delta == null ? (P.routeBusy ? "…" : "—") : Math.abs(delta) < 0.05 ? "±0.00 m" : `${delta > 0 ? "+" : "−"}${f2(Math.abs(delta))} m`;
   const tile = (k, v, sub, cls = "") => `<div class="pl-tile ${cls}"><small>${k}</small><b>${v}</b><span>${sub}</span></div>`;
-  return `${head}
-    ${verdict(ev, z, A)}
+  const top = stage() === "move" && P.active
+    ? `<div class="pl-moving-h"><span>Moving: <b>${esc(shortName(o))}</b></span><span class="note">${f2(disp)} m${rot ? ` · ${rot > 0 ? "+" : ""}${rot}°` : ""}</span></div>
+      ${movePadHTML()}
+      <div class="pl-actions"><button class="btn primary block pl-big" data-pl="done">${icon("check")}Done – check the result</button>
+        <button class="btn block" data-pl="suggest">${icon("spark")}Suggest a good spot</button></div>
+      ${verdict(ev, z, A)}`
+    : `${resultHTML(ev, z)}${ev.status === "bad" ? verdict(ev, z, A) : ""}
+      <div class="pl-actions row2"><button class="btn ${planGood() ? "" : "primary"}" data-pl="again">${ic("move")}Move it again</button><button class="btn" data-pl="suggest">${icon("spark")}Suggest a spot</button></div>`;
+  return `${head}${stepperHTML()}
+    ${top}
+    ${disc}
     <div class="pl-tiles">
       ${tile("Moved", `${f2(disp)} m`, rot ? `turned ${rot > 0 ? "+" : ""}${rot}°` : "same heading")}
       ${tile("Clearance", ev.collision ? "0 m" : `≈${f2(ev.clearance)} m`, ev.collision ? "collision" : ev.nearest ? `nearest object ${f2(ev.nearest.d)} m` : "to the nearest obstacle", ev.status)}
-      ${tile(`${esc(a?.tag)} zone`, z.clear ? "Clear" : "Blocked", `${z0.freePct}% → ${z.freePct}% free floor`, z.clear ? "ok" : "bad")}
+      ${tile(`${esc(a?.tag)} zone`, z.clear ? "Clear" : "Blocked", z.clear ? `${z.freePct}% free floor (was ${z0.freePct}%)` : `${esc(z.obstructions.map((x) => x.name).join(", "))} still inside`, z.clear ? "ok" : "bad")}
       ${tile("Robot route", A?.ok ? `${f2(A.length_m)} m` : A ? "None" : "…", B?.ok ? `was ${f2(B.length_m)} m · ${dl}` : "", A && !A.ok ? "bad" : "")}
     </div>
+    <div class="section pl-phone">${proxiesHTML()}<button class="btn block" data-pl-more>${icon("plus")}Move another object</button></div>
     <div class="section"><div class="label"><span>Robot route to ${esc(a?.tag)}</span><span>${delta == null ? "" : Math.abs(delta) < 0.05 ? "unchanged" : dl}</span></div>
       ${routeRow('<i class="pl-sw before"></i><span>Before<small>scanned layout</small></span>', B)}${routeRow('<i class="pl-sw after"></i><span>After<small>proposed layout</small></span>', A)}
       <p class="note" style="margin-top:6px">Same A* planner as the robot, from its dock: proxy footprint as an obstacle, old footprint as free floor. Explore uses this layout until you reset.</p></div>
@@ -748,7 +878,9 @@ function cardHTML() {
       ${ev.nearest ? kv("Nearest known object", `${esc(ev.nearest.o.id)} · ${esc(ev.nearest.o.label)} · ${f2(ev.nearest.d)} m`) : ""}</div>
     <div class="section"><div class="label">${esc(a?.tag)} service zone</div>
       <div class="pl-zone"><span class="${z0.clear ? "pl-ok" : "pl-bad"}">${z0.clear ? "Clear" : `Obstructed by ${esc(z0.obstructions.map((x) => x.name).join(", "))}`}</span>${icon("chev")}<span class="${z.clear ? "pl-ok" : "pl-bad"}">${z.clear ? "Clear" : `Obstructed by ${esc(z.obstructions.map((x) => x.name).join(", "))}`}</span></div>
-      <p class="note" style="margin-top:6px">Assumed illustrative requirement: ${ZONE_DEPTH.toFixed(1)} m deep × pump width + ${ZONE_EXTRA.toFixed(1)} m in front of the pump. Not a Valmet or OEM figure.</p></div>
+      <p class="note" style="margin-top:6px">Clear means no object stands inside the zone, however much floor is free. Assumed illustrative requirement: ${ZONE_DEPTH.toFixed(1)} m deep × pump width + ${ZONE_EXTRA.toFixed(1)} m in front of the pump. Not a Valmet or OEM figure.</p></div>
+    <div class="section"><div class="label">View</div><div class="row">
+      <button class="chip ${P.snap ? "on" : ""}" data-pl="snap" aria-pressed="${P.snap}">Snap to 5 cm</button><button class="chip ${P.compare ? "on" : ""}" data-pl="compare" aria-pressed="${P.compare}">Show routes</button></div></div>
     <div class="section stack">
       <div class="pl-btns"><button class="btn" data-pl="reset">${icon("reset")}Reset layout</button><button class="btn" data-pl="wo">${icon("doc")}Draft work order</button></div>
       <div class="pl-btns"><button class="btn" data-pl="md">${ic("dl")}Markdown</button><button class="btn" data-pl="json">${ic("dl")}JSON</button><button class="btn" data-pl="copy">${ic("copy")}Copy</button></div></div>
@@ -756,8 +888,12 @@ function cardHTML() {
 }
 function renderCard() {
   if (APP.S?.mode !== "plan") return;
-  const el = $("#right"), top = el.scrollTop;
-  el.innerHTML = cardHTML(); el.scrollTop = top;
+  const el = $("#right"), body = el.querySelector(".card-b"), top = P.toTop ? 0 : body?.scrollTop || 0, focus = document.activeElement?.id === "plQM";
+  P.toTop = false;
+  el.innerHTML = cardHTML();
+  const nb = el.querySelector(".card-b"); if (nb) nb.scrollTop = top;
+  bindSearch(el);
+  if (focus) { const i = $("#plQM"); i?.focus(); i?.setSelectionRange(i.value.length, i.value.length); }
 }
 function scheduleCard() {
   if (P.cardTimer) return;
@@ -765,12 +901,19 @@ function scheduleCard() {
 }
 async function onCardClick(e) {
   if (APP.S?.mode !== "plan") return;
-  const p = e.target.closest("[data-pl-pick]"); if (p) return pick(p.dataset.plPick);
+  const mv = e.target.closest("[data-pl-mv]");
+  if (mv) { if (e.detail === 0) padStep(mv.dataset.plMv); return; }     // keyboard activation of a move-pad button
+  if (onListClick(e)) return;
   const a = e.target.closest("[data-pl]")?.dataset.pl;
   if (a === "reset") reset();
   if (a === "md" || a === "json" || a === "copy") exportPlan(a);
   if (a === "wo") draftWorkOrder();
   if (a === "demo") demo();
+  if (a === "suggest") suggest();
+  if (a === "done") done();
+  if (a === "again") { P.editing = true; P.toTop = true; if (!P.active) P.active = P.moves[0]?.id || null; P.dirtyField = true; refresh(); renderAll(); }
+  if (a === "snap") { P.snap = !P.snap; renderCard(); renderDock(); }
+  if (a === "compare") { P.compare = !P.compare; drawRoutes(); renderCard(); renderDock(); }
 }
 
 // ------------------------------------------------------------------ UI: dock
@@ -778,7 +921,7 @@ function dockHTML() {
   const has = !!P.active, B = P.before, A = P.after;
   const info = !P.moves.length ? `<small>Create a proxy to compare routes</small>` : P.routeBusy ? `<small>Planning the new route…</small>`
     : A?.ok ? `<small>A* ${A.compute_ms} ms · clearance ${A.min_clearance_m} m · ${A.collision_free ? "collision-free" : "check"}</small>` : A ? `<small class="pl-bad">No collision-free route with this layout</small>` : "<small>&nbsp;</small>";
-  return `<div class="grp"><button class="tool ${has ? "on" : ""}" data-pd="proxy">${ic("box")}${has ? "Remove proxy" : "Create proxy"}</button></div>
+  return `<div class="grp"><button class="tool ${has ? "on" : ""}" data-pd="proxy">${ic("box")}${has ? "Remove proxy" : "Pick truck"}</button></div>
     <div class="grp"><button class="tool" data-pd="l15" ${has ? "" : "disabled"} title="Turn 15° left ( [ )">${ic("rotL")}15°</button><button class="tool" data-pd="r15" ${has ? "" : "disabled"} title="Turn 15° right ( ] )">${ic("rotR")}15°</button><button class="tool" data-pd="r90" ${has ? "" : "disabled"} title="Turn 90° (R)">${ic("turn")}90°</button></div>
     <div class="grp"><button class="tool ${P.snap ? "on" : ""}" data-pd="snap"><span class="switch"></span>Snap 5 cm</button><button class="tool ${P.compare ? "on" : ""}" data-pd="compare"><span class="switch"></span>Routes</button></div>
     <div class="grp routeinfo"><div class="top"><span>Route to ${esc(P.target?.asset?.tag || "target")}</span><b>${B?.ok ? `${f2(B.length_m)} m` : "…"}${A?.ok ? ` → ${f2(A.length_m)} m` : ""}</b></div>${info}</div>
@@ -843,6 +986,7 @@ async function demo({ animate = true } = {}) {
   }
   setPose(SUGGESTED, spot, { route: false });
   clearTimeout(P.routeTimer);
+  P.editing = false;                           // straight to step 3: check the result
   frameView(0.9);
   await computeAfter();
   renderAll();
@@ -859,7 +1003,7 @@ async function setState(state) {
   const moves = (state?.moves || []).filter((m) => objOf(m.id) && [m.x, m.z, m.yaw].every(Number.isFinite));
   P.moves = moves.map((m) => ({ id: m.id, x: +m.x, z: +m.z, yaw: +m.yaw }));
   P.active = moves.some((m) => m.id === state.active) ? state.active : P.moves.at(-1)?.id || null;
-  P.dirtyField = true; P.after = null;
+  P.dirtyField = true; P.after = null; P.editing = false;
   refresh(); renderAll();
   if (P.moves.length) await computeAfter(); else { drawRoutes(); if (APP.S.curve && !APP.S.robot.done) APP.replan({ quiet: true }); }
   return getState();
@@ -891,6 +1035,7 @@ function enter() {
   ensureThree();
   P.three.root.visible = true;
   S.cardLock = false;                          // the right card belongs to Plan now
+  P.toTop = true;
   S.fac.routeGroup.visible = false;   // the comparison replaces the Explore route here
   refresh(); drawRoutes(); renderAll();
   beforeRoute().then(() => { drawRoutes(); renderCard(); renderDock(); });
@@ -909,6 +1054,7 @@ function frameView(dur = 1.1) {
 }
 function exit() {
   const S = APP.S;
+  stopHold();
   if (P.drag) { P.drag = null; APP.controls.enabled = true; }
   APP.canvas.style.cursor = "";
   S.fac.routeGroup.visible = true;
@@ -927,7 +1073,7 @@ registerMode({
   onPick(ray) {
     if (P.justDragged || P.drag) return true;
     const hit = pickProxy(ray);
-    if (hit) { if (P.active !== hit.m.id) { P.active = hit.m.id; P.dirtyField = true; refresh(); renderAll(); } return true; }
+    if (hit) { if (P.active !== hit.m.id || !P.editing) { P.active = hit.m.id; P.dirtyField = true; P.editing = true; refresh(); renderAll(); } return true; }
     const id = APP.S.fac.pick(ray);
     if (id) {
       const o = APP.S.data.objects.find((x) => x.id === id);
@@ -947,6 +1093,8 @@ on("boot", () => {
   addEventListener("pointerup", onPointerUp);
   addEventListener("pointercancel", onPointerUp);
   addEventListener("keydown", onKey);
+  $("#right").addEventListener("pointerdown", onPadDown);
+  addEventListener("pointerup", onPadUp); addEventListener("pointercancel", onPadUp); addEventListener("blur", onPadUp);
   // main.js refreshes the default cards from the robot loop (transit card, arrival) without a mode check:
   // in Plan mode put the planning cards back, unless the user asked for another card (S.cardLock).
   const guard = (sel, mine, render) => new MutationObserver(() => {
@@ -955,7 +1103,7 @@ on("boot", () => {
   }).observe($(sel), { childList: true });
   guard("#right", ".pl-disc", renderCard);
   guard("#left", ".pl-steps", renderLeft);
-  APP.planning = { getState, setState, reset: () => reset({ quiet: true }), demo, summary, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _evaluate: (id, pose) => evaluate(id, pose) };
+  APP.planning = { getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _evaluate: (id, pose) => evaluate(id, pose) };
 });
 on("planExtras", planExtras);
 on("minimap", drawMinimap);

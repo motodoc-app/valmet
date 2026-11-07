@@ -37,11 +37,12 @@ async function diagnosis(id) {
   if (!V.diag.has(id)) V.diag.set(id, APP.api.diagnose(id).catch((e) => { V.diag.delete(id); throw e; }));
   return V.diag.get(id);
 }
+const hasPlan = (p) => Array.isArray(p?.moves) && p.moves.length > 0;
 function planState() {
-  try { const p = APP.planning?.getState?.(); return p == null ? null : JSON.parse(JSON.stringify(p)); } catch (e) { console.warn("planning.getState", e); return null; }
+  try { const p = APP.planning?.getState?.(); return hasPlan(p) ? JSON.parse(JSON.stringify(p)) : null; } catch (e) { console.warn("planning.getState", e); return null; }
 }
 function restorePlan(plan) {
-  if (plan == null) return "none";
+  if (!hasPlan(plan)) return "none";                 // an empty plan changes nothing (and draws no planning overlays)
   const P = APP.planning, f = P?.setState || P?.loadState;
   if (!f) return "unavailable";
   try { f.call(P, plan); return "restored"; } catch (e) { console.warn("planning.setState", e); return "failed"; }
@@ -118,13 +119,13 @@ export async function loadPackage(input, { as } = {}) {
     assetId: known ? k.asset.asset_id : S().target.asset.asset_id, question: clip(k.question, 1200), created: k.created || null,
     rec: clip(k.recommendation?.text, 4000), recAi: !!k.recommendation?.ai_assisted, reviewed: !!k.recommendation?.reviewed_by_expert, wo: !!k.work_order_suggested,
     camera: num3(k.camera?.position) && num3(k.camera?.target) ? { position: num3(k.camera.position), target: num3(k.camera.target) } : null,
-    plan: k.plan ?? null, snapshot: typeof k.snapshot_png === "string" && k.snapshot_png.startsWith("data:image/png;base64,") ? k.snapshot_png : null,
+    plan: hasPlan(k.plan) ? k.plan : null, snapshot: typeof k.snapshot_png === "string" && k.snapshot_png.startsWith("data:image/png;base64,") ? k.snapshot_png : null,
     pins: k.pins.slice(0, MAX_PINS).map((p) => ({ id: rid(), role: p.role === "expert" ? "expert" : "technician", text: clip(p.text), p: num3(p.position),
       obj: p.object_id && objOf(p.object_id) ? p.object_id : null, ts: Date.parse(p.time) || Date.now(), sent: true, ex: !!p.example })).filter((p) => p.p),
     log: (k.log || []).slice(0, 40).map((l) => ({ r: +l.round || 0, role: l.role === "expert" ? "expert" : "technician", ts: Date.parse(l.time) || Date.now(), n: +l.pins || 0, ex: !!l.example })),
   });
   if (!known) toast(`The package names an asset this scene does not have (${esc(k.asset.tag || k.asset.asset_id)}). Showing ${esc(asset().tag)} instead.`, 6000);
-  Object.assign(V, { arm: false, editing: null, focus: null, out: null, ai: null, showImport: false });
+  Object.assign(V, { arm: false, editing: null, focus: null, out: null, ai: null, showImport: false, toTop: true, pinsOpen: false });
   if (!inMode()) APP.setMode("support"); else refreshAll();
   APP.selectAsset(ST.assetId);
   if (ST.camera) APP.flyTo(vec(ST.camera.position), vec(ST.camera.target), 1.2);
@@ -208,6 +209,16 @@ function newPin(hit) {
   ST.pins.push(p); V.editing = p.id; V.focus = p.id; V.arm = false; V.out = null;
   refreshAll();
   setTimeout(() => { const t = document.getElementById("supPinText"); t?.focus(); t?.scrollIntoView({ block: "nearest" }); }, 0);
+}
+function armPin() {
+  V.arm = !V.arm; APP.renderDock(); renderCard();
+  if (V.arm) toast("Now click a machine or the floor to place the pin.", 2600);
+}
+/** Back to a fresh, empty hand-off (APP.support.reset; used by "Reset the whole demo"). */
+function reset() {
+  Object.assign(ST, blank());
+  Object.assign(V, { arm: false, editing: null, focus: null, out: null, ai: null, aiBusy: false, showImport: false, planRes: null, toTop: true, pinsOpen: false });
+  if (inMode()) { ST.assetId = S().target.asset.asset_id; refreshAll(); } else clearMarkers();
 }
 function savePin() {
   const p = ST.pins.find((x) => x.id === V.editing); if (!p) return;
@@ -352,16 +363,19 @@ function banner() {
   b.className = `sup-banner ${ST.role}`;
   b.innerHTML = `<span class="who">${who}</span>${ST.example ? '<span class="pill amber">Example</span>' : ""}<span class="t">Asynchronous hand-off · no live session · no plant controls</span>`;
 }
-function leftHTML() {
-  const rows = ST.pins.map((p, i) => {
+function pinRows() {
+  return ST.pins.map((p, i) => {
     const o = p.obj && objOf(p.obj), own = p.role === ST.role && !p.sent;
     return `<div class="list-row sup-row ${V.focus === p.id ? "on" : ""}" role="button" tabindex="0" data-spin="${p.id}">
       <span class="sup-num ${p.role}">${i + 1}</span>
       <span class="nm"><b>${esc(p.text || "New pin")}</b><small>${ROLE[p.role]}${p.ex ? " · example" : ""} · ${o ? esc(o.asset?.tag || o.label) : "floor"} · ${hhmm(p.ts)}${p.sent ? "" : " · not sent"}</small></span>
       ${own ? `<span class="sup-rowtools"><button class="link" data-sedit="${p.id}" title="Edit" aria-label="Edit pin">${icon("edit")}</button><button class="link" data-sdel="${p.id}" title="Delete" aria-label="Delete pin">${icon("close")}</button></span>` : "<span></span>"}</div>`;
   }).join("");
+}
+function leftHTML() {
+  const rows = pinRows();
   return `<div class="card-h"><span class="t">Hand-off pins</span><span class="card-tools"><span class="note">${ST.pins.length}</span><button class="link" data-min-card title="Minimise" aria-label="Minimise">${icon("minus")}</button></span></div>
-    <div class="card-b" style="padding:0 8px 8px">${rows || `<p class="note" style="padding:0 8px">No pins yet. Choose <b>Pin a note</b> in the dock, then click a machine or the floor.</p>`}</div>
+    <div class="card-b" style="padding:0 8px 8px">${rows || `<p class="note" style="padding:0 8px">No pins yet. Press <b>Pin a note</b>, then click a machine or the floor.</p>`}</div>
     <div class="card-f"><span><i class="sup-key technician"></i>Technician</span><span><i class="sup-key expert"></i>Expert</span><span>Thread <b>${esc(ST.id)}</b></span></div>`;
 }
 function renderLeftCard() {
@@ -402,13 +416,24 @@ function cardHTML() {
       ${ST.recAi ? `<label class="gate"><input type="checkbox" id="supRev" ${ST.reviewed ? "checked" : ""}/> I reviewed and edited the AI draft; this recommendation is mine.</label>` : ""}`
     : ST.rec ? `<div class="sup-quote expert">${cites(ST.rec).replace(/\n/g, "<br>")}</div>${ST.recAi ? `<p class="note">Started from an AI draft${ST.reviewed ? "; the expert confirmed they reviewed it." : "; not confirmed as reviewed."}</p>` : ""}${ST.example ? '<p class="note"><span class="pill amber">Example</span> Scripted for the demo, not a real expert reply.</p>' : ""}`
     : '<p class="note">No recommendation yet: the expert adds it after opening your package.</p>';
+  const mine = ST.pins.filter((p) => p.role === role).length, sentByMe = ST.log.some((l) => l.role === role && !l.ex);
+  const steps = role === "technician"
+    ? [["Pin a note on the spot in the room", mine > 0], ["Write your question for the expert", !!ST.question.trim()], ["Share the link with the expert", sentByMe]]
+    : [["Look at the pins and the question", ST.pins.length > 0 || !!ST.question], ["Write your recommendation (an AI draft can help)", !!ST.rec.trim()], ["Send it back to the technician", sentByMe]];
+  const shareLabel = role === "expert" ? "Send back to the technician" : ST.round && ST.from === "technician" ? "Share again (new round)" : "Share with expert";
   return `${header("Remote support", `${esc(a.tag)} hand-off`, `<span class="tag syn">Synthetic</span>${ST.example ? '<span class="pill amber">Example</span>' : ""}`)}
     <div class="sub">${ROLE[role]} view · ${ST.round ? `round ${ST.round}` : "draft"}${lastLog ? ` · last sent by the ${lastLog.role} ${hhmm(lastLog.ts)}` : ""}</div>
-    <div class="sup-honest">${icon("help")}<span>${HONEST}</span></div>
+    <div class="sup-actions"><button class="btn ${V.arm ? "on" : ""} sup-big" data-sa="pin" aria-pressed="${V.arm}">${icon("pin")}${V.arm ? "Click the room…" : "Pin a note"}</button>
+      <button class="btn primary sup-big" data-sa="share">${icon("share")}${shareLabel}</button></div>
+    ${V.arm ? '<p class="sup-armed">Click a machine or the floor in the 3D view to place your pin.</p>' : ""}
+    <div class="sup-phone sup-row2"><div class="seg" role="group" aria-label="View as">${["technician", "expert"].map((r) => `<button data-srole="${r}" class="${role === r ? "on" : ""}">${ROLE[r]}</button>`).join("")}</div><button class="btn" data-sa="new">${icon("reset")}Start new</button></div>
+    ${out}
     ${editing ? `<div class="section sup-edit"><div class="label"><span>${editing.sent ? "Pin" : "New pin"} ${ST.pins.indexOf(editing) + 1} · ${editing.obj ? esc(objOf(editing.obj)?.asset?.tag || objOf(editing.obj)?.label) : "floor"}</span><span>${ROLE[editing.role]}</span></div>
       <textarea class="search sup-ta" id="supPinText" rows="2" maxlength="${MAX_TEXT}" placeholder="What is here? e.g. Leak at the flange, noise, missing guard">${esc(editing.text)}</textarea>
       <div class="row" style="margin-top:8px"><button class="btn primary" data-sa="pin-save">${icon("check")}Save pin</button><button class="btn" data-sa="pin-cancel">Cancel</button></div></div>` : ""}
-    ${ST.received ? `<div class="section sup-recv">${icon("inbox")}<span><b>${ROLE[ST.from]}'s package opened</b> · round ${ST.round}${ST.created ? ` · ${hhmm(Date.parse(ST.created))}` : ""}. Pins, asset, camera view${ST.plan != null ? " and plan" : ""} are restored.</span></div>` : ""}
+    <ol class="sup-steps">${steps.map(([t, d], i) => `<li class="${d ? "done" : ""}"><span class="k">${d ? icon("check") : i + 1}</span><span>${t}</span></li>`).join("")}</ol>
+    <div class="sup-honest">${icon("help")}<span>${HONEST}</span></div>
+    ${ST.received ? `<div class="section sup-recv">${icon("inbox")}<span><b>${ROLE[ST.from]}'s package opened</b> · round ${ST.round}${ST.created ? ` · ${hhmm(Date.parse(ST.created))}` : ""}. Pins, asset${ST.camera ? ", camera view" : ""}${hasPlan(ST.plan) ? " and maintenance plan" : ""} are restored.</span></div>` : ""}
     <div class="section"><div class="label"><span>Shared asset context</span>${o ? `<button class="link" data-sa="locate">${icon("target")}Show</button>` : ""}</div>
       ${kv("Asset", `<b class="sup-mono">${esc(a.tag)}</b> · <span class="status s-${a.condition_state}">${nice(a.condition_state)}</span>`)}${kv("Health", a.health_score)}${kv("Issue", esc(nice(a.issue_code)))}
       ${kv("Camera view", ST.camera && ST.received ? "From the package" : "Saved when you share")}${kv("Maintenance plan", esc(plan))}
@@ -416,7 +441,8 @@ function cardHTML() {
       ${canSwitch ? `<button class="btn block" style="margin-top:8px" data-sa="use-sel">${icon("target")}Make ${esc(sel.asset.tag)} the shared asset</button>` : ""}</div>
     <div class="section"><div class="label">Question for the expert</div>${question}</div>
     <div class="section"><div class="label"><span>Pins</span><span>${techPins} technician · ${expPins} expert</span></div>
-      <p class="note">${V.arm ? "<b>Click a machine or the floor to place the pin.</b>" : "Use <b>Pin a note</b> in the dock, then click the scene. Pins are listed on the left and on the mini-map."}</p></div>
+      <p class="note">${V.arm ? "<b>Click a machine or the floor to place the pin.</b>" : "Press <b>Pin a note</b>, then click the scene. Pins are listed on the left and on the mini-map."}</p>
+      ${ST.pins.length ? `<div class="sup-phone"><button class="btn block" data-sa="pins">${icon("pin")}${V.pinsOpen ? "Hide the pin list" : `Show the pin list (${ST.pins.length})`}</button>${V.pinsOpen ? `<div class="sup-pinlist">${pinRows()}</div>` : ""}</div>` : ""}</div>
     <div class="section"><div class="label">Expert recommendation</div>${recBlock}</div>
     ${role === "expert" || ST.wo ? `<div class="section"><div class="label">Work order</div>
       <button class="btn block" data-sa="wo">${icon("doc")}${role === "expert" ? "Create work-order draft" : "Open the suggested work-order draft"}</button>
@@ -424,9 +450,7 @@ function cardHTML() {
     <div class="section"><div class="label"><span>View snapshot</span>${ST.snapshot ? '<button class="link" data-sa="dl-png">Download</button>' : ""}</div>
       ${ST.snapshot ? `<img class="sup-shot" src="${ST.snapshot}" alt="Snapshot of the 3D view with the pins"/>` : ""}
       <button class="btn block" data-sa="capture">${icon("camera")}${ST.snapshot ? "Capture again" : "Capture view"}</button></div>
-    <div class="section stack"><button class="btn primary block" data-sa="share">${icon("share")}${role === "expert" ? "Send back to the technician" : ST.round && ST.from === "technician" ? "Share again (new round)" : "Share with expert"}</button>
-      ${role === "technician" && !ST.rec ? `<button class="btn block" data-sa="example">${icon("inbox")}Load example expert reply <span class="pill amber">Example</span></button>` : ""}</div>
-    ${out}
+    ${role === "technician" && !ST.rec ? `<div class="section"><button class="btn block" data-sa="example">${icon("inbox")}Load example expert reply <span class="pill amber">Example</span></button></div>` : ""}
     <div class="section"><div class="label"><span>Received a package?</span><button class="link" data-sa="toggle-import">${V.showImport ? "Hide" : "Import package"}</button></div>
       ${V.showImport ? `<textarea class="search sup-ta sup-mono" id="supImport" rows="3" placeholder="Paste the link, the code or the package JSON"></textarea>
       <div class="row" style="margin-top:8px"><button class="btn primary" data-sa="import">${icon("inbox")}Open package</button><label class="btn sup-file">${icon("download")}From file<input type="file" id="supFile" accept=".json,application/json"/></label></div>` : '<p class="note">Open a link, or paste a code or package file from the other side.</p>'}</div>
@@ -436,9 +460,11 @@ function cardHTML() {
 }
 function renderCard() {
   if (!inMode()) return;
-  const r = document.getElementById("right"), b = r.querySelector(".card-b"), top = b?.scrollTop || 0;
+  const r = document.getElementById("right"), b = r.querySelector(".card-b"), top = V.toTop ? 0 : b?.scrollTop || 0;
+  V.toTop = false;
   r.innerHTML = cardHTML();
   const nb = r.querySelector(".card-b"); if (nb) nb.scrollTop = top;
+  if (top === 0) r.scrollTop = 0;
   const a = asset();
   if (V.diagNow?.asset?.asset_id !== a.asset_id) diagnosis(a.asset_id).then((d) => { const was = V.diagNow; V.diagNow = d; if (was !== d && asset().asset_id === a.asset_id) renderCard(); }).catch(() => {});
 }
@@ -446,8 +472,14 @@ function refreshAll() { if (!inMode()) return; renderLeftCard(); renderCard(); r
 
 async function onCard(e) {
   if (!inMode()) return;
+  const sr = e.target.closest("[data-srole]");
+  if (sr) { if (ST.role !== sr.dataset.srole) { ST.role = sr.dataset.srole; V.ai = null; V.editing = null; V.out = null; refreshAll(); } return; }
+  if (e.target.closest("[data-spin], [data-sedit], [data-sdel]")) return onLeft(e);
   const t = e.target.closest("[data-sa]"); if (!t) return;
   const a = t.dataset.sa;
+  if (a === "pin") return armPin();
+  if (a === "pins") { V.pinsOpen = !V.pinsOpen; return renderCard(); }
+  if (a === "new") return newHandoff();
   if (a === "pin-save") savePin();
   if (a === "pin-cancel") { const p = ST.pins.find((x) => x.id === V.editing); if (p && !p.text) ST.pins = ST.pins.filter((x) => x !== p); V.editing = null; refreshAll(); }
   if (a === "share") await share();
@@ -498,7 +530,7 @@ async function onDock(e) {
   const r = e.target.closest("[data-srole]");
   if (r) { if (ST.role !== r.dataset.srole) { ST.role = r.dataset.srole; V.ai = null; V.editing = null; V.out = null; refreshAll(); } return; }
   const d = e.target.closest("[data-sd]")?.dataset.sd;
-  if (d === "pin") { V.arm = !V.arm; APP.renderDock(); renderCard(); if (V.arm) toast("Click a machine or the floor to place the pin.", 2600); }
+  if (d === "pin") armPin();
   if (d === "capture") { capture(); renderCard(); toast("View captured. It goes into the package file.", 2400); }
   if (d === "share") await share();
   if (d === "import") { V.showImport = true; renderCard(); const t = document.getElementById("supImport"); t?.scrollIntoView({ block: "nearest" }); t?.focus(); }
@@ -510,6 +542,7 @@ registerMode({
   id: "support", label: "Support", after: "practice", scene: "facility", minimap: true, ownsCard: true,
   enter() {
     document.body.classList.add("support-on");
+    V.toTop = true;
     if (!ST.assetId) ST.assetId = S().selected?.asset?.asset_id || S().target.asset.asset_id;
     // a moving robot would replace this card with its transit card: pause it while the hand-off is open
     const R = S().robot; if (R.moving) { R.moving = false; R.v = 0; toast("Robot paused while Support is open.", 2600); }
@@ -551,13 +584,21 @@ async function openFromLocation() {
   if (!m) return;
   try {
     await loadPackage(m[1]);
-    toast(`<b>${ROLE[ST.role]} view</b> · the ${ST.from}'s package is open. ${esc(HONEST)}`, 7000);
+    const msg = `<b>${ROLE[ST.role]} view</b> · the ${ST.from}'s package is open. ${esc(HONEST)}`;
+    toast(msg, 7000);
+    // main.js shows a "New here? Take the tour" toast ~1.5 s after boot; it would replace this one
+    const t0 = Date.now(), mo = new MutationObserver(() => {
+      if (Date.now() - t0 > 6000) return mo.disconnect();
+      if (document.querySelector(".toast [data-tour]")) { mo.disconnect(); toast(msg, 6000); }
+    });
+    mo.observe(document.getElementById("app"), { childList: true, subtree: true });
+    setTimeout(() => mo.disconnect(), 6500);
   } catch (e) { console.warn("support package", e); toast("The support link could not be read. Ask the sender for the code or the package file."); }
   const u = new URL(location.href); u.searchParams.delete("support"); u.hash = "";
   history.replaceState(null, "", u.pathname + u.search);
 }
 on("boot", (A) => {
-  A.support = { getPackage, loadPackage, demo, encode, decode, state: () => ST };
+  A.support = { getPackage, loadPackage, demo, encode, decode, reset, state: () => ST };
   const r = document.getElementById("right");
   r.addEventListener("click", onCard); r.addEventListener("input", onCardInput); r.addEventListener("change", onCardChange);
   addEventListener("hashchange", () => { if (/support=/.test(location.hash)) openFromLocation(); });
