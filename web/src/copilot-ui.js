@@ -76,7 +76,7 @@ export function createCopilot({ pop, input, api, selected, assetById, run }) {
   function render() {
     // run badge: offline demo, live AI, or live AI unavailable (server up, but the last free answer had no LLM)
     const lastFree = [...turns].reverse().find((t) => t.r && t.r.intent === "question");
-    const down = !isStatic() && lastFree && !String(lastFree.r.mode || "").startsWith("llm");
+    const down = !isStatic() && (lastFree ? !String(lastFree.r.mode || "").startsWith("llm") : !!api()?.llmDown);
     const badge = isStatic() ? ["off", "Offline demo"] : down ? ["off", "Live AI unavailable"] : ["on", "Live AI"];
     const head = `<div class="cp-head"><span class="cp-title">${icon("spark")}Copilot<span class="cp-run ${badge[0]}">${badge[1]}</span></span>
       <span class="cp-tools">${turns.length ? '<button class="link" data-cp-clear title="Start a new conversation">New</button>' : ""}<button class="link" data-pop-close aria-label="Close">${icon("close")}</button></span></div>`;

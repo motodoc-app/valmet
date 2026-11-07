@@ -160,6 +160,8 @@ def diagnose(asset_id: str):
 
 @app.post("/api/copilot/query")
 def copilot_query(req: QueryReq):
+    if req.asset_id:
+        _asset_or_404(req.asset_id)
     return WORLD.copilot.answer(req.question, req.asset_id, req.component, req.history)
 
 
@@ -185,6 +187,7 @@ def xray_model():
 @app.post("/api/work-orders/draft")
 def work_order_draft(req: DraftReq):
     """Draft only — never sent to a CMMS, never a control action (API_Contract)."""
+    _asset_or_404(req.asset_id)
     ev = WORLD.copilot.evidence(req.asset_id)
     a = ev["asset"]
     return {
@@ -262,6 +265,8 @@ def find_objects(phrase: str) -> list[dict]:
 @app.post("/api/copilot/command")
 def command(req: CommandReq):
     """Rule-based intent router (transparent + deterministic); free-form questions fall through to RAG."""
+    if req.selected_asset_id:
+        _asset_or_404(req.selected_asset_id)
     t = req.text.lower()
     actions: list[dict] = []
     assets = WORLD.assets_summary
@@ -344,7 +349,10 @@ def command(req: CommandReq):
         if best:
             asset_id = best[0]
             s = best[2]
-            reason = (f"{assets[asset_id]['tag']} has the most abnormal {sig}: {s['recent_mean']}{s['unit']} vs peer "
+            nice = {"bearing_temp_c": "bearing temperature", "vibration_mm_s": "vibration", "motor_current_a": "motor current",
+                    "stiction_index": "valve stiction", "position_actual_pct": "valve position",
+                    "process_pressure_bar": "process pressure", "process_flow_pct": "process flow"}.get(sig, sig.replace("_", " "))
+            reason = (f"{assets[asset_id]['tag']} has the most abnormal {nice}: {s['recent_mean']}{s['unit']} vs peer "
                       f"mean {s['peer_mean']}{s['unit']} (z = {s['z_vs_peers']}) [Telemetry_Sample_3d].")
     elif re.search(r"fault|faulty|broken|worst|priority|critical|problem|alarm", t):
         cand = [a for a in assets.values() if (not cls or a["asset_class"] == cls)]

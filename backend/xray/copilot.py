@@ -194,13 +194,23 @@ class Copilot:
         return ids
 
     # ------------------------------------------------------------------ narration
+    # circuit breaker: after a quota error, rate limit, timeout or connection failure, skip the LLM for a while so
+    # every fallback answer is instant instead of waiting on a dead network (venue Wi-Fi, exhausted credits)
+    _down_until = 0.0
+
+    def _trip(self, e: Exception) -> None:
+        import time
+        if type(e).__name__ in {"RateLimitError", "APITimeoutError", "APIConnectionError", "AuthenticationError", "PermissionDeniedError"}:
+            type(self)._down_until = time.monotonic() + 300
+
     def _client(self):
-        if not config.USE_LLM:
+        import time
+        if not config.USE_LLM or time.monotonic() < type(self)._down_until:
             return None
         if self._llm is None:
             try:
                 from openai import OpenAI
-                self._llm = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "proxy-injected"), timeout=40)
+                self._llm = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "proxy-injected"), timeout=12, max_retries=0)
             except Exception:  # noqa: BLE001
                 self._llm = False
         return self._llm or None
@@ -261,6 +271,7 @@ class Copilot:
             text, bad = self._check_citations(text, allowed)
             return {"text": text, "mode": f"llm:{config.LLM_MODEL}", "invalid_citations": bad}
         except Exception as e:  # noqa: BLE001
+            self._trip(e)
             return {"text": self.template_summary(ev), "mode": f"template (LLM unavailable: {type(e).__name__})",
                     "invalid_citations": []}
 
@@ -395,5 +406,6 @@ class Copilot:
             return {"text": text, "sources": hits, "mode": f"llm:{config.LLM_MODEL}", "invalid_citations": bad,
                     "asset_id": asset_id}
         except Exception as e:  # noqa: BLE001
+            self._trip(e)
             return {"text": self.offline_text(ev if ASSET_Q.search(question) else None, hits), "sources": hits, "mode": f"retrieval-only ({type(e).__name__})",
                     "asset_id": asset_id}

@@ -12,15 +12,26 @@ const unpack = (hex, n) => {
 
 const serverApi = {
   isStatic: false,
+  llmDown: false,                    // set from the last diagnosis / free question: did the live LLM answer?
   health: () => fetch("/api/health").then(j),
   scene: () => fetch("/api/scene").then(j),
   grid: async () => { const g = await fetch("/api/nav/grid").then(j); const n = g.W * g.H; return { ...g, walkableMask: unpack(g.walkable, n), occupiedMask: unpack(g.occupied, n) }; },
   plan: (body) => post("/api/nav/plan", body),
-  diagnose: (id) => fetch(`/api/diagnose/${id}`).then(j),
+  async diagnose(id) {
+    const d = await fetch(`/api/diagnose/${id}`).then(j);
+    // live AI unavailable: show the narrative pre-generated (and citation-checked) at export time instead of the raw
+    // template wording, labelled as such; the evidence, confidence and steps stay the live server's
+    serverApi.llmDown = !/^llm:/.test(d.narrative?.mode || "");
+    if (/^template/.test(d.narrative?.mode || "")) {
+      try { const s = await staticApi.diagnose(id); if (/^llm:/.test(s.narrative?.mode || "")) return { ...d, narrative: { ...s.narrative, fallback: d.narrative.mode } }; } catch { /* keep the template */ }
+    }
+    return d;
+  },
   async command(text, selected, history = []) {
     const r = await post("/api/copilot/command", { text, selected_asset_id: selected, history });
     // live AI unavailable (no key, no quota, no network): use the pre-generated answer to a similar question instead
     // of plain document search, labelled as such (copilot-ui shows "live AI unavailable")
+    if (r.intent === "question") serverApi.llmDown = !/^llm:/.test(r.mode || "");
     if (r.intent === "question" && /^(retrieval-only|template)/.test(r.mode || "")) {
       try { const f = await staticApi.answer(text, r.asset_id || selected, history); if (f.mode === "faq") return { ...r, ...f, actions: r.actions, fallback: r.mode }; } catch { /* keep the server answer */ }
     }

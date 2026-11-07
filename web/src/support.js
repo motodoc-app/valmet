@@ -8,6 +8,7 @@ import { APP, registerMode, on } from "./ext.js";
 import { icon } from "./icons.js";
 import { esc, kv, cites, header, toast, nice, plainSummary } from "./ui.js";
 import "./support.css";
+import { modeLabel } from "./copilot-ui.js";
 
 export const HONEST = "Asynchronous hand-off: the context travels in the link/package. No live multi-user session in this prototype. No connection to plant controls.";
 const FORMAT = "industrial-xray-support/1";
@@ -411,7 +412,7 @@ function cardHTML() {
   const recBlock = role === "expert"
     ? `<textarea class="search sup-ta" id="supRec" rows="5" placeholder="Your recommendation for the technician. Cite documents with [ID] where you can.">${esc(ST.rec)}</textarea>
       <div class="row" style="margin-top:8px"><button class="btn" data-sa="ai" ${V.aiBusy ? "disabled" : ""}>${icon("spark")}${V.aiBusy ? "Drafting…" : "Draft recommendation with AI"}</button></div>
-      ${V.ai ? `<div class="sup-ai"><div class="label"><span>AI draft — the expert must review</span><span>${esc(V.ai.mode)}</span></div><div class="narr">${cites(V.ai.text)}</div>
+      ${V.ai ? `<div class="sup-ai"><div class="label"><span>AI draft — the expert must review</span><span>${esc(modeLabel(V.ai, !!APP.api?.isStatic).text)}</span></div><div class="narr">${cites(V.ai.text)}</div>
         <div class="row" style="margin-top:8px"><button class="btn" data-sa="use-ai">${icon("check")}Use as starting point</button><button class="link" data-sa="drop-ai">Discard</button></div></div>` : ""}
       ${ST.recAi ? `<label class="gate"><input type="checkbox" id="supRev" ${ST.reviewed ? "checked" : ""}/> I reviewed and edited the AI draft; this recommendation is mine.</label>` : ""}`
     : ST.rec ? `<div class="sup-quote expert">${cites(ST.rec).replace(/\n/g, "<br>")}</div>${ST.recAi ? `<p class="note">Started from an AI draft${ST.reviewed ? "; the expert confirmed they reviewed it." : "; not confirmed as reviewed."}</p>` : ""}${ST.example ? '<p class="note"><span class="pill amber">Example</span> Scripted for the demo, not a real expert reply.</p>' : ""}`
