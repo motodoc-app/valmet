@@ -1,8 +1,13 @@
 {
   "_doc": "Review layer (DOC-3D-MAPPING: 'never silently guess identity'). Applied after automatic extraction + VLM labelling. Entries were made by the build team from a visual check of rendered crops (AI-assisted), not by a person in the field; outputs are tagged label_source='review-corrected'. Regions are in the canonical scene frame (metres, +Y up), so they survive pipeline re-runs.",
+  "demo_start": [
+    -2.233,
+    -2.915
+  ],
+  "_demo_start_doc": "Robot dock (x, z in the canonical frame). Pinned so the start does not move when the target's binding changes; without it the start is the drivable cell farthest from the target.",
   "merge_regions": [
     {
-      "name": "Pump set on concrete plinth (behind pallet truck)",
+      "name": "Covered item and pipework behind the pink pallet truck",
       "region_min": [
         2.05,
         0.08,
@@ -13,12 +18,22 @@
         0.95,
         3.25
       ],
-      "label": "pump-motor unit",
-      "category": "rotating",
-      "note": "Fragments merged after a visual check against the boiler-room reference video: pump and motor on a plinth behind the pink pallet truck."
+      "label": "other equipment",
+      "category": "other",
+      "note": "Fragments merged in review (pillar side, sack, pink cloth, pipework behind the pink pallet truck). An earlier review took this region for the pump set; corrected on 7 Nov 2026 after checking the rendered scan from two viewpoints: the pump-motor units stand on the concrete plinth further along the wall (see the next region)."
     }
   ],
   "relabel_near": [
+    {
+      "point": [
+        1.303,
+        0.594,
+        3.605
+      ],
+      "label": "pump-motor unit",
+      "category": "rotating",
+      "note": "Pump set on the concrete plinth: two inline pump-motor units (black motors, blue flanges). The vision model called this fragment 'other equipment' (0.16); corrected on 7 Nov 2026 after checking the rendered scan from two viewpoints. Its box covers the motors; the pipework in front is in neighbouring fragments."
+    },
     {
       "point": [
         2.06,

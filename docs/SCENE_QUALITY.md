@@ -15,10 +15,10 @@ We should say: *"The pipeline segments the scan into 676 object candidates with 
 | Segmented candidates | 676 | 100.0% | kind == 'object': every DBSCAN cluster that got an oriented 3D frame (walls/floor/ceiling excluded) |
 | Given a specific type | 416 | 61.5% | label is a specific taxonomy class, i.e. not 'other equipment' / unknown |
 | Confidently identified | 195 | 28.8% | specific type and confidence >= 0.7 (VLM self-reported, or 0.9 after a review correction) |
-| Review-corrected | 7 | 1.0% | label_source == 'review-corrected' (config/scene_annotations.json review layer) |
+| Review-corrected | 8 | 1.2% | label_source == 'review-corrected' (config/scene_annotations.json review layer) |
 | Linked to a workbook asset | 30 | 4.4% | has a procedural binding to one of the synthetic workbook assets (mapping.py) |
 
-Subset relations: categorised ⊆ candidates; confident ⊆ categorised; review-corrected ⊆ candidates (3 of 7 review-corrected objects carry a specific type, the other 4 were corrected *to* 'other equipment'); linked ⊆ candidates (14 of 30 linked objects are also in the confident tier).
+Subset relations: categorised ⊆ candidates; confident ⊆ categorised; review-corrected ⊆ candidates (3 of 8 review-corrected objects carry a specific type, the other 5 were corrected *to* 'other equipment'); linked ⊆ candidates (10 of 30 linked objects are also in the confident tier).
 
 **Threshold.** 0.70 is the same gate the 3D view already uses to decide which object labels are worth showing (facility.js). The VLM's confidence is self-reported and uncalibrated, so the threshold is a presentation rule, not a probability; the audit below reports agreement per confidence band.
 
@@ -27,7 +27,7 @@ Subset relations: categorised ⊆ candidates; confident ⊆ categorised; review-
 | Confidence | Specific type | 'other equipment' |
 |---|---:|---:|
 | 0.0–0.1 | 0 | 0 |
-| 0.1–0.2 | 2 | 84 |
+| 0.1–0.2 | 2 | 83 |
 | 0.2–0.3 | 11 | 115 |
 | 0.3–0.4 | 32 | 51 |
 | 0.4–0.5 | 52 | 6 |
@@ -43,20 +43,20 @@ Label = the VLM taxonomy class (or the human-review label). 'VLM categories' sho
 
 | Label | Family | Count | Mean conf. | ≥ 0.70 | Linked | Label source | VLM categories | Flagged |
 |---|---|---:|---:|---:|---:|---|---|---:|
-| other equipment | unidentified | 260 | 0.25 | 0 | 0 | review-corrected 4, vlm+geometry 256 | other 260 | 125 |
+| other equipment | unidentified | 260 | 0.25 | 0 | 0 | review-corrected 5, vlm+geometry 255 | other 260 | 124 |
 | pipe label / tag | piping (tag) | 121 | 0.70 | 76 | 0 | vlm+geometry 121 | piping 117, other 4 | 91 |
 | insulated pipe (horizontal) | piping | 50 | 0.87 | 48 | 0 | vlm+geometry 50 | piping 50 | 32 |
 | pipe elbow / fitting | piping | 50 | 0.56 | 8 | 0 | vlm+geometry 50 | piping 50 | 28 |
-| control valve | valve | 43 | 0.54 | 6 | 5 | vlm+geometry 43 | valve 43 | 28 |
+| control valve | valve | 43 | 0.54 | 6 | 8 | vlm+geometry 43 | valve 43 | 28 |
 | temperature sensor | instrument | 21 | 0.45 | 0 | 3 | vlm+geometry 21 | instrument 21 | 15 |
 | electrical cabinet | electrical | 18 | 0.66 | 8 | 0 | vlm+geometry 18 | electrical 18 | 5 |
 | insulated pipe (vertical) | piping | 18 | 0.88 | 17 | 0 | vlm+geometry 18 | piping 18 | 9 |
-| pump-motor unit | rotating | 18 | 0.70 | 12 | 8 | vlm+geometry 17, review-corrected 1 | rotating 18 | 6 |
+| pump-motor unit | rotating | 18 | 0.70 | 12 | 8 | vlm+geometry 17, review-corrected 1 | rotating 18 | 7 |
 | control panel | electrical | 15 | 0.47 | 2 | 0 | vlm+geometry 15 | electrical 15 | 6 |
 | electric motor | rotating | 12 | 0.45 | 0 | 4 | vlm+geometry 12 | electrical 8, rotating 4 | 4 |
 | junction box | electrical | 11 | 0.56 | 3 | 0 | vlm+geometry 11 | electrical 11 | 8 |
 | flow meter | instrument | 7 | 0.41 | 0 | 1 | vlm+geometry 7 | instrument 7 | 4 |
-| valve actuator | valve | 6 | 0.79 | 5 | 5 | vlm+geometry 6 | valve 6 | 4 |
+| valve actuator | valve | 6 | 0.79 | 5 | 2 | vlm+geometry 6 | valve 6 | 4 |
 | manual valve | valve | 5 | 0.72 | 4 | 2 | vlm+geometry 5 | valve 5 | 3 |
 | pressure gauge | instrument | 5 | 0.43 | 0 | 1 | vlm+geometry 5 | instrument 5 | 4 |
 | pressure transmitter | instrument | 4 | 0.55 | 0 | 1 | vlm+geometry 4 | instrument 4 | 3 |
@@ -89,19 +89,20 @@ Fitted planes: floor × 1, ceiling × 1, wall × 4. 4 wall frames are shown in t
 
 ## Workbook linking
 
-30 candidates are linked to 30 workbook assets (one-to-one). Methods: class-aware × 29, class-aware (target, reachable) × 1. Mean mapping confidence 0.63; 14 of 30 have mapping confidence ≥ 0.70. The workbook is synthetic (challenge builder pack); bindings are procedural and class-aware (backend/xray/mapping.py), not field-verified. Mapping confidence = visual confidence x tier weight.
+30 candidates are linked to 30 workbook assets (one-to-one). Methods: class-aware × 29, class-aware (target, reachable) × 1. Mean mapping confidence 0.57; 10 of 30 have mapping confidence ≥ 0.70. The workbook is synthetic (challenge builder pack); bindings are procedural and class-aware (backend/xray/mapping.py), not field-verified. Mapping confidence = visual confidence x tier weight.
 
 ## Human review layer
 
-7 objects carry `label_source: review-corrected` from 7 entries in `config/scene_annotations.json`:
+8 objects carry `label_source: review-corrected` from 8 entries in `config/scene_annotations.json`:
 
 - **OBJ-005**: pump-motor unit → **other equipment**. Over-merged frame: office chair, buckets and clutter. The vision model proposed 'pump-motor unit' (0.78); corrected in review after the scene-quality audit. It had been linked to workbook pump P-002.
 - **OBJ-009**: pump-motor unit → **shelving / rack**. Metal shelving. The vision model proposed 'pump-motor unit' (0.74); corrected in review after the scene-quality audit.
 - **OBJ-012**: pump-motor unit → **other equipment**. Portable pressure washer with hose reel. The vision model proposed 'pump-motor unit' (0.84); corrected in review.
 - **OBJ-017**: pump-motor unit → **other equipment**. Wheeled stand or chair. The vision model proposed 'pump-motor unit' (0.78); corrected in review.
+- **OBJ-025**: other equipment → **pump-motor unit**. Pump set on the concrete plinth: two inline pump-motor units (black motors, blue flanges). The vision model called this fragment 'other equipment' (0.16); corrected on 7 Nov 2026 after checking the rendered scan from two viewpoints. Its box covers the motors; the pipework in front is in neighbouring fragments.
 - **OBJ-028**: pump-motor unit → **trolley / cart**. Pink hand pallet truck. The vision model proposed 'pump-motor unit' (0.86); corrected in review.
 - **OBJ-033**: pump-motor unit → **other equipment**. Small table or stool. The vision model proposed 'pump-motor unit' (0.74); corrected in review after the scene-quality audit.
-- **OBJ-256**: other equipment → **pump-motor unit** (merged from OBJ-256, OBJ-520, OBJ-560, OBJ-588, OBJ-671). Fragments merged after a visual check against the boiler-room reference video: pump and motor on a plinth behind the pink pallet truck.
+- **OBJ-256**: other equipment → **other equipment** (merged from OBJ-256, OBJ-520, OBJ-560, OBJ-588, OBJ-671). Fragments merged in review (pillar side, sack, pink cloth, pipework behind the pink pallet truck). An earlier review took this region for the pump set; corrected on 7 Nov 2026 after checking the rendered scan from two viewpoints: the pump-motor units stand on the concrete plinth further along the wall (see the next region).
 
 ## Data-quality audit of candidates
 

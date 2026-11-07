@@ -230,8 +230,27 @@ class NavMap:
             return None
         return int(ys[i]), int(xs[i])
 
+    # where the robot stops to inspect: ~1.0 m in front of the object's frame, with a clear line of sight to it
+    # (obstacles within 0.6 m of the frame are treated as part of the equipment: flanges, pipework, guards)
+    STANDOFF_M, LOS_IGNORE_M, LOS_TRIES = 1.0, 0.6, 400
+
+    def _line_of_sight(self, cell: tuple[int, int], mask: np.ndarray, dist: np.ndarray, occ: np.ndarray) -> bool:
+        """True when the straight line over the floor grid from `cell` to the object's frame crosses no obstacle."""
+        rr, cc = np.nonzero(mask)
+        tr, tc = float(rr.mean()), float(cc.mean())
+        r0, c0 = cell
+        n = int(max(abs(tr - r0), abs(tc - c0))) + 1
+        for i in range(1, n + 1):
+            r = int(round(r0 + (tr - r0) * i / n)); c = int(round(c0 + (tc - c0) * i / n))
+            if mask[r, c]:
+                return True
+            if occ[r, c] and dist[r, c] > self.LOS_IGNORE_M:
+                return False
+        return True
+
     def approach_cell(self, obj: dict) -> tuple[int, int] | None:
-        """Walkable cell from which a technician can inspect the object (closest to its frame)."""
+        """Walkable cell from which the robot can see and inspect the object: about STANDOFF_M from its frame with a
+        clear line of sight to it, preferring open floor. Falls back to the closest walkable cell."""
         mask = np.zeros_like(self.walkable)
         self._rasterise_box(obj, mask, pad=0.0)
         if not mask.any():
@@ -241,8 +260,24 @@ class NavMap:
         cand = self.walkable & (dist < 1.6)
         if not cand.any():
             return None
-        score = np.where(cand, dist - 0.15 * np.minimum(self.clearance, 0.6), np.inf)
-        r, c = np.unravel_index(int(np.argmin(score)), score.shape)
+        # prefer the main drivable area (the robot's dock is in it) over small isolated pockets behind equipment
+        lab, n = ndimage.label(self.walkable)
+        if n > 1:
+            main = int(np.argmax(ndimage.sum(self.walkable, lab, range(1, n + 1)))) + 1
+            if (cand & (lab == main)).any():
+                cand = cand & (lab == main)
+        occ = self.occupied
+        clear = 0.15 * np.minimum(self.clearance, 0.6)
+        score = np.where(cand, np.abs(dist - self.STANDOFF_M) - clear, np.inf)
+        order = np.argsort(score, axis=None, kind="stable")   # ties: lowest cell index first (same as static-api.js)
+        for k in order[: self.LOS_TRIES]:
+            if not np.isfinite(score.flat[k]):
+                break
+            cell = tuple(int(v) for v in np.unravel_index(int(k), score.shape))
+            if self._line_of_sight(cell, mask, dist, occ):
+                return cell
+        fallback = np.where(cand, dist - clear, np.inf)
+        r, c = np.unravel_index(int(np.argmin(fallback)), fallback.shape)
         return int(r), int(c)
 
     def farthest_from(self, cell: tuple[int, int]) -> tuple[int, int]:

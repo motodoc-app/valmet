@@ -27,7 +27,9 @@ def b64bits(m: np.ndarray) -> str:
     return base64.b64encode(np.packbits(m.astype(np.uint8).ravel())).decode()
 
 
-def main(with_llm: bool = True) -> None:
+def main(with_llm: bool = True, scene_only: bool = False) -> None:
+    """scene_only: re-export the scene, grid, approach goals and asset bindings after a review-layer change, keeping
+    the pre-generated diagnoses, answers and corpus as they are (their object references are patched)."""
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "diag").mkdir(exist_ok=True)
     w = World()
@@ -59,6 +61,16 @@ def main(with_llm: bool = True) -> None:
                        "signals": [{k: s[k] for k in ("signal", "unit", "recent_mean", "peer_mean", "z_vs_peers")}
                                    for s in tel["signals"]]})
     (OUT / "assets.json").write_text(json.dumps(assets))
+
+    if scene_only:
+        for f in sorted((OUT / "diag").glob("ASSET-*.json")):
+            d = json.loads(f.read_text())
+            b = w.mapping["bindings"].get(f.stem)
+            if b and d.get("binding") != b:
+                d["binding"] = b
+                f.write_text(json.dumps(d, default=str))
+                print("diag binding updated", f.stem, b["object_id"])
+        return
 
     config.USE_LLM = with_llm
     for aid in w.assets_summary:
@@ -97,4 +109,4 @@ def main(with_llm: bool = True) -> None:
 
 
 if __name__ == "__main__":
-    main(with_llm="--no-llm" not in sys.argv)
+    main(with_llm="--no-llm" not in sys.argv, scene_only="--scene-only" in sys.argv)

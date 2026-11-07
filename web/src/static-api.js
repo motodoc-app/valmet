@@ -84,19 +84,61 @@ class Nav {
     for (let i = 0; i < this.cleared.length; i++) this.cleared[i] &= this.floor[i];
     this.rebuild();
   }
-  /** Walkable cell from which the object can be inspected, closest to its frame (navigation.py approach_cell). */
+  /** Walkable cell from which the robot can see and inspect the object (navigation.py approach_cell): about 1.0 m
+   *  from its frame with a clear line of sight to it, preferring open floor; falls back to the closest walkable cell. */
   approachCell(o) {
-    const n = this.W * this.H, mask = new Uint8Array(n);
+    const n = this.W * this.H, mask = new Uint8Array(n), STANDOFF = 1.0, LOS_IGNORE = 0.6, TRIES = 400;
     this.rasterise({ x: o.center[0], z: o.center[2], w: o.size[0], d: o.size[2], yaw: o.yaw }, mask);
     if (!mask.some((v) => v)) { const [r, c] = this.toCell(o.center[0], o.center[2]); mask[this.idx(Math.min(Math.max(r, 0), this.H - 1), Math.min(Math.max(c, 0), this.W - 1))] = 1; }
     const dist = edt(mask, this.W, this.H, this.res);
+    let tr = 0, tc = 0, tn = 0;
+    for (let i = 0; i < n; i++) if (mask[i]) { tr += (i / this.W) | 0; tc += i % this.W; tn++; }
+    tr /= tn; tc /= tn;
+    const los = (i) => {
+      const r0 = (i / this.W) | 0, c0 = i % this.W, m = Math.floor(Math.max(Math.abs(tr - r0), Math.abs(tc - c0))) + 1;
+      for (let k = 1; k <= m; k++) {
+        const j = this.idx(Math.round(r0 + (tr - r0) * k / m), Math.round(c0 + (tc - c0) * k / m));
+        if (mask[j]) return true;
+        if (this.obstacle(j) && dist[j] > LOS_IGNORE) return false;
+      }
+      return true;
+    };
+    // prefer the main drivable area (the robot's dock is in it) over small isolated pockets behind equipment
+    const main = this.mainZone();
+    let inMain = false;
+    for (let i = 0; i < n && !inMain; i++) inMain = !!(this.walk[i] && dist[i] < 1.6 && main[i]);
+    const cand = [];
     let best = -1, bs = Infinity;
     for (let i = 0; i < n; i++) {
-      if (!this.walk[i] || !(dist[i] < 1.6)) continue;
-      const s = dist[i] - 0.15 * Math.min(this.clear[i], 0.6);
+      if (!this.walk[i] || !(dist[i] < 1.6) || (inMain && !main[i])) continue;
+      const clr = 0.15 * Math.min(this.clear[i], 0.6);
+      cand.push([Math.abs(dist[i] - STANDOFF) - clr, i]);
+      const s = dist[i] - clr;
       if (s < bs) { bs = s; best = i; }
     }
-    return best < 0 ? null : [(best / this.W) | 0, best % this.W];
+    if (best < 0) return null;
+    cand.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    for (const [, i] of cand.slice(0, TRIES)) if (los(i)) return [(i / this.W) | 0, i % this.W];
+    return [(best / this.W) | 0, best % this.W];
+  }
+  /** Cells of the largest 4-connected walkable region (scipy.ndimage.label default in navigation.py). */
+  mainZone() {
+    const W = this.W, n = W * this.H, lab = new Int32Array(n), sizes = [0];
+    let cur = 0;
+    for (let i = 0; i < n; i++) {
+      if (!this.walk[i] || lab[i]) continue;
+      cur++; let size = 0; const st = [i]; lab[i] = cur;
+      while (st.length) {
+        const k = st.pop(); size++;
+        const r = (k / W) | 0, c = k % W;
+        for (const j of [r > 0 ? k - W : -1, r < this.H - 1 ? k + W : -1, c > 0 ? k - 1 : -1, c < W - 1 ? k + 1 : -1])
+          if (j >= 0 && this.walk[j] && !lab[j]) { lab[j] = cur; st.push(j); }
+      }
+      sizes.push(size);
+    }
+    let main = 0; for (let z = 1; z < sizes.length; z++) if (sizes[z] > sizes[main]) main = z;
+    const out = new Uint8Array(n); for (let i = 0; i < n; i++) out[i] = lab[i] === main && main > 0 ? 1 : 0;
+    return out;
   }
   nearestWalkable(x, z) {
     const [r, c] = this.toCell(x, z); let best = null, bd = Infinity;

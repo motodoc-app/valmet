@@ -31,7 +31,7 @@ Valmet's evaluation criteria, from the challenge brief:
 
 | Criterion (weight) | What the demo shows |
 |---|---|
-| Semantic extraction & 3D frames (30 %) | **676 segmented object candidates** with oriented 3D frames, plus floor, ceiling and 4 walls as planes, from the full 1.68 M-splat scan. A vision-language model names each candidate with a confidence. We report honest tiers — 416 with a specific type, 195 at confidence ≥ 0.70, 7 review corrections, 30 linked to records — plus an AI second-opinion audit and a human check sheet ([`docs/SCENE_QUALITY.md`](docs/SCENE_QUALITY.md)). Semantic colour view and an overhead site map. |
+| Semantic extraction & 3D frames (30 %) | **676 segmented object candidates** with oriented 3D frames, plus floor, ceiling and 4 walls as planes, from the full 1.68 M-splat scan. A vision-language model names each candidate with a confidence. We report honest tiers — 416 with a specific type, 195 at confidence ≥ 0.70, 8 review corrections, 30 linked to records — plus an AI second-opinion audit and a human check sheet ([`docs/SCENE_QUALITY.md`](docs/SCENE_QUALITY.md)). Semantic colour view and an overhead site map. |
 | Obstacle-aware navigation & proximity (25 %) | Multi-level height-field, clearance-aware A*, smoothing and an independent validation pass (0 collisions, clearance ≥ the 0.20 m robot radius). **Block aisle** re-routes live; **Plan mode** moves a virtual proxy and re-plans with the changed layout; every asset within 1.2 m of the route is read out, exactly, forwards and in reverse. |
 | Grounded AI diagnostics (20 %) | An evidence engine combines telemetry z-scores against the asset's own baseline and its peers, alarms, work orders, similar cases and data-quality issues. The LLM narration may cite **only** IDs from that evidence; anything else is removed. Confidence is shown with its breakdown (0.52 for P-005). |
 | Backend architecture (15 %) | Modular Python pipeline and a FastAPI service following the workbook's `API_Contract`; a serverless export runs the same app as a static site; feature modules plug in through `web/src/ext.js`; 19 pytest checks and 9 headless-browser suites (424 checks). |
@@ -46,7 +46,7 @@ Everything that is synthetic, approximate, precomputed or illustrative is labell
 |---|---|---|
 | 3D environment | Gaussian-splat scan rendered in the browser; orbit, zoom, click any frame | Real scan |
 | Object frames (676) | Plane fitting + clustering on the point cloud, fully automatic | Automatic |
-| Object names | A vision model labels each cluster from rendered views; confidence shown; "other equipment" when unsure | Automatic, 7 review corrections (marked; team visual check, not field-verified). See `docs/SCENE_QUALITY.md` |
+| Object names | A vision model labels each cluster from rendered views; confidence shown; "other equipment" when unsure | Automatic, 8 review corrections (marked; team visual check, not field-verified). See `docs/SCENE_QUALITY.md` |
 | Scene search (“Where is the expansion vessel?”) | Searches those labels and workbook tags across the whole scan | Automatic |
 | Asset ↔ object link | Class-aware procedural mapping with a stated confidence (the brief allows this) | Procedural |
 | Navigation, reroute, proximity | Computed from the scan's floor and obstacles; every route validated | Automatic |
@@ -154,7 +154,7 @@ The full presenter version with plain-language and engineering lines is [`docs/D
 **Tour** in the app drives the same story by itself.
 
 1. **Explore.** The room loads on the *Pre-visit briefing* card. The tool rail on the right opens *Scene understanding*
-   (676 candidates → 416 typed → 195 confident → 7 review-corrected → 30 linked), the *semantic view*, the *site map*
+   (676 candidates → 416 typed → 195 confident → 8 review-corrected → 30 linked), the *semantic view*, the *site map*
    and the *clean-scan* filter.
 2. **Find it.** Press **/** and ask *“Where is P-005?”*.
 3. **Understand.** *Open* on the briefing card: the cited diagnosis (confidence 52 %), evidence tab, sources.
@@ -191,10 +191,12 @@ reconstruct equipment interiors from the splat scan.
   distributed `Industrial Boiler Room.ply` was corrupt from record 502,483 onward, identically in the PLY, RAR and
   ZIP copies. That report is kept in `docs/integrity_original_boiler_room.md`.
 * **Labels.** Geometry proposes clusters and the vision model names them; 260 objects remain "other equipment"
-  rather than being guessed. The review layer (`config/scene_annotations.json`) records 7 corrections, each tagged
-  `review-corrected` with a note: the pump set fragments were merged, and a pallet truck, a pressure washer, a
-  chair, a cluttered corner (previously linked to P-002), a shelf and a small table that the model had called pumps
-  were relabelled. These come from the build team's visual check of rendered crops (AI-assisted), not from a person
+  rather than being guessed. The review layer (`config/scene_annotations.json`) records 8 corrections, each tagged
+  `review-corrected` with a note: the real pump set on the concrete plinth (which P-005 is now linked to) was
+  relabelled from "other equipment"; fragments behind the pink pallet truck that an earlier review had merged and
+  called the pump set were corrected to "other equipment" on 7 Nov after checking the rendered scan from two
+  viewpoints; and a pallet truck, a pressure washer, a chair, a cluttered corner, a shelf and a small table that the
+  model had called pumps were relabelled. These come from the build team's visual check of rendered crops (AI-assisted), not from a person
   on site; a human precision check is set up in `docs/label_review_sample.csv`.
 * **Mapping** is class-aware and procedural, as the brief allows. It prefers objects along the demo route, and
   every binding states its method and confidence.

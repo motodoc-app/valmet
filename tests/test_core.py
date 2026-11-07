@@ -70,11 +70,11 @@ def test_reroute_around_blocked_walkway(world):
 
 
 def test_unreachable_target_is_not_reported_as_a_blocked_walkway(world):
-    """A linked asset outside the robot's drivable area (no barriers placed) gets an honest no-route reason."""
+    """An object outside the robot's drivable area (no barriers placed) gets an honest no-route reason."""
     from xray.navigation import NO_ROUTE_UNREACHABLE
-    linked = [b["object_id"] for b in world.mapping["bindings"].values()]
-    unreachable = [i for i in linked if i not in world.reachable]
-    assert unreachable, "expected at least one linked asset the robot cannot drive to"
+    objs = [o["id"] for o in world.scene["objects"] if o["kind"] == "object"]
+    unreachable = [i for i in objs if i not in world.reachable and world.nav.approach_cell(world.objects[i]) is not None]
+    assert unreachable, "expected at least one object the robot cannot drive to"
     r = world.plan(world.start_xz, unreachable[0])
     assert not r["ok"] and r["reason"] == NO_ROUTE_UNREACHABLE and "blocked" not in r["reason"]
 

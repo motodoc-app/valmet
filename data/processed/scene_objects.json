@@ -1116,9 +1116,9 @@
   {
    "id": "OBJ-025",
    "kind": "object",
-   "label": "other equipment",
-   "label_source": "vlm+geometry",
-   "confidence": 0.16,
+   "label": "pump-motor unit",
+   "label_source": "review-corrected",
+   "confidence": 0.9,
    "center": [
     1.303,
     0.594,
@@ -1152,8 +1152,10 @@
    },
    "alt_labels": [],
    "heuristic_label": "equipment (unclassified)",
-   "category": "other",
-   "vlm_rationale": "Mostly obscured dark structure; specific equipment type unrecognizable."
+   "category": "rotating",
+   "vlm_rationale": null,
+   "auto_label": "other equipment",
+   "review_note": "Pump set on the concrete plinth: two inline pump-motor units (black motors, blue flanges). The vision model called this fragment 'other equipment' (0.16); corrected on 7 Nov 2026 after checking the rendered scan from two viewpoints. Its box covers the motors; the pipework in front is in neighbouring fragments."
   },
   {
    "id": "OBJ-026",
@@ -11361,7 +11363,7 @@
   {
    "id": "OBJ-256",
    "kind": "object",
-   "label": "pump-motor unit",
+   "label": "other equipment",
    "label_source": "review-corrected",
    "confidence": 0.9,
    "center": [
@@ -11397,10 +11399,10 @@
    },
    "alt_labels": [],
    "heuristic_label": null,
-   "category": "rotating",
+   "category": "other",
    "vlm_rationale": null,
    "auto_label": "other equipment",
-   "review_note": "Fragments merged after a visual check against the boiler-room reference video: pump and motor on a plinth behind the pink pallet truck.",
+   "review_note": "Fragments merged in review (pillar side, sack, pink cloth, pipework behind the pink pallet truck). An earlier review took this region for the pump set; corrected on 7 Nov 2026 after checking the rendered scan from two viewpoints: the pump-motor units stand on the concrete plinth further along the wall (see the next region).",
    "merged_from": [
     "OBJ-256",
     "OBJ-520",

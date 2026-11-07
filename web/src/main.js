@@ -615,6 +615,17 @@ function updateRobot(dt, t) {
   if (R.moving || R.follow > 0) followCamera(dt);
   if (R.moving && R.dir > 0 && R.s >= R.len - 1e-3) { R.moving = false; R.v = 0; R.done = true; camYaw = null; renderDock(); if (!R.arrived) arrive(); }
   if (R.moving && R.dir < 0 && R.s <= 1e-3) { R.moving = false; R.v = 0; renderDock(); }
+  if (!R.moving && R.arrived && R.s >= R.len - 1e-3 && S.navObject) faceTarget(dt);
+}
+/** Arrived: turn in place (rate-limited) to face the equipment the robot came to inspect. */
+const TURN_RATE = 1.6;   // rad/s
+function faceTarget(dt) {
+  const r = S.fac.robot, c = S.navObject.center, dx = c[0] - r.position.x, dz = c[2] - r.position.z;
+  if (Math.hypot(dx, dz) < 0.05) return;
+  let d = Math.atan2(dx, dz) - r.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
+  if (Math.abs(d) < 1e-3) return;
+  const step = TURN_RATE * dt;
+  r.rotation.y += Math.max(-step, Math.min(step, d));
 }
 function poseRobot(dt, snap = false) {
   const R = S.robot, robot = S.fac.robot;
@@ -723,13 +734,17 @@ export function setCamera(mode) {
 // The heading is smoothed on top of the robot's own damped yaw, so corners turn the view gently; scrubbing snaps the
 // robot but the camera eases after it. After arrival the camera turns to face the asset. The robot's own body is hidden.
 const POV = { h: 0.95, fwd: 0.17, look: 2.2, tilt: 0.14, w: 4.2, wMax: 2.2 };   // m, m, m, rad, 1/s, rad/s
-let povYaw = null, povW = 0, povBlend = null, povHidden = false;
+let povYaw = null, povW = 0, povBlend = null, povHidden = false, povTilt = POV.tilt;
 function povCamera(dt) {
   const r = S.fac.robot, p = r.position, R = S.robot;
-  let want = r.rotation.y;
+  let want = r.rotation.y, tiltWant = POV.tilt;
   if (R.arrived && !R.moving && S.curve && R.s >= R.len - 1e-3 && S.navObject) {
-    const c = S.navObject.center; if (Math.hypot(c[0] - p.x, c[2] - p.z) > 0.05) want = Math.atan2(c[0] - p.x, c[2] - p.z);
+    // arrived: look at the equipment itself (heading and height of its centre), not along the last route segment
+    const c = S.navObject.center, hd = Math.hypot(c[0] - p.x, c[2] - p.z);
+    if (hd > 0.05) want = Math.atan2(c[0] - p.x, c[2] - p.z);
+    tiltWant = Math.max(0.02, Math.min(0.7, Math.atan2(POV.h - c[1], Math.max(0.3, hd - POV.fwd))));
   }
+  povTilt += (tiltWant - povTilt) * Math.min(1, dt * 3);
   if (povYaw === null || !Number.isFinite(povYaw)) { povYaw = want; povW = 0; }
   // critically damped spring on the heading with a turn-rate limit: no whip pans, no jerk when a turn starts or ends
   let d = want - povYaw; d = Math.atan2(Math.sin(d), Math.cos(d));
@@ -738,7 +753,7 @@ function povCamera(dt) {
   povYaw += povW * dt;
   const fx = Math.sin(povYaw), fz = Math.cos(povYaw);
   _v.set(p.x + fx * POV.fwd, POV.h, p.z + fz * POV.fwd);
-  _t.set(_v.x + fx * POV.look, POV.h - Math.tan(POV.tilt) * POV.look, _v.z + fz * POV.look);
+  _t.set(_v.x + fx * POV.look, POV.h - Math.tan(povTilt) * POV.look, _v.z + fz * POV.look);
   if (povBlend) {
     povBlend.k = Math.min(1, povBlend.k + dt / 0.8);
     const k = povBlend.k, e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;

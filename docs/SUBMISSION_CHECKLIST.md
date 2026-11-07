@@ -45,7 +45,7 @@ signed in); we have not seen the form ourselves, so confirm its fields there.
 - [ ] Deck and (if listed) backup links open for someone outside the team.
 - [ ] Judges can open the GitHub repository and the right branch.
 - [ ] The video is about 2 minutes, has narration and English subtitles, says what is simulated, and plays end to end.
-- [ ] Every number said in the video matches the app (676 candidates · 416 typed · 195 confident · 7 corrected ·
+- [ ] Every number said in the video matches the app (676 candidates · 416 typed · 195 confident · 8 corrected ·
       30 linked · 52 % confidence · route 8.40 m → 7.98 m after the Plan move).
 - [ ] The YouTube video plays signed out (public or unlisted).
 - [ ] The source ZIP was rebuilt on the final commit and is under 100 MB.
