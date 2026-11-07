@@ -11,6 +11,7 @@ the answer labelled "Pre-generated answer to a similar question".
 
   python scripts/export_faq.py             # LLM answers (needs the OpenAI API / proxy), ~2–4 min, 12 threads
   python scripts/export_faq.py --no-llm    # offline: evidence + document-search answers
+  python scripts/export_faq.py --only 'history'   # refresh only entries whose "TAG|intent|question" matches a regex
   python scripts/export_faq.py --corpus    # also rewrite static/corpus.json (adds the product docs, so their
                                            # citations open in the hosted demo)
 """
@@ -101,7 +102,7 @@ def cited(text: str) -> list[str]:
     return list(dict.fromkeys(i.strip() for m in re.findall(r"\[([^\[\]\n]{2,80})\]", text) for i in m.split(",")))
 
 
-def main(with_llm: bool = True, write_corpus: bool = False) -> None:
+def main(with_llm: bool = True, write_corpus: bool = False, only: str | None = None) -> None:
     config.USE_LLM = with_llm
     w = World()
     cp = w.copilot
@@ -127,8 +128,23 @@ def main(with_llm: bool = True, write_corpus: bool = False) -> None:
                 "sources": src}
 
     t0 = time.time()
+    keep = {}
+    if only:                                   # refresh only the matching entries, keep the rest of faq.json as is
+        old = json.loads((OUT / "faq.json").read_text())["faq"]
+        keep = {(f["tag"], f["intent"], f["q"]): f for f in old}
+        pick = [j for j in jobs if re.search(only, f"{j['tag'] or ''}|{j['intent']}|{j['q']}")]
+        print(f"refreshing {len(pick)} of {len(jobs)} entries")
+    else:
+        pick = jobs
     with ThreadPoolExecutor(12) as ex:
-        faq = list(ex.map(run, jobs))
+        fresh = {(f["tag"], f["intent"], f["q"]): f for f in ex.map(run, pick)}
+    faq = []
+    for j in jobs:
+        k = (j["tag"], j["intent"], j["q"])
+        f = fresh.get(k) or keep.get(k)
+        if f is None:
+            raise SystemExit(f"missing entry {k}: run without --only")
+        faq.append({key: v for key, v in f.items() if key != "id"})
     for i, f in enumerate(faq):
         f["id"] = f"FAQ-{i + 1:03d}"
     llm = sum(1 for f in faq if str(f["mode"]).startswith("llm"))
@@ -145,4 +161,5 @@ def main(with_llm: bool = True, write_corpus: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    main(with_llm="--no-llm" not in sys.argv, write_corpus="--corpus" in sys.argv)
+    only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None
+    main(with_llm="--no-llm" not in sys.argv, write_corpus="--corpus" in sys.argv, only=only)
