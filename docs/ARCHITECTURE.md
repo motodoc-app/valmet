@@ -116,3 +116,9 @@ numpy, scipy (ndimage, cKDTree), scikit-learn (DBSCAN), pandas/openpyxl, FastAPI
 Swap `metadata.py` for OPC UA / MQTT / CMMS adapters without changing the API. Scene objects and anchors are plain
 JSON (center, size, yaw, confidence), easy to export to OpenUSD, Unity or Unreal. Replace the review layer with
 QR/NFC confirmations in the field.
+
+## Further reading
+* [`RESEARCH_NOTES.md`](RESEARCH_NOTES.md): point clouds, Gaussian splatting, Gaussian-object extraction, scan-to-BIM
+  and IFC compared; verdicts on the references shared on Discord; a staged pilot path.
+* [`DATA_INTEGRATION.md`](DATA_INTEGRATION.md): how read-only OPC UA, historian, MQTT/Sparkplug, CMMS/EAM and
+  document data could replace the synthetic workbook later, with provenance labels and security controls.
