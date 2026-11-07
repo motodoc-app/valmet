@@ -153,6 +153,98 @@ try {
   ok("After reset, routes use the scanned layout (no clears)", !ex2.clears && !ex2.blocks.length);
   await p.click('.modes [data-mode="plan"]').catch(() => {});
 
+  // ---- grab any object, game-like: hover, press = pick up (proxy created at once), drag, wheel turn, drop, undo / redo
+  await p.evaluate(() => { window.__xr.planning.reset(); window.__xr.planning.view("top"); });
+  await sleep(1600);
+  ok("Plan card leads with 'Click any object in the room to pick it up'", /Click any object in the room to pick it up/.test(await p.textContent("#right .pl-lead")) && /Click any object/.test(await p.textContent("#left .pl-steps")));
+  // a screen point where Facility.pick() returns the object (so the click really lands on it)
+  const spotOf = (id) => p.evaluate((id) => {
+    const A = window.__xr, o = A.S.data.objects.find((x) => x.id === id), V = A.THREE.Vector3, rc = new A.THREE.Raycaster(), r = A.canvas.getBoundingClientRect();
+    const cs = Math.cos(o.yaw), sn = Math.sin(o.yaw), top = o.center[1] + o.size[1] / 2;
+    for (const [fx, fz] of [[0, 0], [0.25, 0], [-0.25, 0], [0, 0.25], [0, -0.25], [0.3, 0.3], [-0.3, -0.3]]) {
+      const lx = fx * o.size[0], lz = fz * o.size[2], w = new V(o.center[0] + lx * cs - lz * sn, top - 0.02, o.center[2] + lx * sn + lz * cs).project(A.camera);
+      rc.setFromCamera({ x: w.x, y: w.y }, A.camera);
+      if (A.S.fac.pick(rc.ray) === id) return [r.left + ((w.x + 1) / 2) * r.width, r.top + ((1 - w.y) / 2) * r.height];
+    }
+    return null;
+  }, id);
+  const OTHER = "OBJ-010";                     // electrical cabinet: not the suggested pallet truck
+  const c0 = await spotOf(OTHER);
+  ok("Another object (electrical cabinet) is clickable in the top view", !!c0);
+  await p.mouse.move(c0[0] - 30, c0[1] - 30); await p.mouse.move(c0[0], c0[1]); await sleep(250);
+  ok("Hover: grab cursor and a 'drag to pick it up' tip", await p.evaluate(() => window.__xr.canvas.style.cursor === "grab" && !document.querySelector(".pl-hover").classList.contains("hidden") && /pick it up/.test(document.querySelector(".pl-hover").textContent)));
+  await p.mouse.down();
+  const g0 = await p.evaluate(() => window.__xr.planning.getState());
+  ok("Pressing on it picks it up at once (proxy created, active)", g0.active === OTHER && g0.moves.some((m) => m.id === OTHER), JSON.stringify(g0.moves.map((m) => m.id)));
+  const o10 = await p.evaluate((id) => window.__app.data.objects.find((x) => x.id === id).center, OTHER);
+  const c1 = await p.evaluate(([x, z]) => { const A = window.__xr, v = new A.THREE.Vector3(x, 1.2, z).project(A.camera), r = A.canvas.getBoundingClientRect(); return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height]; }, [o10[0] - 0.7, o10[2]]);
+  for (let i = 1; i <= 12; i++) { await p.mouse.move(c0[0] + ((c1[0] - c0[0]) * i) / 12, c0[1] + ((c1[1] - c0[1]) * i) / 12); await sleep(35); }
+  await sleep(250);
+  const held = await p.evaluate((id) => { const g = window.__xr.scene.getObjectByName("planning"); let y = 0; g.traverse((n) => { if (n.isGroup && n.children.some((c) => c.geometry?.type === "BoxGeometry") && n.position.y > y) y = n.position.y; }); return { lift: y, orbit: window.__xr.controls.enabled }; }, OTHER);
+  ok("While held it is lifted a few cm and orbit is off", held.lift > 0.02 && held.lift < 0.1 && !held.orbit, `lift ${held.lift.toFixed(3)} m`);
+  const yaw0 = (await p.evaluate(() => window.__xr.planning.getState())).moves.find((m) => m.id === OTHER).yaw;
+  await p.mouse.wheel(0, 120); await sleep(120);
+  const yaw1 = (await p.evaluate(() => window.__xr.planning.getState())).moves.find((m) => m.id === OTHER).yaw;
+  ok("Mouse wheel turns it 15° while held", Math.abs(Math.abs(Math.atan2(Math.sin(yaw1 - yaw0), Math.cos(yaw1 - yaw0))) - Math.PI / 12) < 1e-3);
+  await p.mouse.up();
+  await p.waitForFunction(() => !document.querySelector("#dock")?.textContent.includes("Planning the new route"), null, { timeout: 20000 });
+  await sleep(600);
+  const g1 = await p.evaluate(() => window.__xr.planning.getState()), m10 = g1.moves.find((m) => m.id === OTHER);
+  ok("Dragging moves it on the floor", Math.hypot(m10.x - o10[0], m10.z - o10[2]) > 0.4, `${m10.x}, ${m10.z}`);
+  // software GL renders a few frames per second and dt is capped at 50 ms: give the drop animation time
+  await p.waitForFunction(() => { const g = window.__xr.scene.getObjectByName("planning"); let y = 0; g.traverse((n) => { if (n.isGroup && n.children.some((c) => c.geometry?.type === "BoxGeometry")) y = Math.max(y, n.position.y); }); return y < 1e-3; }, null, { timeout: 15000 }).catch(() => {});
+  const settled = await p.evaluate(() => { const g = window.__xr.scene.getObjectByName("planning"); let y = 0; g.traverse((n) => { if (n.isGroup && n.children.some((c) => c.geometry?.type === "BoxGeometry")) y = Math.max(y, n.position.y); }); return y; });
+  ok("It settles back on the floor after the drop", settled < 1e-3, `y ${settled.toFixed(4)} m`);
+  ok("Route re-planned on drop", await p.evaluate(() => !!window.__xr.planning.summary().route.after));
+  ok("Undo is available after the move", (await p.evaluate(() => window.__xr.planning.history())).undo >= 1 && !(await p.$('#dock [data-pd="undo"][disabled]')));
+  ok("Without the scan the object is a box proxy (cut-out unavailable, said so)", !(await p.evaluate(() => window.__xr.planning.cutStats().available)) && /box proxy/.test(await p.textContent("#right .pl-cut")));
+  // a second object in the same plan: the pallet truck by keyboard after picking it in the card
+  await p.evaluate(() => window.__xr.planning.pick("OBJ-028"));
+  await p.evaluate(() => document.activeElement?.blur());
+  await p.keyboard.press("ArrowLeft"); await sleep(80);
+  const g2 = await p.evaluate(() => window.__xr.planning.getState());
+  ok("Several objects can be moved in one plan", g2.moves.length === 2 && g2.moves.some((m) => m.id === OTHER) && g2.moves.some((m) => m.id === "OBJ-028"));
+  await p.keyboard.press("Control+z"); await sleep(150);
+  await p.keyboard.press("Control+z"); await sleep(150);
+  const g3 = await p.evaluate(() => window.__xr.planning.getState());
+  ok("Ctrl+Z undoes step by step (nudge, then the pick)", g3.moves.length === 1 && g3.moves[0].id === OTHER && Math.abs(g3.moves[0].x - m10.x) < 1e-6, JSON.stringify(g3.moves));
+  await p.keyboard.press("Control+z"); await sleep(400);
+  ok("Ctrl+Z undoes the pick-up and drag of the cabinet", (await p.evaluate(() => window.__xr.planning.getState())).moves.length === 0);
+  await p.keyboard.press("Control+Shift+z"); await sleep(400);
+  const g4 = await p.evaluate(() => window.__xr.planning.getState());
+  ok("Ctrl+Shift+Z redoes it", g4.moves.length === 1 && g4.moves[0].id === OTHER && Math.abs(g4.moves[0].x - m10.x) < 1e-6 && Math.abs(g4.moves[0].yaw - m10.yaw) < 1e-6);
+  await p.click('#dock [data-pd="redo"]'); await sleep(300);
+  ok("Redo button redoes the next step", (await p.evaluate(() => window.__xr.planning.getState())).moves.length === 2);
+  await p.click('#dock [data-pd="undo"]'); await sleep(300);
+  ok("Undo button undoes it", (await p.evaluate(() => window.__xr.planning.getState())).moves.length === 1);
+  // touch: the same code path with pointer events of type "touch"
+  const ct = await spotOf("OBJ-028");
+  if (ct) {
+    const tc = await p.evaluate(async ([x0, y0]) => {
+      const cv = window.__xr.canvas, ev = (type, x, y) => cv.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", isPrimary: true, button: type === "pointermove" ? -1 : 0, buttons: type === "pointerup" ? 0 : 1, clientX: x, clientY: y }));
+      ev("pointerdown", x0, y0);
+      for (let i = 1; i <= 10; i++) { ev("pointermove", x0 + i * 6, y0 + i * 3); await new Promise((r) => setTimeout(r, 30)); }
+      ev("pointerup", x0 + 60, y0 + 30);
+      await new Promise((r) => setTimeout(r, 200));
+      const m = window.__xr.planning.getState().moves.find((q) => q.id === "OBJ-028"), o = window.__app.data.objects.find((q) => q.id === "OBJ-028").center;
+      return m ? Math.hypot(m.x - o[0], m.z - o[2]) : -1;
+    }, ct);
+    ok("Touch (pointer events) picks up and drags too", tc > 0.1, `${tc.toFixed(2)} m`);
+  } else ok("Touch (pointer events) picks up and drags too", false, "pallet truck not clickable");
+  ok("Pipework and the pump itself stay put", !(await p.evaluate(() => window.__xr.planning.movable("OBJ-038").ok)) && !(await p.evaluate(() => window.__xr.planning.movable(window.__app.target.id).ok)) && (await p.evaluate(() => window.__xr.planning.movable("OBJ-028").ok)));
+  await p.click('#dock [data-pd="reset"]'); await sleep(400);
+  ok("Reset all restores the scanned layout", (await p.evaluate(() => window.__xr.planning.getState())).moves.length === 0 && /Obstructed by Pallet truck/.test(await p.textContent("#right")));
+  await p.keyboard.press("Control+z"); await sleep(400);
+  ok("Reset all can be undone", (await p.evaluate(() => window.__xr.planning.getState())).moves.length === 2);
+  await p.evaluate(() => window.__xr.planning.reset());
+  const po = await p.evaluate(async () => { window.__xr.setMode("facility"); const r = await window.__xr.planning.pickObject("OBJ-010"); return { r, mode: window.__app.mode }; });
+  ok("APP.planning.pickObject(id) enters Plan with that object active", po.mode === "plan" && po.r.ok && po.r.state.active === "OBJ-010");
+  const pt = await p.evaluate(async () => window.__xr.planning.pickObject(window.__app.target.id));
+  ok("pickObject(pump) explains instead of moving the pump", !pt.ok && /being serviced/.test(pt.why));
+  await p.evaluate(() => window.__xr.planning.reset());
+  await sleep(1200);
+  await p.screenshot({ path: path.join(SHOTS, "plan-4-grab.png") });
+
   // phone-ish width keeps the planning card usable
   await p.setViewportSize({ width: 900, height: 700 });
   await p.evaluate(() => window.__xr.setMode("plan"));

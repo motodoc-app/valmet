@@ -1,13 +1,20 @@
 // Maintenance Planning mode: move equipment as virtual proxies, check collisions, clearance and service access,
-// and see how the robot route changes. The scan is never modified: proxies are drawn on top of it, and the
+// and see how the robot route changes. The scan data is never modified: proxies are drawn on top of it, and the
 // planner receives them as `blocks` (new footprints) and `clears` (old footprints become free floor).
 //
-// Public API (APP.planning): getState(), setState(state), reset(), demo(), summary()
+// Game-like editing: press on any floor-standing object in the 3D view to pick it up (it lifts a few cm), drag it
+// across the floor (live green / amber / red), turn it with the mouse wheel, R or Q / E, and let go (it settles and
+// the route is re-planned). Undo / Redo (Ctrl+Z / Ctrl+Shift+Z) and Reset all. No throwing or physics: a placement
+// is only ever where the pointer put it, so plans stay realistic. Where the Gaussian splats are loaded, the scan
+// inside the object's box moves with it (splatcut.js: an approximate cut-out, labelled as such).
+//
+// Public API (APP.planning): getState(), setState(state), reset(), demo(), summary(), undo(), redo(), view(kind)
 import * as THREE from "three";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { APP, registerMode, on, withExtras } from "./ext.js";
 import { edt } from "./static-api.js";
 import { icon } from "./icons.js";
+import { SplatCut } from "./splatcut.js";
 import "./planning.css";
 // UX layer (navigation pad, mode guides, readability, phone Tools sheet). Loaded from here so main.js needs no change;
 // main.js could import them directly instead (see guide.js / navpad.js headers).
@@ -23,6 +30,11 @@ const CLEAR_PAD = 0.08;                 // old footprint padding: the scan point
 const TIGHT = 0.3;                      // below this clearance (m) the proxy is shown amber
 const OBST_MIN = 0.12, OBST_MAX = 1.25; // same height band the navigation grid uses (config.py)
 const ZONE_DEPTH = 1.0, ZONE_EXTRA = 0.4;  // assumed illustrative service zone: 1.0 m deep × pump width + 0.4 m
+const LIFT = 0.06;                      // picked-up objects float this high (m) while held: purely visual
+const DROP_S = 0.26;                    // settle animation on release (s)
+const MOUNTED_Y = 0.6;                  // objects whose box starts higher than this are wall / pipe mounted
+const FIXED_CATS = new Set(["piping", "valve"]);   // part of the pipework: stays put in a plan
+const CUT_NOTE = "Approximate cut-out of the scan inside the object's box — may include nearby fragments";
 const COL = { ok: 0x30d158, tight: 0xff9f0a, bad: 0xff453a, ghost: 0xa3a8b0, route: 0x0a84ff };
 const CSS = { ok: "#30d158", tight: "#ff9f0a", bad: "#ff453a" };
 const ICON = {
@@ -34,6 +46,8 @@ const ICON = {
   dl: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
   route: '<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h5a3 3 0 0 0 0-6h-2a3 3 0 0 1 0-6h5"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+  redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>',
 };
 const ic = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -56,6 +70,9 @@ const P = {
   three: null, drag: null, justDragged: false, cardTimer: 0, routeTimer: 0,
   editing: false,             // step 2 "Move it": keys and the move pad drive the active proxy
   hold: null,                 // press-and-hold on a move-pad button
+  undo: [], redo: [], lastRec: { t: 0, kind: "" }, mute: 0,   // plan history: snapshots of { moves, active }
+  hover: null, hoverEvt: null, hoverRaf: 0, wheelAcc: 0,
+  cut: null, cutOn: !/[?&]cut=off\b/.test(location.search),   // scan cut-out (splatcut.js); ?cut=off = box proxies only
 };
 /** True while the keyboard belongs to the proxy (Plan mode, a proxy is being moved). navpad.js reads this. */
 const keysOwned = () => APP.S?.mode === "plan" && !!P.active && P.editing;
@@ -145,6 +162,56 @@ const objOf = (id) => P.byId.get(id)?.o;
 const nameOf = (o) => (o.asset ? `${o.asset.tag} (${o.id})` : o.id === SUGGESTED ? `Hand pallet truck (${o.id})` : `${cap(o.label)} (${o.id})`);
 const shortName = (o) => (o.asset ? o.asset.tag : o.id === SUGGESTED ? "Pallet truck" : cap(o.label));
 const cap = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+
+/** Can this object be picked up in the 3D view? Floor-standing equipment yes; the pump itself, pipework,
+ *  wall / pipe mounted parts and tiny fragments no (moving those would not be a realistic plan). */
+function movable(o) {
+  if (!o || o.kind !== "object") return { ok: false, why: "Walls, floor and ceiling cannot be moved." };
+  if (o.id === P.target?.id) return { ok: false, why: `${esc(P.target.asset?.tag || o.id)} is the equipment being serviced; move the things around it.` };
+  const bottom = o.center[1] - o.size[1] / 2, big = Math.max(o.size[0], o.size[2]);
+  if (FIXED_CATS.has(o.category) || o.label === "pipe label / tag") return { ok: false, why: `${esc(shortName(o))} (${o.id}) is part of the pipework, so it stays put in a plan.` };
+  if (bottom > MOUNTED_Y) return { ok: false, why: `${esc(shortName(o))} (${o.id}) is mounted above the floor, so it stays put in a plan.` };
+  if (big < 0.1) return { ok: false, why: `${o.id} is a small scan fragment, not a piece of equipment.` };
+  if (big > 3) return { ok: false, why: `${esc(shortName(o))} (${o.id}) is too large to move in a plan.` };
+  return { ok: true };
+}
+
+// ------------------------------------------------------------------ history (undo / redo)
+const snapshot = () => ({ moves: P.moves.map((m) => ({ ...m })), active: P.active });
+const sameSnap = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+/** Remember the plan before a change. `kind` coalesces bursts (key repeats, wheel steps) into one undo step. */
+function record(kind = "edit", before = snapshot()) {
+  if (P.mute) return;
+  const now = performance.now();
+  if (kind !== "edit" && kind === P.lastRec.kind && now - P.lastRec.t < 900) { P.lastRec.t = now; return; }
+  P.lastRec = { t: now, kind };
+  if (P.undo.length && sameSnap(P.undo.at(-1), before)) return;
+  P.undo.push(before); if (P.undo.length > 100) P.undo.shift();
+  P.redo = [];
+}
+function applySnap(s) {
+  P.moves = s.moves.filter((m) => objOf(m.id)).map((m) => ({ ...m }));
+  P.active = P.moves.some((m) => m.id === s.active) ? s.active : P.moves.at(-1)?.id || null;
+  if (!P.active) P.editing = false;
+  P.dirtyField = true; P.lastRec = { t: 0, kind: "" };
+  refresh(); renderAll();
+  if (P.moves.length) scheduleRoute(0);
+  else { P.after = null; drawRoutes(); if (APP.S.curve && !APP.S.robot.done) APP.replan({ quiet: true }); }
+}
+function undo() {
+  if (!P.undo.length) return false;
+  if (P.drag) endDrag();
+  P.redo.push(snapshot()); applySnap(P.undo.pop());
+  APP.toast("Undone.", 1200);
+  return true;
+}
+function redo() {
+  if (!P.redo.length) return false;
+  if (P.drag) endDrag();
+  P.undo.push(snapshot()); applySnap(P.redo.pop());
+  APP.toast("Redone.", 1200);
+  return true;
+}
 
 /** Obstacle field for the active proxy: scan minus every moved object's old footprint, plus the other proxies. */
 function buildField(forId = P.active) {
@@ -328,7 +395,7 @@ function proxyItem(id) {
   // proxy: translucent box + bright edges + footprint + grab ring
   const proxy = new THREE.Group();
   const fillMat = new THREE.MeshBasicMaterial({ color: COL.ok, transparent: true, opacity: 0.16, depthWrite: false });
-  const edgeMat = new THREE.LineBasicMaterial({ color: COL.ok });
+  const edgeMat = new THREE.LineBasicMaterial({ color: COL.ok, transparent: true });
   const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), fillMat); box.position.y = bottom + h / 2;
   const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)), edgeMat); edges.position.y = bottom + h / 2;
   const floorMat = new THREE.MeshBasicMaterial({ color: COL.ok, transparent: true, opacity: 0.3, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
@@ -349,9 +416,46 @@ function proxyItem(id) {
   arrow.renderOrder = 6;
   const atag = tag("", "dist");
   T.proxies.add(ghost, gf, ghostTag, proxy, arrow, atag);
-  it = { id, ghost, gf, ghostTag, proxy, box, edges, fl, ring, tick, ptag, arrow, atag, fillMat, edgeMat, floorMat, ringMat, h, bottom, w, d };
+  it = { id, ghost, gf, ghostTag, proxy, box, edges, fl, ring, tick, ptag, arrow, atag, fillMat, edgeMat, floorMat, ringMat, h, bottom, w, d,
+    vis: { x: o.center[0], z: o.center[2], yaw: o.yaw, lift: 0 }, anim: false, liftTo: 0, drop: null };
   T.items.set(id, it);
   return it;
+}
+/** Draw a proxy (and its scan cut-out) at its visual pose: eased while held, lifted, footprint kept on the floor. */
+function applyVis(it) {
+  const v = it.vis;
+  it.proxy.position.set(v.x, v.lift, v.z); it.proxy.rotation.y = -v.yaw;
+  it.fl.position.y = 0.016 - v.lift; it.ring.position.y = it.tick.position.y = 0.018 - v.lift;
+  P.cut?.pose(it.id, v.x, v.z, v.yaw, v.lift);
+}
+const bounceOut = (t) => {          // settles with one small rebound (no physics: the end pose is exact)
+  const n = 7.5625, d = 2.75;
+  if (t < 1 / d) return n * t * t;
+  if (t < 2 / d) return n * (t -= 1.5 / d) * t + 0.75;
+  if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + 0.9375;
+  return n * (t -= 2.625 / d) * t + 0.984375;
+};
+/** Per frame: ease held proxies towards the pointer, lift / settle animation, cut-out visibility. */
+function animate(dt) {
+  if (!P.three) return;
+  const k = 1 - Math.exp(-dt * 20);
+  for (const [id, it] of P.three.items) {
+    if (!it.anim) continue;
+    const m = moveOf(id); if (!m) { it.anim = false; continue; }
+    const v = it.vis, held = P.drag?.id === id;
+    v.x += (m.x - v.x) * k; v.z += (m.z - v.z) * k; v.yaw += wrap(m.yaw - v.yaw) * k;
+    if (held) v.lift += (LIFT - v.lift) * (1 - Math.exp(-dt * 16));
+    else if (it.drop) {
+      it.drop.t += dt;
+      const t = Math.min(1, it.drop.t / DROP_S);
+      v.lift = it.drop.from * (1 - bounceOut(t));
+      if (t >= 1) it.drop = null;
+    } else v.lift = 0;
+    const done = !held && !it.drop && Math.hypot(m.x - v.x, m.z - v.z) < 0.002 && Math.abs(wrap(m.yaw - v.yaw)) < 0.002;
+    if (done) { Object.assign(v, { x: m.x, z: m.z, yaw: m.yaw, lift: 0 }); it.anim = false; }
+    applyVis(it);
+  }
+  P.cut?.update();
 }
 function removeItem(id) {
   const T = P.three, it = T?.items.get(id); if (!it) return;
@@ -361,9 +465,14 @@ function removeItem(id) {
 }
 function poseItem(m, ev) {
   const it = proxyItem(m.id), o = objOf(m.id);
-  it.proxy.position.set(m.x, 0, m.z); it.proxy.rotation.y = -m.yaw;
+  if (!it.anim) { Object.assign(it.vis, { x: m.x, z: m.z, yaw: m.yaw, lift: 0 }); applyVis(it); }
   const c = COL[ev?.status || "ok"];
   for (const mat of [it.edgeMat, it.fillMat, it.floorMat, it.ringMat]) mat.color.setHex(c);
+  // with the scan cut-out shown, the box is only a subtle outline around the real-looking object
+  const cut = !!P.cut?.isCut(m.id);
+  it.fillMat.opacity = cut ? 0.035 : 0.16; it.edgeMat.opacity = cut ? 0.55 : 1; it.floorMat.opacity = cut ? 0.07 : 0.3;
+  it.fl.renderOrder = cut ? 1 : 6; it.floorMat.depthTest = cut;   // under the moved scan, not painted over it
+  it.ptag.element.querySelector("small").textContent = cut ? `${shortName(o)} · scan cut-out` : shortName(o);
   it.ringMat.opacity = m.id === P.active ? 0.6 : 0.2;
   it.ptag.element.className = `pl-tag proxy ${ev?.status || "ok"} ${m.id === P.active ? "on" : ""}`;
   const a = new THREE.Vector3(o.center[0], 0.02, o.center[2]), b = new THREE.Vector3(m.x, 0.02, m.z), dist = a.distanceTo(b);
@@ -423,6 +532,7 @@ function refresh() {
   if (!P.ready) return;
   ensureThree();
   for (const id of [...P.three.items.keys()]) if (!moveOf(id)) removeItem(id);
+  syncCut();
   let act = null;
   // the active proxy last, so the obstacle field stays built for it while dragging
   for (const m of [...P.moves].sort((a, b) => (a.id === P.active) - (b.id === P.active))) { const ev = evaluate(m.id, m); poseItem(m, ev); if (m.id === P.active) act = ev; }
@@ -435,19 +545,32 @@ function refresh() {
 function highlight() {
   const S = APP.S;
   if (S.mode !== "plan" || !S.fac) return;
-  S.fac.setHighlighted(P.moves.map((m) => m.id).filter((id) => id !== P.active), { selected: P.active || (S.selected?.kind === "object" ? S.selected.id : objOf(SUGGESTED) ? SUGGESTED : null), target: S.target.id });
+  const ids = P.moves.map((m) => m.id).filter((id) => id !== P.active);
+  if (P.hover?.ok && !moveOf(P.hover.id)) ids.push(P.hover.id);
+  S.fac.setHighlighted(ids, { selected: P.active || (S.selected?.kind === "object" ? S.selected.id : objOf(SUGGESTED) ? SUGGESTED : null), target: S.target.id });
 }
+/** Scan cut-outs follow the plan: one per moved object while the splats are loaded (box proxies only otherwise). */
+function syncCut() {
+  if (!P.cut && APP.S?.fac && APP.scene) P.cut = new SplatCut(APP.scene, APP.S.fac);
+  if (!P.cut) return;
+  P.cut.enabled = P.cutOn;
+  try { P.cut.sync(P.moves.map((m) => m.id), objOf); } catch (e) { console.warn("scan cut-out unavailable", e); P.cut.enabled = false; P.cutOn = false; }
+  for (const m of P.moves) { const it = P.three?.items.get(m.id); if (it) applyVis(it); }
+}
+const cutShown = () => !!P.cut && P.moves.some((m) => P.cut.isCut(m.id));
 
 // ------------------------------------------------------------------ editing
-function createProxy(id) {
+function createProxy(id, { route = true, rec = true } = {}) {
   const o = objOf(id);
   if (!o) return APP.toast(`${esc(id)} cannot be moved in a plan.`);
+  if (rec && (!moveOf(id) || P.active !== id)) record();
   if (!moveOf(id)) P.moves.push({ id, x: o.center[0], z: o.center[2], yaw: o.yaw });   // exactly where it is: "moved 0 m"
   P.active = id; P.dirtyField = true; P.editing = true; P.toTop = true;
   refresh(); renderAll();
-  scheduleRoute(0);
+  if (route) scheduleRoute(0);
 }
 function removeProxy(id) {
+  record();
   P.moves = P.moves.filter((m) => m.id !== id);
   if (P.active === id) P.active = P.moves.at(-1)?.id || null;
   P.dirtyField = true; refresh(); renderAll();
@@ -459,16 +582,27 @@ function setPose(id, pose, { route = true, routeDelay = 0 } = {}) {
   refresh(); scheduleCard();
   if (route) scheduleRoute(routeDelay);
 }
-function rotate(dr) { const m = moveOf(P.active); if (m) setPose(m.id, { ...m, yaw: m.yaw + dr }, { routeDelay: 300 }); }
-function nudge(dx, dz) { const m = moveOf(P.active); if (m) setPose(m.id, { ...m, x: m.x + dx, z: m.z + dz }, { routeDelay: 350 }); }
-function reset({ quiet = false } = {}) {
+function rotate(dr) {
+  const m = moveOf(P.active); if (!m) return;
+  if (P.drag?.id === m.id) {                    // turning while held: part of the same pick-up, route on drop
+    P.drag.rotated = true;
+    const it = P.three?.items.get(m.id); if (it) it.anim = true;
+    return setPose(m.id, { ...m, yaw: m.yaw + dr }, { route: false });
+  }
+  record("turn");
+  setPose(m.id, { ...m, yaw: m.yaw + dr }, { routeDelay: 300 });
+}
+function nudge(dx, dz) { const m = moveOf(P.active); if (!m) return; record("nudge"); setPose(m.id, { ...m, x: m.x + dx, z: m.z + dz }, { routeDelay: 350 }); }
+function reset({ quiet = false, rec = true } = {}) {
+  if (rec && P.moves.length) record();
+  if (P.drag) endDrag({ silent: true });
   P.moves = []; P.active = null; P.after = null; P.dirtyField = true; P.editing = false; P.query = ""; P.ev = null; P.zoneNow = null;
   stopHold();
   clearTimeout(P.routeTimer); P.afterSeq++; P.routeBusy = false;
   if (P.ready) { refresh(); drawRoutes(); }
   renderAll();
   if (APP.S?.curve && !APP.S.robot.done) APP.replan({ quiet: true });
-  if (!quiet) APP.toast("Original layout restored. The plan is cleared and robot routes use the scanned layout again.");
+  if (!quiet) APP.toast(`Original layout restored. The plan is cleared and robot routes use the scanned layout again.${P.undo.length ? " Undo (Ctrl+Z) brings it back." : ""}`);
 }
 
 // ------------------------------------------------------------------ pointer: drag the proxy on the floor
@@ -482,63 +616,147 @@ function rayFrom(e) {
 /** Ray against the proxy box (analytic, in the box frame) or its floor footprint. Returns the hit height or null. */
 function hitProxy(ray, m) {
   const it = P.three?.items.get(m.id); if (!it) return null;
-  const cs = Math.cos(m.yaw), sn = Math.sin(m.yaw), cy = it.bottom + it.h / 2;
-  const ox = ray.origin.x - m.x, oy = ray.origin.y - cy, oz = ray.origin.z - m.z;
+  return hitBox(ray, m.x, m.z, m.yaw, it.w, it.h, it.d, it.bottom, 0.06);
+}
+/** Ray against an oriented box standing at (x, z) (analytic, in the box frame). Returns the entry height or null. */
+function hitBox(ray, x, z, yaw, w, hgt, d, bottom, pad = 0) {
+  const cs = Math.cos(yaw), sn = Math.sin(yaw), cy = bottom + hgt / 2;
+  const ox = ray.origin.x - x, oy = ray.origin.y - cy, oz = ray.origin.z - z;
   const lo = [ox * cs + oz * sn, oy, -ox * sn + oz * cs], ld = [ray.direction.x * cs + ray.direction.z * sn, ray.direction.y, -ray.direction.x * sn + ray.direction.z * cs];
-  const h = [it.w / 2 + 0.06, it.h / 2 + 0.04, it.d / 2 + 0.06];
+  const h = [w / 2 + pad, hgt / 2 + pad * 0.66, d / 2 + pad];
   let t0 = -Infinity, t1 = Infinity;
   for (let i = 0; i < 3; i++) {
     if (Math.abs(ld[i]) < 1e-9) { if (Math.abs(lo[i]) > h[i]) return null; continue; }
     let a = (-h[i] - lo[i]) / ld[i], b = (h[i] - lo[i]) / ld[i]; if (a > b) [a, b] = [b, a];
     t0 = Math.max(t0, a); t1 = Math.min(t1, b);
   }
-  if (t0 <= t1 && t1 > 0) { const t = Math.max(t0, 0); return Math.max(0, Math.min(it.bottom + it.h, ray.origin.y + ray.direction.y * t)); }
+  if (t0 <= t1 && t1 > 0) { const t = Math.max(t0, 0); return Math.max(0, Math.min(bottom + hgt, ray.origin.y + ray.direction.y * t)); }
   return null;
+}
+/** The scene object under the ray (Facility.pick), skipping the original boxes of objects that already have a proxy. */
+function pickUnder(ray) {
+  const fac = APP.S.fac, id = fac.pick(ray);
+  if (!id || !moveOf(id)) return id;
+  let best = null;                               // same rule as Facility.pick: the smallest box under the cursor
+  for (const e of P.objs) {
+    const o = e.o; if (moveOf(o.id)) continue;
+    if (fac.cutaway && e.bottom > fac.cutY) continue;
+    const [w, h, d] = o.size.map((v) => Math.max(v, 0.03));
+    if (hitBox(ray, o.center[0], o.center[2], o.yaw, w, h, d, o.center[1] - h / 2) == null) continue;
+    const vol = w * h * d;
+    if (!best || vol < best.vol) best = { id: o.id, vol };
+  }
+  return best?.id ?? null;
 }
 function pickProxy(ray) {
   const order = [...P.moves].sort((a, b) => (b.id === P.active) - (a.id === P.active));
   for (const m of order) { const y = hitProxy(ray, m); if (y != null) return { m, y }; }
   return null;
 }
+/** Press on a proxy or on any movable object: pick it up at once (creating its proxy) and start dragging. */
 function onPointerDown(e) {
-  if (APP.S?.mode !== "plan" || e.button !== 0 || !P.moves.length) return;
-  const hit = pickProxy(rayFrom(e));
-  if (!hit) return;
-  _plane.constant = -hit.y;
-  if (!_ray.ray.intersectPlane(_plane, _hit)) return;
-  if (P.active !== hit.m.id || !P.editing) { P.active = hit.m.id; P.dirtyField = true; P.editing = true; refresh(); renderAll(); }
-  P.drag = { id: hit.m.id, pid: e.pointerId, y: hit.y, off: [hit.m.x - _hit.x, hit.m.z - _hit.z], moved: false, x0: e.clientX, y0: e.clientY };
+  if (APP.S?.mode !== "plan" || e.button !== 0 || !P.ready || P.drag || e.isPrimary === false) return;
+  const ray = rayFrom(e), before = snapshot();
+  let id, y, created = false;
+  const hit = pickProxy(ray);
+  if (hit) { id = hit.m.id; y = hit.y; }
+  else {
+    const oid = pickUnder(ray), o = oid && objOf(oid);
+    if (!o || !movable(o).ok) return;            // orbit as usual; a click explains why it stays put (onPick)
+    const [w, h, d] = o.size.map((v) => Math.max(v, 0.04)), bottom = Math.max(0, o.center[1] - o.size[1] / 2);
+    y = hitBox(ray, o.center[0], o.center[2], o.yaw, w, h, d, bottom) ?? bottom + h / 2;
+    id = oid;
+  }
+  _plane.constant = -y;
+  if (!ray.intersectPlane(_plane, _hit)) return;
+  const at = _hit.clone();
+  if (!moveOf(id)) { createProxy(id, { route: false, rec: false }); created = true; }
+  else if (P.active !== id || !P.editing) { P.active = id; P.dirtyField = true; P.editing = true; refresh(); renderAll(); }
+  const m = moveOf(id);
+  P.drag = { id, pid: e.pointerId, y, off: [m.x - at.x, m.z - at.z], moved: false, rotated: false, created, before, x0: e.clientX, y0: e.clientY };
+  const it = proxyItem(id); it.anim = true; it.drop = null;     // lifts a few cm while held
   APP.controls.enabled = false;               // OrbitControls ignores this pointer
   try { APP.canvas.setPointerCapture(e.pointerId); } catch {}
   APP.canvas.style.cursor = "grabbing";
+  setHover(null);
   e.preventDefault();
 }
 function onPointerMove(e) {
   if (APP.S?.mode !== "plan") return;
-  if (!P.drag) {                               // hover affordance
-    if (e.target === APP.canvas && P.moves.length && !e.buttons) APP.canvas.style.cursor = pickProxy(rayFrom(e)) ? "grab" : "";
+  if (!P.drag) {                               // hover affordance (throttled to one pick per frame)
+    if (e.target !== APP.canvas || e.buttons) { if (P.hover) setHover(null); return; }
+    P.hoverEvt = { clientX: e.clientX, clientY: e.clientY, mouse: e.pointerType === "mouse" };
+    if (!P.hoverRaf) P.hoverRaf = requestAnimationFrame(doHover);
     return;
   }
   if (e.pointerId !== P.drag.pid) return;
+  if (!P.drag.moved && Math.hypot(e.clientX - P.drag.x0, e.clientY - P.drag.y0) <= 4) return;   // a click, not a drag
+  P.drag.moved = true;
   _plane.constant = -P.drag.y;
   if (!rayFrom(e).intersectPlane(_plane, _hit)) return;
   let x = _hit.x + P.drag.off[0], z = _hit.z + P.drag.off[1];
   if (P.snap) { x = snap(x); z = snap(z); }
   const b = APP.S.data.bounds;
   x = Math.min(b.max[0], Math.max(b.min[0], x)); z = Math.min(b.max[2], Math.max(b.min[2], z));
-  if (Math.hypot(e.clientX - P.drag.x0, e.clientY - P.drag.y0) > 3) P.drag.moved = true;
   const m = moveOf(P.drag.id);
   if (m && (m.x !== x || m.z !== z)) setPose(m.id, { ...m, x, z }, { route: false });   // live checks; route on drop
 }
 function onPointerUp(e) {
   if (!P.drag || e.pointerId !== P.drag.pid) return;
-  const moved = P.drag.moved;
-  P.drag = null; P.justDragged = true; setTimeout(() => (P.justDragged = false), 0);
+  try { APP.canvas.releasePointerCapture(e.pointerId); } catch {}
+  endDrag();
+}
+/** Let go: the object settles (short drop animation), the change becomes one undo step and the route is re-planned. */
+function endDrag({ silent = false } = {}) {
+  const d = P.drag; if (!d) return;
+  P.drag = null;
+  if (d.moved) { P.justDragged = true; setTimeout(() => (P.justDragged = false), 0); }
   APP.controls.enabled = true;
   APP.canvas.style.cursor = "grab";
-  try { APP.canvas.releasePointerCapture(e.pointerId); } catch {}
+  const it = P.three?.items.get(d.id);
+  if (it) { it.anim = true; it.drop = { t: 0, from: it.vis.lift }; }
+  if (silent) return;
+  if (d.moved || d.rotated || d.created) record("edit", d.before);
   renderAll();
-  if (moved) scheduleRoute(0);
+  if (d.moved || d.rotated || d.created) scheduleRoute(0);
+}
+function setHover(h) {
+  const prev = P.hover;
+  P.hover = h;
+  const tip = hoverTip();
+  if (!h || !h.mouse) tip.classList.add("hidden");
+  else {
+    tip.classList.remove("hidden");
+    tip.innerHTML = h.ok ? `<b>${esc(h.name)}</b><span>${h.proxy ? "Drag to move · scroll or Q / E to turn" : "Drag to pick it up and move it"}</span>` : `<b>${esc(h.name)}</b><span>Stays put in a plan</span>`;
+    tip.style.transform = `translate(${Math.round(h.x + 16)}px, ${Math.round(h.y + 18)}px)`;
+  }
+  if (!P.drag) APP.canvas.style.cursor = h?.ok ? "grab" : "";
+  if ((prev?.id || null) !== (h?.id || null)) highlight();
+}
+function hoverTip() {
+  let el = document.querySelector(".pl-hover");
+  if (!el) { el = document.createElement("div"); el.className = "pl-hover hidden"; el.setAttribute("aria-hidden", "true"); document.body.appendChild(el); }
+  return el;
+}
+function doHover() {
+  P.hoverRaf = 0;
+  const e = P.hoverEvt; if (!e || P.drag || APP.S?.mode !== "plan" || !P.ready) return;
+  const ray = rayFrom(e), ph = pickProxy(ray);
+  if (ph) return setHover({ id: ph.m.id, ok: true, proxy: true, name: shortName(objOf(ph.m.id)), x: e.clientX, y: e.clientY, mouse: e.mouse });
+  const id = pickUnder(ray), o = id && objOf(id);
+  if (!o) return setHover(null);
+  setHover({ id, ok: movable(o).ok, proxy: false, name: shortName(o), x: e.clientX, y: e.clientY, mouse: e.mouse });
+}
+/** Mouse wheel turns the object while it is held, or while the pointer is over the selected proxy (else: zoom). */
+function onWheel(e) {
+  if (APP.S?.mode !== "plan" || !P.ready || !P.moves.length) return;
+  let id = P.drag?.id;
+  if (!id && P.active && P.editing) { const h = pickProxy(rayFrom(e)); if (h?.m.id === P.active) id = P.active; }
+  if (!id) return;
+  e.preventDefault(); e.stopImmediatePropagation();          // OrbitControls does not zoom for this wheel
+  P.active = id;
+  P.wheelAcc += e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+  if (Math.abs(P.wheelAcc) >= 50) { rotate(Math.sign(P.wheelAcc) * Math.PI / 12); P.wheelAcc = 0; }   // one notch = 15°
 }
 /** Screen-aligned floor directions (the camera's forward/right, snapped to the world axes). */
 function screenDir(name) {
@@ -551,7 +769,12 @@ function screenDir(name) {
 }
 const KEYDIR = { ArrowUp: "fwd", KeyW: "fwd", ArrowDown: "back", KeyS: "back", ArrowRight: "right", KeyD: "right", ArrowLeft: "left", KeyA: "left" };
 function onKey(e) {
-  if (APP.S?.mode !== "plan" || !P.active || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
+  if (APP.S?.mode !== "plan" || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.code === "KeyZ" || e.code === "KeyY")) {
+    e.preventDefault();
+    return (e.code === "KeyY" || e.shiftKey) ? redo() : undo();
+  }
+  if (!P.active || e.ctrlKey || e.metaKey || e.altKey) return;
   const step = e.shiftKey ? 0.25 : SNAP;
   // arrows / W A S D move in screen-aligned directions while the proxy is being moved
   const dn = KEYDIR[e.code];
@@ -596,7 +819,8 @@ export function summary() {
   };
 }
 function markdown(s) {
-  const L = [`# Maintenance plan · ${s.title}`, "", `> ${s.disclaimer}.`, "> The scan data is unchanged; moved equipment is shown as virtual planning proxies. Verify on site before moving anything.", "",
+  const L = [`# Maintenance plan · ${s.title}`, "", `> ${s.disclaimer}.`, "> The scan data is unchanged; moved equipment is shown as virtual planning proxies. Verify on site before moving anything.",
+    "> In the 3D view a moved object may be drawn as an approximate cut-out of the scan inside its box (it can include nearby fragments); collisions and clearance always use the oriented boxes.", "",
     `Created ${s.created}`, "", "## Proposed moves"];
   if (!s.moves.length) L.push("", "No equipment moved (original layout).");
   for (const m of s.moves) {
@@ -677,7 +901,7 @@ function movePadHTML() {
       ${b("left", pi("left"), "Move left (← or A)")}${b("r90", ic("turn"), "Turn 90° (R)")}${b("right", pi("right"), "Move right (→ or D)")}
       <span></span>${b("back", pi("down"), "Move towards you (↓ or S)")}<span></span>
     </div>
-    <p class="pl-padnote">Press and hold an arrow to keep moving. Or drag it on the floor, or use the arrow keys / W A S D (Shift = bigger steps), Q E to turn.</p>`;
+    <p class="pl-padnote">Press and hold an arrow to keep moving. Or drag it in the 3D view (mouse wheel turns it while you hold it), or use the arrow keys / W A S D (Shift = bigger steps), Q E to turn.</p>`;
 }
 function padStep(mv, big = false) {
   if (!P.active) return;
@@ -715,6 +939,7 @@ async function suggest() {
   if (!P.active || P.active === SUGGESTED || !moveOf(P.active)) return demo();
   const id = P.active, spot = await findSpot(id);
   if (!spot) return APP.toast("No free spot found nearby for this object. Try moving it by hand.");
+  record();
   setPose(id, spot, { route: false });
   P.editing = false; P.toTop = true; clearTimeout(P.routeTimer);
   await computeAfter(); renderAll();
@@ -731,13 +956,13 @@ function leftHTML() {
   if (act) {
     body = `<div class="section"><div class="label"><span>Moving</span><span class="pl-pill ${P.ev?.status || "ok"}">${{ ok: "Clear", tight: "Tight", bad: "Collision" }[P.ev?.status || "ok"]}</span></div>
       <div class="pl-moving"><b>${esc(nameOf(act))}</b><small>${esc(act.label)} · ${act.label_source === "review-corrected" ? "review-corrected label" : Math.round(act.confidence * 100) + "% label confidence"}</small></div>
-      <div class="pl-keys"><span>${ic("move")}Use the arrow buttons in the card, or drag it on the floor</span><span><span class="kbd">←↑↓→</span> or <span class="kbd">W A S D</span> move 5 cm · <span class="kbd">Shift</span> 25 cm</span><span><span class="kbd">Q</span> <span class="kbd">E</span> turn 15° · <span class="kbd">R</span> turn 90°</span></div></div>
+      <div class="pl-keys"><span>${ic("move")}Drag it on the floor in the 3D view, or use the arrow buttons in the card</span><span>Mouse wheel while holding it, <span class="kbd">Q</span> <span class="kbd">E</span> turn 15° · <span class="kbd">R</span> turn 90°</span><span><span class="kbd">←↑↓→</span> or <span class="kbd">W A S D</span> move 5 cm · <span class="kbd">Shift</span> 25 cm</span><span><span class="kbd">Ctrl</span> <span class="kbd">Z</span> undo · <span class="kbd">Ctrl</span> <span class="kbd">Shift</span> <span class="kbd">Z</span> redo</span></div></div>
       ${proxiesHTML()}
-      <div class="section"><button class="link" data-pl-more>${icon("plus")}Move another object</button></div>`;
+      <div class="section"><button class="link" data-pl-more>${icon("plus")}Move another object</button><p class="note" style="margin-top:4px">Or just click another object in the room.</p></div>`;
   } else body = choiceHTML();
   return `<div class="card-h"><span class="t">Maintenance planning</span><span class="card-tools"><span class="pill amber">Simulation</span><button class="link" data-min-card title="Minimise" aria-label="Minimise">${icon("minus")}</button></span></div>
     <div class="card-b">
-      <div class="pl-steps">${step(1, "Pick the pallet truck (or any object)", s1)}${step(2, "Move it out of the way", s2)}${step(3, "Check the result", s3)}</div>
+      <div class="pl-steps">${step(1, "Click any object in the room to pick it up", s1)}${step(2, "Drag it out of the way", s2)}${step(3, "Check the result", s3)}</div>
       ${body}
     </div>`;
 }
@@ -747,14 +972,15 @@ function proxiesHTML() {
 function choiceHTML(suffix = "") {
   const S = APP.S, sug = objOf(SUGGESTED), d = sug ? boxDist(footprint(sug), footprint(P.target)) : 0;
   const sel = S.selected && S.selected.kind === "object" && S.selected.id !== SUGGESTED ? S.selected : null;
-  return `${sug && !suffix ? `<div class="section"><div class="label">Suggested for ${esc(P.target.asset?.tag || "the target")} service</div>
+  return `${!suffix ? leadHTML() : ""}${sug && !suffix ? `<div class="section"><div class="label">Suggested first move for ${esc(P.target.asset?.tag || "the target")} service</div>
       <button class="pl-sugg" data-pl-pick="${SUGGESTED}"><span class="pl-sugg-i">${ic("box")}</span><span class="nm"><b>Hand pallet truck</b><small>${SUGGESTED} · ${gap(d)} from ${esc(P.target.asset?.tag)} · in its service zone</small></span>${icon("chev")}</button></div>` : ""}
     ${sel ? `<div class="section"><button class="btn block" data-pl-pick="${sel.id}">${icon("target")}Use current selection · ${esc(shortName(sel))}</button></div>` : ""}
-    <div class="section"><div class="label">Or find any object</div>
-      <input class="search" id="plQ${suffix}" data-pl-q placeholder="Search label or ID, e.g. cart, valve, OBJ-068" value="${esc(P.query)}" autocomplete="off"/>
-      <div id="plRes${suffix}" class="pl-res">${resultsHTML()}</div>
-      <p class="note" style="margin-top:6px">You can also click an object in the 3D view.</p></div>`;
+    <div class="section"><div class="label">Or search by name</div>
+      <input class="search" id="plQ${suffix}" data-pl-q placeholder="Search label or ID, e.g. cart, cabinet, OBJ-010" value="${esc(P.query)}" autocomplete="off"/>
+      <div id="plRes${suffix}" class="pl-res">${resultsHTML()}</div></div>`;
 }
+/** First thing in Plan: you can grab anything in the room, like in a game or a 3D modelling tool. */
+const leadHTML = () => `<div class="pl-lead">${ic("move")}<span><b>Click any object in the room to pick it up</b>, drag it across the floor and let go. Mouse wheel or Q / E turns it. Ctrl+Z undoes.</span></div>`;
 function resultsHTML() {
   const q = P.query.trim().toLowerCase();
   if (!q) return "";
@@ -819,6 +1045,13 @@ function resultHTML(ev, z) {
   if (!z.clear) return `<div class="pl-result bad">${icon("close")}<span><b>Still in the way.</b> Part of it is inside the ${esc(P.target.asset?.tag)} service zone.</span></div>`;
   return `<div class="pl-result bad">${icon("close")}<span><b>The robot has no route</b> with this layout. Try another spot.</span></div>`;
 }
+/** How the moved object is drawn: the scan cut-out (with its honesty label) or the box proxy only, and why. */
+function cutNoteHTML() {
+  if (!P.moves.length) return "";
+  if (cutShown()) return `<p class="pl-cut on">${ic("box")}<span><b>${esc(CUT_NOTE)}.</b> The dashed outline marks the original position; the thin box is what collisions are checked against.</span></p>`;
+  const why = !P.cutOn ? "Scan cut-out is off: moved equipment is shown as a box proxy." : APP.S?.fac?.splatMode === "points" ? "The scan is shown as a point cloud here, so moved equipment is shown as a box proxy." : P.cut?.sources().length ? "Moved equipment is shown as a box proxy." : "The scan is not loaded, so moved equipment is shown as a box proxy.";
+  return `<p class="pl-cut">${ic("box")}<span>${why}</span></p>`;
+}
 function cardHTML() {
   const t = P.target, a = t.asset;
   const head = `<div class="card-h" style="padding-bottom:0"><span class="eyebrow-row">Maintenance planning<span class="tag">Simulation</span></span><span class="card-tools"><button class="link" data-min-card title="Minimise" aria-label="Minimise">${icon("minus")}</button></span></div>
@@ -829,19 +1062,21 @@ function cardHTML() {
   if (!P.moves.length) {
     const sug = objOf(SUGGESTED);
     return `${head}${stepperHTML()}
+      ${leadHTML()}
       <div class="pl-actions">${sug ? `<button class="btn primary block pl-big" data-pl-pick="${SUGGESTED}">${ic("box")}Pick the pallet truck</button>` : ""}
-        <button class="btn block" data-pl="demo">${icon("spark")}Suggest a good spot for me</button></div>
+        <button class="btn block" data-pl="demo">${icon("spark")}Suggest a good spot for me</button>
+        ${P.undo.length ? `<button class="btn block" data-pl="undo">${ic("undo")}Undo</button>` : ""}</div>
       ${disc}
-      <div class="plain"><b>Why:</b> ${sug ? `the hand pallet truck ${SUGGESTED} is parked ${gap(boxDist(footprint(sug), footprint(t)))} from ${esc(a?.tag)}, inside the space a technician needs to work on it.` : ""} Move a virtual copy of it and see at once whether it fits and whether the robot can still get to the pump.</div>
+      <div class="plain"><b>Why:</b> ${sug ? `the hand pallet truck ${SUGGESTED} is the suggested first move: it is parked ${gap(boxDist(footprint(sug), footprint(t)))} from ${esc(a?.tag)}, inside the space a technician needs to work on it.` : ""} Pick it up (or anything else on the floor) and see at once whether it fits and whether the robot can still get to the pump.</div>
       <div class="section"><div class="label">${esc(a?.tag)} service zone now</div>
         ${kv("Status", z0.clear ? '<span class="pl-ok">Clear</span>' : `<span class="pl-bad">Obstructed by ${esc(z0.obstructions.map((o) => `${o.name} (${o.id})`).join(", "))}</span>`)}
         ${kv("Free floor in zone", `${z0.freePct}%`)}
         <p class="note" style="margin-top:8px">Assumed illustrative clearance requirement: ${ZONE_DEPTH.toFixed(1)} m deep × pump width + ${ZONE_EXTRA.toFixed(1)} m, on the side facing the open floor. The zone counts as clear only when nothing stands inside it. Not a Valmet or OEM figure.</p></div>
       <div class="section pl-phone">${choiceHTML("M")}</div>
       <div class="section"><div class="label">How it works</div>
-        <div class="step"><span class="k">1</span><span>Pick equipment. A labelled planning proxy appears; the scan itself never changes.</span></div>
-        <div class="step"><span class="k">2</span><span>Move the proxy with the arrows, the keys or by dragging. Collisions with known objects and occupied floor are checked live.</span></div>
-        <div class="step"><span class="k">3</span><span>Press Done: the robot planner re-routes with the new layout, and before and after are both drawn.</span></div></div></div>`;
+        <div class="step"><span class="k">1</span><span>Click any floor-standing object in the room. It lifts and becomes a labelled planning proxy; the scan data itself never changes.</span></div>
+        <div class="step"><span class="k">2</span><span>Drag it across the floor (or use the arrows and keys). Collisions with known objects and occupied floor are checked live: green fits, amber is tight, red collides. No throwing or physics: it stays exactly where you put it.</span></div>
+        <div class="step"><span class="k">3</span><span>Let go: the robot planner re-routes with the new layout, and before and after are both drawn. Undo / Redo any step.</span></div></div></div>`;
   }
   const m = moveOf(P.active) || P.moves[0], o = objOf(m.id), ev = P.active === m.id && P.ev ? P.ev : evaluate(m.id, m), z = P.zoneNow || zoneStatus();
   const disp = Math.hypot(m.x - o.center[0], m.z - o.center[2]), rot = deg(wrap(m.yaw - o.yaw));
@@ -862,6 +1097,7 @@ function cardHTML() {
   return `${head}${stepperHTML()}
     ${top}
     ${disc}
+    ${cutNoteHTML()}
     <div class="pl-tiles">
       ${tile("Moved", `${f2(disp)} m`, rot ? `turned ${rot > 0 ? "+" : ""}${rot}°` : "same heading")}
       ${tile("Clearance", ev.collision ? "0 m" : `≈${f2(ev.clearance)} m`, ev.collision ? "collision" : ev.nearest ? `nearest object ${f2(ev.nearest.d)} m` : "to the nearest obstacle", ev.status)}
@@ -883,9 +1119,10 @@ function cardHTML() {
       <div class="pl-zone"><span class="${z0.clear ? "pl-ok" : "pl-bad"}">${z0.clear ? "Clear" : `Obstructed by ${esc(z0.obstructions.map((x) => x.name).join(", "))}`}</span>${icon("chev")}<span class="${z.clear ? "pl-ok" : "pl-bad"}">${z.clear ? "Clear" : `Obstructed by ${esc(z.obstructions.map((x) => x.name).join(", "))}`}</span></div>
       <p class="note" style="margin-top:6px">Clear means no object stands inside the zone, however much floor is free. Assumed illustrative requirement: ${ZONE_DEPTH.toFixed(1)} m deep × pump width + ${ZONE_EXTRA.toFixed(1)} m in front of the pump. Not a Valmet or OEM figure.</p></div>
     <div class="section"><div class="label">View</div><div class="row">
-      <button class="chip ${P.snap ? "on" : ""}" data-pl="snap" aria-pressed="${P.snap}">Snap to 5 cm</button><button class="chip ${P.compare ? "on" : ""}" data-pl="compare" aria-pressed="${P.compare}">Show routes</button></div></div>
+      <button class="chip ${P.snap ? "on" : ""}" data-pl="snap" aria-pressed="${P.snap}">Snap to 5 cm</button><button class="chip ${P.compare ? "on" : ""}" data-pl="compare" aria-pressed="${P.compare}">Show routes</button>${P.cut?.sources().length ? `<button class="chip ${P.cutOn ? "on" : ""}" data-pl="cut" aria-pressed="${P.cutOn}" title="Move the scanned object itself (approximate cut-out) or show box proxies only">Move the scan with it</button>` : ""}</div></div>
     <div class="section stack">
-      <div class="pl-btns"><button class="btn" data-pl="reset">${icon("reset")}Reset layout</button><button class="btn" data-pl="wo">${icon("doc")}Draft work order</button></div>
+      <div class="pl-btns"><button class="btn" data-pl="undo" ${P.undo.length ? "" : "disabled"} title="Undo (Ctrl+Z)">${ic("undo")}Undo</button><button class="btn" data-pl="redo" ${P.redo.length ? "" : "disabled"} title="Redo (Ctrl+Shift+Z)">${ic("redo")}Redo</button><button class="btn" data-pl="reset">${icon("reset")}Reset all</button></div>
+      <div class="pl-btns"><button class="btn" data-pl="wo">${icon("doc")}Draft work order</button></div>
       <div class="pl-btns"><button class="btn" data-pl="md">${ic("dl")}Markdown</button><button class="btn" data-pl="json">${ic("dl")}JSON</button><button class="btn" data-pl="copy">${ic("copy")}Copy</button></div></div>
     <p class="note" style="margin-top:12px">The scan is unchanged. Proxies are virtual: nothing has been moved on site.</p></div>`;
 }
@@ -909,6 +1146,9 @@ async function onCardClick(e) {
   if (onListClick(e)) return;
   const a = e.target.closest("[data-pl]")?.dataset.pl;
   if (a === "reset") reset();
+  if (a === "undo") undo();
+  if (a === "redo") redo();
+  if (a === "cut") { P.cutOn = !P.cutOn; refresh(); renderAll(); }
   if (a === "md" || a === "json" || a === "copy") exportPlan(a);
   if (a === "wo") draftWorkOrder();
   if (a === "demo") demo();
@@ -929,7 +1169,8 @@ function dockHTML() {
     <div class="grp"><div class="seg" role="group" aria-label="View">${[["top", "Top"], ["angled", "Angled"], ["eye", "Eye level"]].map(([k, l]) => `<button data-pd="view:${k}" class="${(P.view || "top") === k ? "on" : ""}" title="${{ top: "Look straight down, like a floor plan (best for moving things)", angled: "Look at the work area from above at an angle", eye: "Stand next to it at eye level" }[k]}">${l}</button>`).join("")}</div></div>
     <div class="grp"><button class="tool ${P.snap ? "on" : ""}" data-pd="snap"><span class="switch"></span>Snap 5 cm</button><button class="tool ${P.compare ? "on" : ""}" data-pd="compare"><span class="switch"></span>Routes</button></div>
     <div class="grp routeinfo"><div class="top"><span>Route to ${esc(P.target?.asset?.tag || "target")}</span><b>${B?.ok ? `${f2(B.length_m)} m` : "…"}${A?.ok ? ` → ${f2(A.length_m)} m` : ""}</b></div>${info}</div>
-    <div class="grp"><button class="tool" data-pd="reset" ${P.moves.length ? "" : "disabled"}>${icon("reset")}Reset</button><button class="tool" data-pd="export" ${P.moves.length ? "" : "disabled"}>${ic("dl")}Export</button></div>`;
+    <div class="grp"><button class="tool" data-pd="undo" ${P.undo.length ? "" : "disabled"} title="Undo (Ctrl+Z)" aria-label="Undo">${ic("undo")}Undo</button><button class="tool" data-pd="redo" ${P.redo.length ? "" : "disabled"} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">${ic("redo")}Redo</button></div>
+    <div class="grp"><button class="tool" data-pd="reset" ${P.moves.length ? "" : "disabled"} title="Reset all: back to the scanned layout">${icon("reset")}Reset all</button><button class="tool" data-pd="export" ${P.moves.length ? "" : "disabled"}>${ic("dl")}Export</button></div>`;
 }
 function renderDock() { if (APP.S?.mode === "plan") $("#dock").innerHTML = dockHTML(); }
 function onDock(e) {
@@ -942,6 +1183,8 @@ function onDock(e) {
   if (d === "snap") { P.snap = !P.snap; renderDock(); }
   if (d === "compare") { P.compare = !P.compare; drawRoutes(); renderDock(); }
   if (d === "reset") reset();
+  if (d === "undo") undo();
+  if (d === "redo") redo();
   if (d === "export") exportPlan("md");
 }
 function renderAll() { renderLeft(); renderCard(); renderDock(); }
@@ -974,9 +1217,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function demo({ animate = true } = {}) {
   await waitReady();
   if (APP.S.mode !== "plan") APP.setMode("plan");
-  reset({ quiet: true });
+  record();                                    // the whole example is one undo step
+  reset({ quiet: true, rec: false });
   const spot = await findSpot(SUGGESTED);
-  createProxy(SUGGESTED);
+  createProxy(SUGGESTED, { rec: false });
   await sleep(animate ? 500 : 0);
   if (!spot) { APP.toast("No free spot found for the example plan."); return summary(); }
   const m = moveOf(SUGGESTED), from = { ...m };
@@ -997,6 +1241,16 @@ async function demo({ animate = true } = {}) {
   renderAll();
   return summary();
 }
+/** For other modules (asset card "Plan access"): enter Plan, make `id` the active movable object, Top view.
+ *  The pump being serviced, pipework and wall-mounted parts are not picked up: Plan opens with a short note instead. */
+async function pickObject(id) {
+  if (APP.S.mode !== "plan") APP.setMode("plan");
+  await waitReady();
+  const o = objOf(id), mv = movable(o || APP.S.objById?.get(id));
+  if (!mv.ok) { if (o) { APP.S.selected = o; highlight(); renderLeft(); } APP.toast(mv.why); frameView(0.9, "top"); return { ok: false, why: mv.why.replace(/<[^>]+>/g, ""), state: getState() }; }
+  pick(id);
+  return { ok: true, state: getState() };
+}
 async function waitReady() { for (let i = 0; i < 200 && !P.ready; i++) await sleep(50); }
 
 // ------------------------------------------------------------------ state for shared links (Remote Support)
@@ -1006,6 +1260,8 @@ function getState() {
 async function setState(state) {
   await waitReady();
   const moves = (state?.moves || []).filter((m) => objOf(m.id) && [m.x, m.z, m.yaw].every(Number.isFinite));
+  if (P.drag) endDrag({ silent: true });
+  record();
   P.moves = moves.map((m) => ({ id: m.id, x: +m.x, z: +m.z, yaw: +m.yaw }));
   P.active = moves.some((m) => m.id === state.active) ? state.active : P.moves.at(-1)?.id || null;
   P.dirtyField = true; P.after = null; P.editing = false;
@@ -1072,7 +1328,8 @@ function exit() {
   S.fac.setCutaway(S.cam === "broadcast" || S.cam === "top");
   if (!P.twinBefore && S.fac.twinOn) { S.fac.setTwin(false); APP.renderRail?.(); }
   stopHold();
-  if (P.drag) { P.drag = null; APP.controls.enabled = true; }
+  if (P.drag) endDrag();
+  setHover(null);
   APP.canvas.style.cursor = "";
   S.fac.routeGroup.visible = true;
   P.three?.routes.clear(); P.three?.gauge.clear();
@@ -1091,12 +1348,13 @@ registerMode({
     if (P.justDragged || P.drag) return true;
     const hit = pickProxy(ray);
     if (hit) { if (P.active !== hit.m.id || !P.editing) { P.active = hit.m.id; P.dirtyField = true; P.editing = true; refresh(); renderAll(); } return true; }
-    const id = APP.S.fac.pick(ray);
+    if (!P.ready) return true;
+    const id = pickUnder(ray);
     if (id) {
-      const o = APP.S.data.objects.find((x) => x.id === id);
+      const o = APP.S.data.objects.find((x) => x.id === id), mv = movable(o);
       APP.S.selected = o;
-      if (o.kind === "object" && o.id !== P.target.id) createProxy(o.id);
-      else { highlight(); renderLeft(); APP.toast(o.id === P.target.id ? `${esc(P.target.asset?.tag)} is the equipment being serviced; choose what to move around it.` : "Structures (walls, floor) cannot be moved."); }
+      if (mv.ok) createProxy(o.id);
+      else { highlight(); renderLeft(); APP.toast(mv.why); }
     }
     return true;
   },
@@ -1106,6 +1364,8 @@ on("boot", () => {
   init().then(() => { if (APP.S.mode === "plan") { refresh(); renderAll(); } }).catch((e) => console.warn("planning init", e));
   $("#right").addEventListener("click", onCardClick);
   APP.canvas.addEventListener("pointerdown", onPointerDown, { capture: true });
+  APP.canvas.addEventListener("wheel", onWheel, { capture: true, passive: false });
+  APP.canvas.addEventListener("pointerleave", () => { if (P.hover) setHover(null); });
   addEventListener("pointermove", onPointerMove);
   addEventListener("pointerup", onPointerUp);
   addEventListener("pointercancel", onPointerUp);
@@ -1120,7 +1380,16 @@ on("boot", () => {
   }).observe($(sel), { childList: true });
   guard("#right", ".pl-disc", renderCard);
   guard("#left", ".pl-steps", renderLeft);
-  APP.planning = { view: (k) => frameView(0.9, k), getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _evaluate: (id, pose) => evaluate(id, pose) };
+  APP.planning = { view: (k) => frameView(0.9, k), getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _evaluate: (id, pose) => evaluate(id, pose),
+    undo, redo, history: () => ({ undo: P.undo.length, redo: P.redo.length }), pick: (id) => pick(id), pickObject, movable: (id) => movable(objOf(id) || APP.S.objById?.get(id)),
+    cutStats: () => ({ available: !!P.cut?.available, enabled: P.cutOn, shown: P.moves.filter((m) => P.cut?.isCut(m.id)).map((m) => m.id), objects: P.moves.map((m) => ({ id: m.id, ...(P.cut?.stats(m.id) || {}) })), log: P.cut?.log || [] }),
+    setCutout: (on) => { P.cutOn = !!on; P.dirtyField = true; refresh(); renderAll(); return P.cutOn; } };
+});
+let _cutKey = "", _cutT = 0;
+on("frame", (dt) => {
+  animate(dt);
+  // the scan streams in after boot: once more splats are up, refresh the cut-outs of objects already moved
+  if (P.moves.length && P.cut && (_cutT += dt) > 1) { _cutT = 0; const k = P.cut.srcKey(); if (k !== _cutKey) { _cutKey = k; refresh(); renderCard(); } }
 });
 on("planExtras", planExtras);
 on("minimap", drawMinimap);
