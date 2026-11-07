@@ -6,6 +6,32 @@ import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 export const STATUS = { healthy: 0x30d158, watch: 0xffd60a, degraded: 0xff9f0a, attention_required: 0xff453a };
 const NEUTRAL = 0xc8ccd2;
 
+// Polyline with circular-ish (quadratic) fillets at every corner. Unlike a Catmull-Rom spline it never overshoots
+// the validated straight segments, so the drawn and driven path stays inside the checked corridor.
+export function roundedPath(pts, radius, isSafe = () => true) {
+  const path = new THREE.CurvePath();
+  if (pts.length < 2) { path.add(new THREE.LineCurve3(pts[0], pts[0].clone().add(new THREE.Vector3(0.001, 0, 0)))); return path; }
+  let cur = pts[0].clone();
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+    // largest fillet (≤ radius) whose whole arc stays on walkable floor (walkable already includes robot clearance)
+    let r = Math.min(radius, a.distanceTo(b) / 2, b.distanceTo(c) / 2), p1, p2;
+    for (; r > 0.02; r *= 0.7) {
+      p1 = b.clone().add(a.clone().sub(b).setLength(r)); p2 = b.clone().add(c.clone().sub(b).setLength(r));
+      const q = new THREE.QuadraticBezierCurve3(p1, b, p2);
+      let ok = true;
+      for (let k = 0; k <= 12 && ok; k++) { const v = q.getPoint(k / 12); ok = isSafe(v.x, v.z); }
+      if (ok) break;
+    }
+    if (r <= 0.02) { if (cur.distanceTo(b) > 1e-4) path.add(new THREE.LineCurve3(cur, b.clone())); cur = b.clone(); continue; }
+    if (cur.distanceTo(p1) > 1e-4) path.add(new THREE.LineCurve3(cur, p1));
+    path.add(new THREE.QuadraticBezierCurve3(p1, b.clone(), p2));
+    cur = p2;
+  }
+  if (cur.distanceTo(pts.at(-1)) > 1e-4) path.add(new THREE.LineCurve3(cur, pts.at(-1).clone()));
+  return path;
+}
+
 export class Facility {
   constructor(scene, data) {
     this.scene = scene;
@@ -42,36 +68,84 @@ export class Facility {
 
   colorFor(o) { return o.asset ? STATUS[o.asset.condition_state] ?? NEUTRAL : NEUTRAL; }
 
+  // All 676 frames live in ONE LineSegments (one draw call) with per-vertex RGBA, so highlighting is a
+  // cheap attribute write instead of hundreds of material/visibility changes per frame.
   _buildFrames() {
-    const unit = new THREE.BoxGeometry(1, 1, 1);
-    const edgesGeo = new THREE.EdgesGeometry(unit);
-    for (const o of this.data.objects) {
-      const g = new THREE.Group();
-      g.position.set(...o.center);
-      g.rotation.y = -o.yaw;
-      g.scale.set(...o.size.map((s) => Math.max(s, 0.03)));
-      const col = this.colorFor(o);
+    const objs = this.data.objects.filter((o) => o.kind === "object");
+    const corners = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]];
+    const edges = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+    const pos = new Float32Array(objs.length * 24 * 3), col = new Float32Array(objs.length * 24 * 4);
+    const c = new THREE.Color();
+    objs.forEach((o, k) => {
+      const cs = Math.cos(o.yaw), sn = Math.sin(o.yaw), h = o.size.map((v) => Math.max(v, 0.03) / 2);
+      const world = corners.map(([x, y, z]) => {
+        const lx = x * h[0], lz = z * h[2];
+        return [o.center[0] + lx * cs - lz * sn, o.center[1] + y * h[1], o.center[2] + lx * sn + lz * cs];
+      });
+      edges.forEach(([i, j], e) => { pos.set(world[i], (k * 24 + e * 2) * 3); pos.set(world[j], (k * 24 + e * 2 + 1) * 3); });
+      c.set(this.colorFor(o));
       const base = o.asset ? 0.85 : 0.16;
-      const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: base });
-      const edges = new THREE.LineSegments(edgesGeo, mat);
-      const fill = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthWrite: false });
-      const pick = new THREE.Mesh(unit, fill);
-      pick.userData.objectId = o.id;
-      g.add(edges, pick);
-      if (o.kind === "structure") g.visible = false;
-      this.root.add(g);
-      this.frames.set(o.id, { group: g, edges, pick, fill, obj: o, base });
-    }
+      for (let v = 0; v < 24; v++) col.set([c.r, c.g, c.b, base], (k * 24 + v) * 4);
+      this.frames.set(o.id, { k, obj: o, base, cs, sn, h });
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    this.colAttr = new THREE.BufferAttribute(col, 4);
+    this.colAttr.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute("color", this.colAttr);
+    this.lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }));
+    this.lines.frustumCulled = false;
+    this.root.add(this.lines);
+    // a small pool of translucent fills for the selected / target objects only
+    this.fills = new Map();
+    this.fillGeo = new THREE.BoxGeometry(1, 1, 1);
   }
 
-  pickables() { return [...this.frames.values()].filter((f) => f.group.visible).map((f) => f.pick); }
+  _alpha(f) {
+    const o = f.obj, on = this.highlight.has(o.id) || o.id === this.sel || o.id === this.tgt;
+    const visible = this.showMode === "all" || (this.showMode === "assets" && !!o.asset) || on;
+    return !visible ? 0 : on ? 1 : f.base;
+  }
+
+  _writeAlpha(f) {
+    const a = this._alpha(f), arr = this.colAttr.array, start = f.k * 24 * 4;
+    if (arr[start + 3] === a) return false;
+    for (let v = 0; v < 24; v++) arr[start + v * 4 + 3] = a;
+    return true;
+  }
+
+  _commit(dirty) { if (dirty) this.colAttr.needsUpdate = true; }
+
+  // analytic ray / oriented-box test (no per-object meshes needed for picking)
+  pick(ray) {
+    let best = null;
+    const o3 = ray.origin, d3 = ray.direction;
+    for (const f of this.frames.values()) {
+      if (this._alpha(f) === 0) continue;
+      const o = f.obj, ox = o3.x - o.center[0], oy = o3.y - o.center[1], oz = o3.z - o.center[2];
+      // rotate into the box frame (inverse of the yaw used when building)
+      const lo = [ox * f.cs + oz * f.sn, oy, -ox * f.sn + oz * f.cs];
+      const ld = [d3.x * f.cs + d3.z * f.sn, d3.y, -d3.x * f.sn + d3.z * f.cs];
+      let t0 = -Infinity, t1 = Infinity;
+      for (let i = 0; i < 3; i++) {
+        if (Math.abs(ld[i]) < 1e-9) { if (Math.abs(lo[i]) > f.h[i]) { t0 = Infinity; break; } continue; }
+        let a = (-f.h[i] - lo[i]) / ld[i], b = (f.h[i] - lo[i]) / ld[i];
+        if (a > b) [a, b] = [b, a];
+        t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+      }
+      if (t0 <= t1 && t1 > 0) {
+        const vol = f.h[0] * f.h[1] * f.h[2];
+        if (!best || vol < best.vol) best = { id: o.id, vol };   // prefer the smallest frame under the cursor
+      }
+    }
+    return best?.id ?? null;
+  }
 
   setShowMode(mode) {
     this.showMode = mode;
-    for (const f of this.frames.values()) {
-      const o = f.obj;
-      f.group.visible = o.kind !== "structure" && (mode === "all" || (mode === "assets" && !!o.asset) || this.highlight.has(o.id));
-    }
+    let dirty = false;
+    for (const f of this.frames.values()) dirty = this._writeAlpha(f) || dirty;
+    this._commit(dirty);
   }
 
   ensureLabel(id) {
@@ -93,24 +167,39 @@ export class Facility {
     return (f.label = lab);
   }
 
+  _fill(id, on) {
+    let m = this.fills.get(id);
+    if (!on) { if (m) m.visible = false; return; }
+    if (!m) {
+      const f = this.frames.get(id); if (!f) return;
+      m = new THREE.Mesh(this.fillGeo, new THREE.MeshBasicMaterial({ color: this.colorFor(f.obj), transparent: true, opacity: 0.1, depthWrite: false }));
+      m.position.set(...f.obj.center); m.rotation.y = -f.obj.yaw; m.scale.set(...f.obj.size.map((v) => Math.max(v, 0.03)));
+      this.root.add(m); this.fills.set(id, m);
+    }
+    m.visible = true;
+  }
+
+  // Only touches objects whose state actually changed.
   setHighlighted(ids, { selected = null, target = null } = {}) {
     const next = new Set(ids);
-    for (const [id, f] of this.frames) {
-      const on = next.has(id) || id === selected || id === target;
-      const o = f.obj;
-      f.edges.material.opacity = on ? 1 : f.base;
-      f.fill.opacity = id === selected || id === target ? 0.1 : on ? 0.04 : 0;
+    const changed = new Set([...this.highlight, ...next, this.sel, this.tgt, selected, target].filter(Boolean));
+    this.highlight = next; this.sel = selected; this.tgt = target;
+    let dirty = false;
+    for (const id of changed) {
+      const f = this.frames.get(id); if (!f) continue;
+      dirty = this._writeAlpha(f) || dirty;
+      const o = f.obj, on = next.has(id) || id === selected || id === target;
       const worth = o.asset || id === selected || (o.confidence >= 0.7 && ["rotating", "valve", "instrument", "vessel", "electrical"].includes(o.category));
       if (on && worth) this.ensureLabel(id).visible = true;
       else if (f.label) f.label.visible = false;
+      this._fill(id, id === selected || id === target);
     }
-    this.highlight = next;
-    this.setShowMode(this.showMode);
+    this._commit(dirty);
   }
 
   pulse(t, id) {
-    const f = this.frames.get(id);
-    if (f) f.fill.opacity = 0.06 + 0.08 * (0.5 + 0.5 * Math.sin(t * 3));
+    const m = this.fills.get(id);
+    if (m?.visible) m.material.opacity = 0.06 + 0.08 * (0.5 + 0.5 * Math.sin(t * 3));
   }
 
   // ---------------------------------------------------------------- robot: compact, matte, one status light
@@ -144,24 +233,32 @@ export class Facility {
     this.root.add(r);
   }
 
+  // walkable mask of the current plan (includes blocks), used to keep corner fillets collision-free
+  setWalkable(grid) { this.walkGrid = grid; }
+  isWalkable(x, z) {
+    const g = this.walkGrid; if (!g) return true;
+    const r = Math.floor((z - g.z0) / g.res), c = Math.floor((x - g.x0) / g.res);
+    return r >= 0 && r < g.H && c >= 0 && c < g.W && g.walkableMask[r * g.W + c] === 1;
+  }
+
   // ---------------------------------------------------------------- route + blocks
   drawRoute(waypoints) {
     this.routeGroup.clear();
     if (!waypoints?.length) return null;
     const pts = waypoints.map((p) => new THREE.Vector3(p[0], 0.03, p[2]));
-    const curve = new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.05);
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(40, pts.length * 20), 0.012, 6, false),
+    const curve = roundedPath(pts, 0.35, (x, z) => this.isWalkable(x, z));
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(120, Math.round(curve.getLength() * 40)), 0.012, 6, false),
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
     this.routeGroup.add(tube);
     const len = curve.getLength();
-    const dotGeo = new THREE.CircleGeometry(0.025, 16);
-    for (let d = 0.2; d < len - 0.1; d += 0.2) {
-      const p = curve.getPointAt(d / len);
-      const dot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
-      dot.rotation.x = -Math.PI / 2;
-      dot.position.set(p.x, 0.02, p.z);
-      this.routeGroup.add(dot);
-    }
+    // all route dots in one instanced draw
+    const n = Math.max(0, Math.floor((len - 0.3) / 0.2));
+    const dots = new THREE.InstancedMesh(new THREE.CircleGeometry(0.025, 16),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }), Math.max(n, 1));
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), one = new THREE.Vector3(1, 1, 1);
+    for (let i = 0; i < n; i++) { const p = curve.getPointAt((0.2 + i * 0.2) / len); dots.setMatrixAt(i, m4.compose(new THREE.Vector3(p.x, 0.02, p.z), q, one)); }
+    dots.count = n;
+    this.routeGroup.add(dots);
     const end = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.13, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
     end.rotation.x = -Math.PI / 2;
     end.position.set(pts.at(-1).x, 0.025, pts.at(-1).z);

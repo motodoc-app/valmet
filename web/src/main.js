@@ -49,8 +49,9 @@ $("#app").innerHTML = `
 
 // ------------------------------------------------------------------ renderer, scenes, cameras
 const canvas = $("canvas.gl");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Splats are already soft-edged: MSAA buys nothing but costs fill-rate. Cap the pixel ratio for steady frame times.
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -184,7 +185,7 @@ function renderTransitCard() {
     <div class="section"><div class="label"><span>Assets read along the way</span><span>${assets.length}</span></div>
       <div class="feed">${assets.map((o) => `<button class="list-row" data-obj="${o.id}"><span class="dot s-${o.asset.condition_state}"></span>
         <span class="nm"><b style="font-family:var(--mono)">${o.asset.tag}</b><small>${nice(o.asset.condition_state)} · ${nice(o.asset.issue_code)}</small></span><span class="health s-${o.asset.condition_state}">${o.asset.health_score}</span></button>`).join("") || '<div class="note">Nothing in range yet.</div>'}</div></div>
-    <div class="section note">${others} other objects framed within 1.2 m.</div></div>`);
+    <div class="section note"><span id="otherCount">${S.seen.size}</span> objects framed within 1.2 m so far.</div></div>`);
 }
 
 function renderAssetCard(o) {
@@ -337,6 +338,19 @@ $("#rail").addEventListener("click", (e) => {
 });
 
 // ------------------------------------------------------------------ navigation + robot
+async function applyRoute(res, { keepSpeed = true } = {}) {
+  S.route = res;
+  S.fac.setWalkable(await api.grid());      // grid reflects the blocks used for this plan
+  // start the drawn/driven curve exactly where the robot is (the plan starts at the centre of its grid cell,
+  // a few cm away), so a reroute never makes the robot jump
+  const r = S.fac.robot.position, w0 = res.waypoints[0];
+  const pts = Math.hypot(r.x - w0[0], r.z - w0[2]) > 0.005 ? [[r.x, 0, r.z], ...res.waypoints] : res.waypoints;
+  S.curve = S.fac.drawRoute(pts);
+  if (S.prevRoute) S.fac.ghostRoute(S.prevRoute);
+  Object.assign(S.robot, { len: S.curve.getLength(), s: 0, moving: true, v: keepSpeed ? S.robot.v : 0 });
+  renderDock();
+}
+
 async function dispatch(assetId, { start = null, quiet = false } = {}) {
   const o = S.data.objects.find((x) => x.asset?.asset_id === assetId);
   if (!o) return null;
@@ -345,10 +359,7 @@ async function dispatch(assetId, { start = null, quiet = false } = {}) {
   const p = S.fac.robot.position;
   const res = await api.plan({ object_id: o.id, start: start || [p.x, p.z], blocks: S.blocks });
   if (!res.ok) { toast(esc(res.reason)); return null; }
-  S.route = res;
-  S.curve = S.fac.drawRoute(res.waypoints);
-  if (S.prevRoute) S.fac.ghostRoute(S.prevRoute);
-  Object.assign(S.robot, { len: S.curve.getLength(), s: 0, moving: true });
+  await applyRoute(res, { keepSpeed: quiet });
   S.seen.clear();
   S.diag = null;
   S.diagPromise = api.diagnose(assetId);
@@ -359,45 +370,75 @@ async function dispatch(assetId, { start = null, quiet = false } = {}) {
 
 async function blockAisle() {
   if (!S.curve || !S.robot.moving) return;
-  const ahead = Math.min(S.robot.s + 0.9, S.robot.len * 0.85);
-  const p = S.curve.getPointAt(Math.min(1, ahead / S.robot.len)), tan = S.curve.getTangentAt(Math.min(1, ahead / S.robot.len));
-  // barrier across the aisle: its long side is perpendicular to the direction of travel
-  const b = { x: +p.x.toFixed(2), z: +p.z.toFixed(2), w: 0.9, d: 0.35, yaw: Math.atan2(tan.z, tan.x) + Math.PI / 2 };
-  S.blocks.push(b);
-  S.fac.setBlocks(S.blocks);
-  S.prevRoute = S.route.waypoints;
-  const prevLen = S.route.length_m - S.robot.s;
-  const res = await dispatch(S.navObject.asset.asset_id, { quiet: true });
-  if (res) toast(`Aisle blocked. New route in <b>${res.compute_ms} ms</b>: ${res.length_m} m instead of ${prevLen.toFixed(2)} m, still collision-free.`, 6000);
+  // Drop the barrier on the route ahead. If that spot cuts the only corridor, try further along, so the demo
+  // shows a real detour; if no placement leaves a safe route, the robot stops instead of driving through.
+  const prev = S.route, prevCurve = S.curve, prevLeft = S.route.length_m - S.robot.s;
+  const p0 = S.fac.robot.position, start = [p0.x, p0.z];
+  for (const ahead of [0.9, 1.5, 2.2, 3.0, 3.8, 4.6]) {
+    const s = S.robot.s + ahead;
+    if (s > S.robot.len - 0.6) break;
+    const u = s / S.robot.len, p = prevCurve.getPointAt(u), tan = prevCurve.getTangentAt(u);
+    const b = { x: +p.x.toFixed(2), z: +p.z.toFixed(2), w: 0.9, d: 0.35, yaw: Math.atan2(tan.z, tan.x) + Math.PI / 2 };
+    const res = await api.plan({ object_id: S.navObject.id, start, blocks: [...S.blocks, b] });
+    if (!res.ok) continue;
+    S.blocks.push(b);
+    S.fac.setBlocks(S.blocks);
+    S.prevRoute = prev.waypoints;
+    await applyRoute(res);
+    toast(`Aisle blocked. New route in <b>${res.compute_ms} ms</b>: ${res.length_m} m instead of ${prevLeft.toFixed(1)} m, still collision-free.`, 6000);
+    return;
+  }
+  S.robot.moving = false;
+  toast("No safe detour exists from here. The robot has stopped and is waiting.", 6000);
+  renderDock();
 }
 
 const _v = new THREE.Vector3(), _t = new THREE.Vector3();
+// Frame-rate independent smoothing: same feel at 30, 60 or 120 fps.
+const damp = (rate, dt) => 1 - Math.exp(-rate * dt);
+const CRUISE = 0.6, ACCEL = 0.45;           // m/s, m/s²
+let proxClock = 0, transitDirty = false, transitClock = 0, camYaw = null;
 function updateRobot(dt, t) {
   const R = S.robot, robot = S.fac.robot;
   robot.userData.ring.material.opacity = 0.22 + 0.12 * Math.sin(t * 2);
   if (!R.moving || !S.curve) return;
-  R.s = Math.min(R.len, R.s + R.speed * dt);
-  const u = R.s / R.len, p = S.curve.getPointAt(u), tan = S.curve.getTangentAt(u);
+  // trapezoidal speed profile: accelerate away, cruise, brake into the goal
+  const remain = R.len - R.s;
+  R.v = Math.min(CRUISE, (R.v ?? 0) + ACCEL * dt, Math.sqrt(2 * ACCEL * Math.max(remain, 0)) + 0.04);
+  R.s = Math.min(R.len, R.s + R.v * dt);
+  const u = R.s / R.len, p = S.curve.getPointAt(u);
+  const ahead = S.curve.getPointAt(Math.min(1, (R.s + 0.35) / R.len));
   robot.position.set(p.x, 0, p.z);
-  const want = Math.atan2(tan.x, tan.z);
-  let dy = want - robot.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
-  robot.rotation.y += dy * Math.min(1, dt * 8);
-  const near = [];
-  for (const o of S.data.objects) {
-    if (o.kind !== "object") continue;
-    if (Math.hypot(o.center[0] - p.x, o.center[2] - p.z) < 1.2) near.push(o.id);
+  if (ahead.distanceToSquared(p) > 1e-6) {
+    const want = Math.atan2(ahead.x - p.x, ahead.z - p.z);
+    let dy = want - robot.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    robot.rotation.y += dy * damp(7, dt);
   }
-  let added = false;
-  for (const id of near) if (!S.seen.has(id)) { S.seen.set(id, true); added = true; }
-  S.fac.setHighlighted(near, { selected: S.selected?.id, target: S.target.id });
-  if (added) renderTransitCard();
-  const bar = $("#rBar"); if (bar) bar.style.width = `${u * 100}%`;
+  // proximity at 10 Hz is plenty for a robot moving < 1 m/s, and keeps the frame budget for rendering
+  proxClock += dt;
+  if (proxClock > 0.1) {
+    proxClock = 0;
+    const near = [];
+    for (const o of S.data.objects) if (o.kind === "object" && Math.hypot(o.center[0] - p.x, o.center[2] - p.z) < 1.2) near.push(o.id);
+    for (const id of near) if (!S.seen.has(id)) { S.seen.set(id, true); if (S.data.objects.find((o) => o.id === id)?.asset) transitDirty = true; }
+    S.fac.setHighlighted(near, { selected: S.selected?.id, target: S.target.id });
+    const bar = $("#rBar"); if (bar) bar.style.width = `${u * 100}%`;
+    const other = $("#otherCount"); if (other) other.textContent = S.seen.size;
+  }
+  transitClock += dt;
+  if (transitDirty && transitClock > 0.4) { transitDirty = false; transitClock = 0; renderTransitCard(); }
   if (S.follow) {
-    _v.set(p.x - tan.x * 2.6 + tan.z * 0.7, 1.9, p.z - tan.z * 2.6 - tan.x * 0.7);
-    camera.position.lerp(_v, Math.min(1, dt * 2));
-    controls.target.lerp(_t.set(p.x + tan.x * 0.9, 0.5, p.z + tan.z * 0.9), Math.min(1, dt * 3));
+    // chase camera follows a damped heading, so corners turn the view gently instead of snapping
+    const yaw = robot.rotation.y;
+    if (camYaw === null) camYaw = yaw;
+    let d = yaw - camYaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+    camYaw += d * damp(2.2, dt);
+    const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
+    _v.set(p.x - fx * 2.6 + fz * 0.7, 1.9, p.z - fz * 2.6 - fx * 0.7);
+    camera.position.lerp(_v, damp(3, dt));
+    controls.target.lerp(_t.set(p.x + fx * 1.0, 0.5, p.z + fz * 1.0), damp(4, dt));
   }
-  if (R.s >= R.len - 1e-3) { R.moving = false; arrive(); }
+  if (R.s >= R.len - 1e-3) { R.moving = false; R.v = 0; camYaw = null; arrive(); }
 }
 
 async function arrive() {
@@ -420,7 +461,7 @@ function flyTo(pos, target, dur = 1.1, cam = camera, ctl = controls) {
 function updateTween(dt) {
   if (!tween) return;
   tween.k = Math.min(1, tween.k + dt / tween.dur);
-  const k = tween.k, e = 1 - Math.pow(1 - k, 3);
+  const k = tween.k, e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
   tween.cam.position.lerpVectors(tween.p0, tween.p1, e);
   tween.ctl.target.lerpVectors(tween.t0, tween.t1, e);
   if (k >= 1) tween = null;
@@ -609,10 +650,8 @@ canvas.addEventListener("pointerup", (e) => {
   ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   if (S.mode === "facility") {
     ray.setFromCamera(ndc, camera);
-    const hits = ray.intersectObjects(S.fac.pickables(), false);
-    if (!hits.length) return;
-    hits.sort((a, b) => { const sa = a.object.parent.scale, sb = b.object.parent.scale; return sa.x * sa.y * sa.z - sb.x * sb.y * sb.z; });
-    selectObject(S.data.objects.find((x) => x.id === hits[0].object.userData.objectId));
+    const id = S.fac.pick(ray.ray);
+    if (id) selectObject(S.data.objects.find((x) => x.id === id));
   } else {
     ray.setFromCamera(ndc, xCam);
     const hits = ray.intersectObjects(S.xray.pickables(), false);
@@ -643,6 +682,6 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-window.__app = S;
+window.__app = S; window.__renderer = renderer;
 Object.assign(window, { __dispatch: dispatch, __enterXRay: enterXRay, __setMode: setMode, __ask: ask, __block: blockAisle, __select: selectAsset });
 boot();

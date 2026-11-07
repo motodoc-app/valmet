@@ -1,1 +1,1 @@
-{"splat_chunks": ["scene-0.wasm", "scene-1.wasm", "scene-2.wasm", "scene-3.wasm"], "splat_format": "splat", "llm": "gpt-5.4-mini"}
+{"splat_chunks": ["scene-0.wasm", "scene-1.wasm", "scene-2.wasm"], "splat_format": "splat", "llm": "gpt-5.4-mini"}

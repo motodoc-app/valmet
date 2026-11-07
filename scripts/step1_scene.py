@@ -43,7 +43,8 @@ def main() -> None:
     })
 
     print("[3/4] exporting web splat (.splat, 32 B/splat)")
-    keep = can["opacity"] > 0.02
+    # near-invisible or huge floater splats cost fill-rate but add nothing visible
+    keep = (can["opacity"] > 0.06) & (np.exp(can["scale_log"]).max(1) < 0.5)
     ply_io.export_splat(config.WEB_PUBLIC / "scene.splat", can["xyz"][keep], can["scale_log"][keep],
                         can["quat"][keep], can["f_dc"][keep], can["op_logit"][keep])
 

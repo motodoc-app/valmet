@@ -205,6 +205,8 @@ const FINISH = {
 };
 const SUSPECT = new THREE.Color(0xff453a);
 const SELECT = new THREE.Color(0x0a84ff);
+const ALT = new THREE.Color(0xff9f0a);
+const BLACK = new THREE.Color(0x000000);
 
 export class XRay {
   constructor(kb, renderer) {
@@ -300,11 +302,15 @@ export class XRay {
       let col = null, k = 0;
       if (id === this.selected) { col = SELECT; k = 0.22; }
       else if (this.flagged.has(id)) { col = SUSPECT; k = 0.1 + 0.12 * (0.5 + 0.5 * Math.sin(t * 2.4)); }
-      else if (this.alt.has(id)) { col = new THREE.Color(0xff9f0a); k = 0.08; }
-      p.mat.emissive.copy(col || new THREE.Color(0)); p.mat.emissiveIntensity = k;
-      const box = new THREE.Box3().setFromObject(p.holder);
-      const c = box.getCenter(new THREE.Vector3()); this.root.worldToLocal(c);
-      p.label.position.set(c.x, c.y + (box.max.y - box.min.y) / 2 + 0.06, c.z);
+      else if (this.alt.has(id)) { col = ALT; k = 0.08; }
+      p.mat.emissive.copy(col || BLACK); p.mat.emissiveIntensity = k;
+      if (!p.lbox) {   // part bounds in holder space, computed once (Box3.setFromObject walks every vertex)
+        const pos0 = p.holder.position.clone(); p.holder.position.set(0, 0, 0); this.root.updateMatrixWorld(true);
+        const b = new THREE.Box3().setFromObject(p.holder);
+        const inv = new THREE.Matrix4().copy(this.root.matrixWorld).invert(); b.applyMatrix4(inv);
+        p.lbox = { c: b.getCenter(new THREE.Vector3()), top: b.max.y }; p.holder.position.copy(pos0);
+      }
+      p.label.position.set(p.holder.position.x + p.lbox.c.x, p.holder.position.y + p.lbox.top + 0.06, p.holder.position.z + p.lbox.c.z);
       p.label.visible = (this.labelsOn || id === this.selected || this.flagged.has(id)) && !this.hidden.has(id) && ease > 0.5;
       p.el.classList.toggle("sus", this.flagged.has(id));
     }
@@ -312,5 +318,9 @@ export class XRay {
     for (const id of ["impeller", "shaft", "coupling"]) this.parts.get(id).obj.rotation.x += spin;
   }
 
-  partCenter(id) { return new THREE.Box3().setFromObject(this.parts.get(id).holder).getCenter(new THREE.Vector3()); }
+  partCenter(id) {
+    const p = this.parts.get(id);
+    if (p.lbox) return this.root.localToWorld(new THREE.Vector3(p.holder.position.x + p.lbox.c.x, p.holder.position.y + p.lbox.c.y, p.holder.position.z + p.lbox.c.z));
+    return new THREE.Box3().setFromObject(p.holder).getCenter(new THREE.Vector3());
+  }
 }

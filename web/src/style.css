@@ -4,7 +4,7 @@
 :root {
   color-scheme: dark;
   --bg: #0a0b0d;
-  --surface: rgba(20, 22, 26, 0.86);
+  --surface: rgba(19, 21, 25, 0.94);
   --surface-2: rgba(255, 255, 255, 0.04);
   --surface-3: rgba(255, 255, 255, 0.08);
   --line: rgba(255, 255, 255, 0.08);
@@ -37,31 +37,30 @@ canvas.gl { position: absolute; inset: 0; display: block; }
 .wordmark .eyebrow { font-size: 10px; letter-spacing: .42em; color: var(--text-2); text-transform: uppercase; }
 .wordmark .name { font-size: 21px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; margin-top: 4px; }
 .modes { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; padding: 3px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(20px); }
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 .modes button { padding: 6px 16px; border-radius: 7px; color: var(--text-2); font-weight: 500; transition: color .2s, background .2s; }
 .modes button:hover { color: var(--text); }
 .modes button.on { background: var(--surface-3); color: var(--text); }
 .topright { position: absolute; top: 20px; right: 24px; z-index: 6; display: flex; gap: 8px; align-items: flex-start; }
 .ask { position: relative; width: 340px; }
 .ask .field { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px 0 12px; background: var(--surface);
-  border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(20px); color: var(--text-2); }
+  border: 1px solid var(--line); border-radius: 10px; color: var(--text-2); }
 .ask .field:focus-within { border-color: var(--line-2); }
 .ask input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--text); font: inherit; }
 .ask input::placeholder { color: var(--text-3); }
 .kbd { font: 500 10px var(--mono); color: var(--text-3); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
 .pop { position: absolute; top: 42px; right: 0; width: 420px; max-height: 60vh; overflow: auto; background: var(--surface);
-  border: 1px solid var(--line); border-radius: var(--r); backdrop-filter: blur(24px); box-shadow: 0 20px 50px rgba(0, 0, 0, .45); padding: 6px; }
+  border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 20px 50px rgba(0, 0, 0, .45); padding: 6px; }
 .pop .sugg { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; padding: 9px 10px; border-radius: 8px; color: var(--text-2); }
 .pop .sugg:hover, .pop .sugg:focus-visible { background: var(--surface-2); color: var(--text); }
 .pop .reply { padding: 12px 12px 10px; font-size: 13px; line-height: 1.55; }
 .pop .who { font-size: 11px; color: var(--text-3); margin-bottom: 6px; display: flex; justify-content: space-between; }
 .iconbtn { height: 36px; min-width: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(20px); color: var(--text-2); }
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; color: var(--text-2); }
 .iconbtn:hover { color: var(--text); border-color: var(--line-2); }
 
 /* ---------- cards ---------- */
-.card { position: absolute; z-index: 4; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
-  backdrop-filter: blur(24px); box-shadow: 0 24px 60px rgba(0, 0, 0, .35); display: flex; flex-direction: column; overflow: hidden; }
+.card { position: absolute; z-index: 4; contain: layout paint; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 24px 60px rgba(0, 0, 0, .35); display: flex; flex-direction: column; overflow: hidden; }
 .card.left { top: 92px; left: 24px; width: 268px; max-height: calc(100% - 196px); }
 .card.right { top: 92px; right: 64px; width: 360px; max-height: calc(100% - 196px); }
 .card-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; }
@@ -140,7 +139,7 @@ canvas.gl { position: absolute; inset: 0; display: block; }
 
 /* ---------- dock + rail ---------- */
 .dock { position: absolute; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 5; display: flex; align-items: center;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(24px); box-shadow: 0 20px 50px rgba(0, 0, 0, .4); padding: 10px 8px; }
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, .4); padding: 10px 8px; }
 .dock .grp { display: flex; align-items: center; gap: 4px; padding: 0 10px; }
 .dock .grp + .grp { border-left: 1px solid var(--line); }
 .tool { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 64px; white-space: nowrap; padding: 4px 8px; border-radius: 8px; color: var(--text-2); font-size: 11px; }
@@ -168,24 +167,23 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .seg button { white-space: nowrap; padding: 5px 10px; border-radius: 6px; font-size: 11.5px; color: var(--text-3); }
 .seg button.on { background: var(--surface-3); color: var(--text); }
 .rail { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); z-index: 5; display: flex; flex-direction: column; gap: 2px; padding: 6px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; backdrop-filter: blur(20px); }
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .rail button { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; color: var(--text-2); }
 .rail button:hover { color: var(--text); background: var(--surface-2); }
 .rail hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
 
 /* ---------- 3D tags ---------- */
-.tag3d { transform: translate(-50%, calc(-100% - 6px)); padding: 4px 8px; border-radius: 6px; background: rgba(12, 13, 16, .82);
-  border: 1px solid var(--line); color: var(--text); font-size: 11px; white-space: nowrap; backdrop-filter: blur(8px); display: flex; gap: 6px; align-items: center; }
+.tag3d { transform: translate(-50%, calc(-100% - 6px)); padding: 4px 8px; border-radius: 6px; background: rgba(12, 13, 16, .9); will-change: transform;
+  border: 1px solid var(--line); color: var(--text); font-size: 11px; white-space: nowrap; display: flex; gap: 6px; align-items: center; }
 .tag3d small { color: var(--text-3); }
 .tag3d.asset b { font-family: var(--mono); font-weight: 500; }
 .ptag { transform: translate(-50%, -50%); display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--text); white-space: nowrap;
-  padding: 3px 8px 3px 3px; border-radius: 999px; background: rgba(12, 13, 16, .78); border: 1px solid var(--line); pointer-events: none; }
+  padding: 3px 8px 3px 3px; border-radius: 999px; background: rgba(12, 13, 16, .88); will-change: transform; border: 1px solid var(--line); pointer-events: none; }
 .ptag i { font: 500 10px var(--mono); font-style: normal; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-3); }
 .ptag.sus i { background: var(--bad); color: #fff; }
 
 /* ---------- overlays ---------- */
-.toast { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); z-index: 9; background: var(--surface); border: 1px solid var(--line);
-  backdrop-filter: blur(20px); padding: 8px 14px; border-radius: 10px; font-size: 12.5px; color: var(--text-2); animation: in .3s var(--ease); max-width: 640px; text-align: center; }
+.toast { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); z-index: 9; background: var(--surface); border: 1px solid var(--line); padding: 8px 14px; border-radius: 10px; font-size: 12.5px; color: var(--text-2); animation: in .3s var(--ease); max-width: 640px; text-align: center; }
 .toast b { color: var(--text); font-weight: 500; }
 .notice { position: absolute; left: 24px; bottom: 28px; z-index: 4; font-size: 11px; color: var(--text-3); max-width: 300px; line-height: 1.5; }
 .fade { position: absolute; inset: 0; z-index: 8; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity .5s var(--ease); }
