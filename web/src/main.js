@@ -663,7 +663,7 @@ async function arrive() {
   const o = S.navObject, c = new THREE.Vector3(...o.center), r = S.fac.robot.position.clone();
   const dir = c.clone().sub(r).setY(0).normalize();
   const side = new THREE.Vector3(-dir.z, 0, dir.x);
-  if (S.cam === "chase" || S.cam === "free") flyTo(keepInRoom(r.clone().addScaledVector(dir, -0.9).addScaledVector(side, 1.0).setY(1.7), r), c.clone().setY(Math.max(0.35, c.y)));
+  if (S.cam === "chase" || S.cam === "free") flyTo(r.clone().addScaledVector(dir, -0.9).addScaledVector(side, 1.0).setY(1.7), c.clone().setY(Math.max(0.35, c.y)));
   S.selected = o;
   S.fac.setHighlighted([], { selected: o.id, target: o.id });
   const owned = APP.modes.get(S.mode)?.ownsCard;          // Plan / Support keep their own cards

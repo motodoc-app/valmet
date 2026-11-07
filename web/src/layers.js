@@ -180,10 +180,14 @@ function cutChip() {
 function placeCut() {
   if (!L.cut || L.cut.classList.contains("hidden")) return;
   const vis = (el) => el && getComputedStyle(el).display !== "none" && !el.classList.contains("hidden") && el.getBoundingClientRect().height > 0;
-  const g = document.querySelector("#gdStrip"), lc = document.querySelector("#left"), rc = document.querySelector("#right");
-  const top = vis(g) ? g.getBoundingClientRect().bottom + 8 : 64;
-  const x0 = vis(lc) && innerWidth > 820 ? lc.getBoundingClientRect().right + 12 : 12, x1 = vis(rc) && innerWidth > 820 ? rc.getBoundingClientRect().left - 12 : innerWidth - 12;
-  Object.assign(L.cut.style, { top: `${Math.round(top)}px`, left: `${Math.round((x0 + x1) / 2)}px`, maxWidth: `${Math.round(Math.max(240, x1 - x0))}px` });
+  const d = document.querySelector("#dock"), lc = document.querySelector("#left"), rc = document.querySelector("#right");
+  if (innerWidth <= 820) { Object.assign(L.cut.style, { top: "", bottom: "", left: "50%", maxWidth: `${innerWidth - 24}px` }); return; }   // CSS: under the header
+  // just above the dock (and above the semantic legend when it is up), centred between the cards: clear of the
+  // guide strip and the toasts at the top
+  let bottom = vis(d) ? innerHeight - d.getBoundingClientRect().top + 10 : 24;
+  if (vis(L.legend)) bottom = innerHeight - L.legend.getBoundingClientRect().top + 6;
+  const x0 = vis(lc) ? lc.getBoundingClientRect().right + 12 : 12, x1 = vis(rc) ? rc.getBoundingClientRect().left - 12 : innerWidth - 12;
+  Object.assign(L.cut.style, { top: "auto", bottom: `${Math.round(bottom)}px`, left: `${Math.round((x0 + x1) / 2)}px`, maxWidth: `${Math.round(Math.max(240, x1 - x0))}px` });
 }
 addEventListener("resize", placeCut);
 
@@ -204,6 +208,7 @@ on("boot", (A) => {
 on("frame", () => {
   const f = fac(), A = APP; if (!f) return;
   if (++L.tick % 30 === 0 && L.legend && !L.legend.classList.contains("hidden")) placeLegend();   // the dock changes height
+  if (L.tick % 30 === 15) placeCut();
   if (L.tick % 6 === 0 || f.cutAsked !== L.cutAsked || f.cutaway !== L.cutOn) { L.cutAsked = f.cutAsked; L.cutOn = f.cutaway; cutChip(); }
   const sel = A.S.selected?.id ?? null;
   if (sel !== f.outlineId) f.setOutline(sel);
