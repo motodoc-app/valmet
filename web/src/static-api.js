@@ -260,7 +260,7 @@ export const staticApi = {
     return { text: [lead, rest].filter(Boolean).join("\n") || "No supporting document found in the builder pack or the product documentation.",
       sources: hits, mode: "docsearch", asset_id: ctxAsset?.asset_id ?? null };
   },
-  search: async (q) => (await ctx()).search(q || "pump fouling flow current", 8),
+  search: async (q, k = 8) => (await ctx()).search(q || "pump fouling flow current", k),
   doc: async (id) => { const d = (await ctx()).corpus.find((x) => x.id === id); if (!d) throw new Error("not found"); return d; },
   xrayModel: () => once("xray", () => get("xray.json")),
   async draftWO(asset_id) {

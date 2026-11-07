@@ -394,11 +394,11 @@ function renderDock() {
   if (x) {
     const pct = Math.round(S.xray.target * 100);
     $("#dock").innerHTML = `
-      <div class="grp"><button class="tool" data-d="assemble">${icon("cube")}Assemble</button></div>
+      <div class="grp"><button class="tool" data-d="assemble">${icon(S.xray.target > 0.05 ? "cube" : "expand")}${S.xray.target > 0.05 ? "Assemble" : "Explode"}</button></div>
       <div class="grp slider"><div class="top"><span>Explode</span><span id="xpct">${pct}%</span></div><input type="range" id="explode" min="0" max="100" value="${pct}" aria-label="Explode"/></div>
       <div class="grp"><button class="tool" data-d="all">${icon("expand")}All parts</button><button class="tool ${S.xray.ghost ? "on" : ""}" data-d="ghost"><span class="switch"></span>See-through</button><button class="tool ${S.xray.labelsOn ? "on" : ""}" data-d="labels"><span class="switch"></span>Labels</button></div>
       <div class="grp"><div class="seg" role="group" aria-label="Device type">${Object.keys(S.kb.classes).map((cls) => `<button data-xclass="${cls}" class="${S.xClass === cls ? "on" : ""}">${SHORT[cls] || nice(cls)}</button>`).join("")}</div></div>`;
-    $("#explode").oninput = (e) => { S.xray.setExplode(e.target.value / 100); $("#xpct").textContent = `${e.target.value}%`; };
+    $("#explode").oninput = (e) => { const was = S.xray.target > 0.05; S.xray.setExplode(e.target.value / 100); $("#xpct").textContent = `${e.target.value}%`; if (was !== S.xray.target > 0.05) $('#dock [data-d="assemble"]').innerHTML = `${icon(was ? "expand" : "cube")}${was ? "Explode" : "Assemble"}`; };
     return;
   }
   const r = S.route, R = S.robot, active = !!S.curve;
@@ -452,7 +452,7 @@ $("#dock").addEventListener("click", async (e) => {
   if (d === "rate") { S.robot.rate = { 1: 2, 2: 4, 4: 1 }[S.robot.rate]; renderDock(); }
 
   if (d === "block") blockAisle();
-  if (d === "assemble") { S.xray.setExplode(0); renderDock(); }
+  if (d === "assemble") { S.xray.setExplode(S.xray.target > 0.05 ? 0 : 0.65); renderDock(); }
   if (d === "all") { S.xray.isolate(null); flyTo(xHome().pos, xHome().tgt, 1, xCam, xControls); if (S.xSelected) renderPartCard(); }
   if (d === "ghost") { S.xray.setGhost(!S.xray.ghost); renderDock(); }
   if (d === "labels") { S.xray.setLabels(!S.xray.labelsOn); renderDock(); }
@@ -865,6 +865,7 @@ async function prepareXRay(assetId) {
 async function enterXRay(focus = null, assetId = null) {
   const from = S.mode;
   if (!(await prepareXRay(assetId))) return;
+  S.xray.isolate(null);                    // parts removed in Practice (or isolated earlier) come back
   if (from === "facility") {
     const o = S.data.objects.find((x) => x.asset?.asset_id === S.xAsset.asset_id) || S.target;
     const c = new THREE.Vector3(...o.center);
@@ -944,7 +945,7 @@ export function focusPart(id, dist = null) {
 function selectComponent(id) {
   S.xSelected = id;
   S.xray.selected = id;
-  if (S.mode === "xray") { renderComponents(); renderPartCard(); focusPart(id); }
+  if (S.mode === "xray") { if (S.xray.hidden.size) S.xray.isolate(id); renderComponents(); renderPartCard(); focusPart(id); }   // isolation follows the selection
   S.onComponentPick?.(id);
 }
 
@@ -1085,25 +1086,50 @@ function sheet(head, body) {
 }
 $("#sheet").addEventListener("click", (e) => { if (e.target.closest("[data-close-sheet]")) $("#sheet").classList.add("hidden"); });
 $("#libBtn").onclick = () => openLibrary();
-async function openLibrary(q = "") {
-  sheet("Library", `<input class="search" id="libQ" placeholder="Search manuals, asset cards and service cases" value="${esc(q)}"/>
-    <p class="note" style="margin:8px 0 4px">8 knowledge documents, 30 asset cards, 50 service cases and ${Object.values(S.kb.classes).reduce((n, c) => n + c.components.length, 0)} training notes across ${Object.keys(S.kb.classes).length} equipment types. Answers cite the document IDs.</p><div id="libRes"></div>`);
+// where each kind of library document comes from (shown on every result and document, so nothing reads as an OEM manual)
+const LIB_KINDS = {
+  knowledge_doc: ["Knowledge docs", "Builder-pack knowledge document (synthetic challenge data): general guidance, not an OEM manual."],
+  asset_card: ["Asset cards", "Generated from the synthetic challenge workbook (asset master + current state), not live plant data."],
+  service_case: ["Service cases", "Synthetic historical service case from the challenge workbook."],
+  training_kb: ["Training notes", "General training knowledge for the illustrative teaching model, not an OEM manual."],
+  app_doc: ["Product docs", "Documentation of this prototype."],
+};
+// what an empty search shows under each filter (search terms that every document of that kind contains)
+const LIB_Q = { knowledge_doc: "context signals evidence", asset_card: "asset card criticality condition", service_case: "next check workflow severity", training_kb: "training note typical symptoms signals", app_doc: "industrial x-ray prototype" };
+async function openLibrary(q = "", kind = "") {
+  sheet("Library", `<input class="search" id="libQ" placeholder="Search knowledge documents, asset cards, service cases and training notes" value="${esc(q)}" aria-label="Search the library"/>
+    <div class="row lib-f" role="group" aria-label="Filter by kind" style="margin-top:8px"><button class="chip ${kind ? "" : "on"}" data-libkind="">All</button>${Object.entries(LIB_KINDS).map(([k, [l]]) => `<button class="chip ${kind === k ? "on" : ""}" data-libkind="${k}">${l}</button>`).join("")}</div>
+    <p class="note" style="margin:8px 0 4px">8 knowledge documents, 30 asset cards and 50 service cases from the synthetic challenge builder pack, ${Object.values(S.kb.classes).reduce((n, c) => n + c.components.length, 0)} training notes across ${Object.keys(S.kb.classes).length} equipment types, and the product docs. No manufacturer manuals. Answers cite the document IDs.</p><div id="libRes"></div>`);
+  let k = kind;
   const run = async () => {
-    const res = await api.search($("#libQ").value);
-    $("#libRes").innerHTML = res.map((d) => `<button class="doc" data-docid="${esc(d.id)}"><span class="k">${nice(d.kind)}</span><code>${esc(d.id)}</code><p>${esc(d.title)} · ${esc(d.text.slice(0, 120))}…</p></button>`).join("") || '<p class="note">No matches.</p>';
+    const qe = $("#libQ"); if (!qe) return;            // the sheet moved on (a document is open) before the search ran
+    const qv = qe.value.trim(), res = (await api.search(qv || (k ? LIB_Q[k] : ""), k ? 60 : 8)).filter((d) => !k || d.kind === k).slice(0, k ? 12 : 8);
+    if (!$("#libRes") || $("#libQ") !== qe) return;
+    $("#libRes").innerHTML = res.map((d) => `<button class="doc" data-docid="${esc(d.id)}"><span class="k">${esc(LIB_KINDS[d.kind]?.[0].replace(/s$/, "") || nice(d.kind))}</span><code>${esc(d.id)}</code><p>${esc(d.title)} · ${esc(d.text.slice(0, 120))}…</p></button>`).join("") || `<p class="note">No matches${k ? ` in ${esc(LIB_KINDS[k][0].toLowerCase())}` : ""}. Try another word${k ? " or All" : ""}.</p>`;
   };
   $("#libQ").onkeydown = (e) => e.key === "Enter" && run();
+  $("#libQ").oninput = () => { clearTimeout(run.t); run.t = setTimeout(run, 250); };
+  $("#sheet .lib-f").onclick = (e) => { const b = e.target.closest("[data-libkind]"); if (!b) return; k = b.dataset.libkind; $$("#sheet [data-libkind]").forEach((x) => x.classList.toggle("on", x === b)); run(); };
   run();
 }
 async function showDoc(id) {
   if (/^(EVT|WO|DQ)-/.test(id)) return toast(`${esc(id)} is listed under Evidence in the diagnosis.`);
   if (id === "Telemetry_Sample_3d") return toast("Telemetry_Sample_3d is the 30-minute synthetic telemetry stream in the builder pack.");
   try {
-    const d = await api.doc(id);
+    const d = await api.doc(id), a = d.asset_id && assetById(d.asset_id);
     sheet(esc(d.id), `<div class="h1" style="font-size:17px">${esc(d.title)}</div><div class="sub">${nice(d.kind)} · ${esc(d.source)}</div>
-      <p class="p" style="margin-top:12px;color:var(--text)">${esc(d.text)}</p>${d.kind === "training_kb" ? '<p class="note">General training knowledge for the illustrative model, not an OEM manual.</p>' : ""}`);
+      <p class="p" style="margin-top:12px;color:var(--text)">${esc(d.text)}</p>${LIB_KINDS[d.kind] ? `<p class="note">${LIB_KINDS[d.kind][1]}</p>` : ""}
+      <div class="section row">${a ? `<button class="btn" data-lib-asset="${esc(a.asset_id)}">${icon("target")}Show ${esc(a.tag)} in the scan</button>` : ""}<button class="btn" data-lib-back>${icon("back")}Library</button></div>`);
   } catch { toast(`${esc(id)} is a workbook record.`); }
 }
+$("#sheet").addEventListener("click", (e) => {
+  if (e.target.closest("[data-lib-back]")) return openLibrary();
+  const b = e.target.closest("[data-lib-asset]"); if (!b) return;
+  $("#sheet").classList.add("hidden");
+  if (APP.xo?.open) APP.xo.close();
+  if (!sceneMode()) setMode("facility");
+  selectAsset(b.dataset.libAsset, { fly: true });
+});
 export function setFocus(on) { document.body.classList.toggle("focus", on); }
 $("#focusExit").onclick = () => setFocus(false);
 $("#tourBtn").onclick = () => startTour(TOUR_API);
