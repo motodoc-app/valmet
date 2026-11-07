@@ -69,6 +69,36 @@ def test_reroute_around_blocked_walkway(world):
     world.plan(world.start_xz, tid, [])   # reset
 
 
+def test_layout_plan_clears_one_footprint_and_blocks_another(world):
+    """Maintenance planning: moving equipment frees its old footprint and occupies the new one; the route stays valid."""
+    import numpy as np
+    nav = world.nav
+    tid = world.mapping["bindings"][world.mapping["target_asset_id"]]["object_id"]
+    tc = world.objects[tid]["center"]
+    moved = world.objects.get("OBJ-028") or min(
+        (o for o in world.scene["objects"] if o["kind"] == "object" and o["id"] != tid),
+        key=lambda o: (o["center"][0] - tc[0]) ** 2 + (o["center"][2] - tc[2]) ** 2)
+    clear = {"x": moved["center"][0], "z": moved["center"][2], "w": moved["size"][0] + 0.12,
+             "d": moved["size"][2] + 0.12, "yaw": moved["yaw"]}
+    wp = world.plan(world.start_xz, tid)["waypoints"]
+    mid = wp[len(wp) // 2]
+    block = {"x": mid[0], "z": mid[2], "w": moved["size"][0], "d": moved["size"][2], "yaw": 0.3}   # parked across the route
+    r = world.plan(world.start_xz, tid, [block], [clear])
+    cm = np.zeros_like(nav.floor); nav._rasterise_box(nav._box(clear), cm)
+    bm = np.zeros_like(nav.floor); nav._rasterise_box(nav._box(block), bm)
+    assert (nav.occupied_raw & cm).any(), "the moved object occupied cells before the move"
+    assert not nav.occupied[cm & nav.floor & ~bm].any(), "its old footprint is free floor in the plan"
+    assert nav.occupied[bm].all(), "its new footprint is an obstacle"
+    assert r["ok"] and r["clears"] == [clear] and r["blocks"] == [block]
+    assert r["validation"]["collision_free"] and r["validation"]["collisions"] == 0
+    assert r["validation"]["min_clearance_m"] >= config.ROBOT_RADIUS - 1e-6
+    for x, _, z in r["waypoints"]:   # no waypoint inside the new footprint
+        rr, cc = nav.grid.to_cell(x, z)
+        assert not bm[rr, cc]
+    world.plan(world.start_xz, tid)   # reset
+    assert not nav.cleared.any() and np.array_equal(nav.occupied, nav.occupied_raw)
+
+
 def test_citation_checker_strips_unknown_ids(world):
     cp = world.copilot
     text, bad = cp._check_citations("Seen in [EVT-99999] and [DOC-FIELD-SAFETY].", {"DOC-FIELD-SAFETY"})

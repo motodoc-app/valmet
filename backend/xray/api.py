@@ -29,7 +29,8 @@ class PlanReq(BaseModel):
     object_id: str | None = None
     asset_id: str | None = None
     start: list[float] | None = None          # [x, z]
-    blocks: list[dict] = []
+    blocks: list[dict] = []                   # extra obstacles {x, z, w, d, yaw}
+    clears: list[dict] = []                   # footprints treated as free floor (equipment moved in a layout plan)
 
 
 class QueryReq(BaseModel):
@@ -97,7 +98,7 @@ def nav_plan(req: PlanReq):
         raise HTTPException(404, "unknown object")
     start = req.start or list(WORLD.start_xz)
     t = time.time()
-    res = WORLD.plan(start, oid, req.blocks)
+    res = WORLD.plan(start, oid, req.blocks, req.clears)
     res["compute_ms"] = round((time.time() - t) * 1000, 1)
     res["object_id"] = oid
     return res

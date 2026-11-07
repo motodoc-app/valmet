@@ -27,7 +27,7 @@ function edt(occ, W, H, res) {
     for (let q = 0; q < n; q++) { while (z[k + 1] < q) k++; d[q] = (q - v[k]) ** 2 + f[v[k]]; }
   };
   for (let c = 0; c < W; c++) { for (let r = 0; r < H; r++) f[r] = occ[r * W + c] ? 0 : INF; pass(H); for (let r = 0; r < H; r++) g[r * W + c] = d[r]; }
-  const out = new Float32Array(W * H);
+  const out = new Float64Array(W * H);   // float64 like scipy: a clearance of exactly the robot radius is not walkable
   for (let r = 0; r < H; r++) { for (let c = 0; c < W; c++) f[c] = g[r * W + c]; pass(W); for (let c = 0; c < W; c++) out[r * W + c] = Math.sqrt(d[c]) * res; }
   return out;
 }
@@ -48,14 +48,17 @@ class Nav {
     const hb = Uint8Array.from(atob(g.height_mm), (c) => c.charCodeAt(0));
     this.height = new Int16Array(hb.buffer);
     this.blocked = new Uint8Array(n);
+    this.cleared = new Uint8Array(n);     // planning: footprints of equipment moved away (free floor again)
     this.rebuild();
   }
   idx(r, c) { return r * this.W + c; }
+  /** Obstacles the planner uses: scan + frames, minus cleared footprints, plus user blockages (navigation.py NavMap.occupied). */
+  obstacle(i) { return (this.occ[i] & (1 - this.cleared[i])) | this.blocked[i]; }
   toCell(x, z) { return [Math.floor((z - this.z0) / this.res), Math.floor((x - this.x0) / this.res)]; }
   toWorld(r, c) { return [this.x0 + (c + 0.5) * this.res, this.z0 + (r + 0.5) * this.res]; }
   rebuild() {
     const n = this.W * this.H, occ = new Uint8Array(n);
-    for (let i = 0; i < n; i++) occ[i] = this.occ[i] | this.blocked[i];
+    for (let i = 0; i < n; i++) occ[i] = this.obstacle(i);
     this.clear = edt(occ, this.W, this.H, this.res);
     this.walk = new Uint8Array(n);
     for (let i = 0; i < n; i++) this.walk[i] = this.floor[i] && this.clear[i] > this.robot_radius ? 1 : 0;
@@ -69,7 +72,28 @@ class Nav {
       if (Math.abs(dx * cs + dz * sn) <= hx && Math.abs(-dx * sn + dz * cs) <= hz) out[this.idx(r, c)] = 1;
     }
   }
-  setBlocks(blocks) { this.blocked.fill(0); for (const b of blocks) this.rasterise(b, this.blocked); this.rebuild(); }
+  /** blocks become obstacles; clears (footprints of equipment moved in a layout plan) become free where floor exists. */
+  setBlocks(blocks, clears = []) {
+    this.blocked.fill(0); this.cleared.fill(0);
+    for (const b of blocks) this.rasterise(b, this.blocked);
+    for (const c of clears) this.rasterise(c, this.cleared);
+    for (let i = 0; i < this.cleared.length; i++) this.cleared[i] &= this.floor[i];
+    this.rebuild();
+  }
+  /** Walkable cell from which the object can be inspected, closest to its frame (navigation.py approach_cell). */
+  approachCell(o) {
+    const n = this.W * this.H, mask = new Uint8Array(n);
+    this.rasterise({ x: o.center[0], z: o.center[2], w: o.size[0], d: o.size[2], yaw: o.yaw }, mask);
+    if (!mask.some((v) => v)) { const [r, c] = this.toCell(o.center[0], o.center[2]); mask[this.idx(Math.min(Math.max(r, 0), this.H - 1), Math.min(Math.max(c, 0), this.W - 1))] = 1; }
+    const dist = edt(mask, this.W, this.H, this.res);
+    let best = -1, bs = Infinity;
+    for (let i = 0; i < n; i++) {
+      if (!this.walk[i] || !(dist[i] < 1.6)) continue;
+      const s = dist[i] - 0.15 * Math.min(this.clear[i], 0.6);
+      if (s < bs) { bs = s; best = i; }
+    }
+    return best < 0 ? null : [(best / this.W) | 0, best % this.W];
+  }
   nearestWalkable(x, z) {
     const [r, c] = this.toCell(x, z); let best = null, bd = Infinity;
     for (let i = 0; i < this.walk.length; i++) if (this.walk[i]) { const rr = (i / this.W) | 0, cc = i % this.W, d = (rr - r) ** 2 + (cc - c) ** 2; if (d < bd) { bd = d; best = [rr, cc]; } }
@@ -118,7 +142,7 @@ class Nav {
       const a = cells[k], b = cells[k + 1], n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) * 2 + 1;
       for (let s = 0; s < n; s++) {
         const t = n === 1 ? 0 : s / (n - 1), i = this.idx(Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t));
-        samples++; minc = Math.min(minc, this.clear[i]); if (this.occ[i] || this.blocked[i] || !this.floor[i]) hits++;
+        samples++; minc = Math.min(minc, this.clear[i]); if (this.obstacle(i) || !this.floor[i]) hits++;
       }
     }
     return { samples, min_clearance_m: +minc.toFixed(3), collisions: hits, robot_radius_m: this.robot_radius, collision_free: hits === 0 && minc >= this.robot_radius - 1e-6 };
@@ -173,12 +197,14 @@ export const staticApi = {
   isStatic: true,
   health: async () => { const c = await ctx(); return { ok: true, llm_model: c.manifest.llm, static: true }; },
   scene: async () => (await ctx()).scene,
-  grid: async () => { const c = await ctx(); const n = c.nav; return { ...n, walkableMask: n.walk, occupiedMask: Uint8Array.from(n.occ, (v, i) => v | n.blocked[i]) }; },
-  async plan({ object_id, start, blocks = [] }) {
+  grid: async () => { const c = await ctx(); const n = c.nav; return { ...n, walkableMask: n.walk, occupiedMask: Uint8Array.from(n.occ, (v, i) => n.obstacle(i)) }; },
+  async plan({ object_id, start, blocks = [], clears = [] }) {
     const c = await ctx(), nav = c.nav, t0 = performance.now();
-    nav.setBlocks(blocks);
+    nav.setBlocks(blocks, clears);
     const s = nav.nearestWalkable(start[0], start[1]);
     let g = c.goals[object_id];
+    // a layout plan changes the floor around equipment: recompute the inspection spot like the server does
+    if (clears.length) { const o = c.scene.objects.find((x) => x.id === object_id); if (o) g = nav.approachCell(o) || g; }
     if (g && !nav.walk[nav.idx(...g)]) { const [x, z] = nav.toWorld(...g); g = nav.nearestWalkable(x, z); }
     if (!s || !g) return { ok: false, reason: "start or goal not reachable on the walkable floor" };
     const raw = nav.astar(s, g);
@@ -186,7 +212,7 @@ export const staticApi = {
     const sm = nav.smooth(raw), pts = sm.map(([r, cc]) => nav.toWorld(r, cc));
     let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
     return { ok: true, waypoints: pts.map(([x, z]) => [+x.toFixed(3), 0, +z.toFixed(3)]), raw_cells: raw.length, length_m: +len.toFixed(2),
-      validation: nav.validate(sm), compute_ms: +(performance.now() - t0).toFixed(1), blocks, object_id };
+      validation: nav.validate(sm), compute_ms: +(performance.now() - t0).toFixed(1), blocks, ...(clears.length ? { clears } : {}), object_id };
   },
   diagnose: (id) => once("d" + id, () => get(`diag/${id}.json`)),
   async query(question, asset_id, component) {

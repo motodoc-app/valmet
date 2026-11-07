@@ -109,10 +109,13 @@ class World:
             "n_bound_assets": len(self.mapping["bindings"]),
         }
 
-    def plan(self, start_xz, object_id: str, blocks: list[dict] | None = None) -> dict:
-        self.nav.set_blockages(blocks or [])
+    def plan(self, start_xz, object_id: str, blocks: list[dict] | None = None,
+             clears: list[dict] | None = None) -> dict:
+        """Route to an object. blocks = extra obstacles, clears = footprints treated as free floor (layout plans)."""
+        self.nav.set_blockages(blocks or [], clears or [])
         res = self.nav.plan(tuple(start_xz), self.objects[object_id])
         res["blocks"] = blocks or []
+        res["clears"] = clears or []
         if res.get("ok"):
             res["proximity_preview"] = self.along_route(res["waypoints"])
         return res
