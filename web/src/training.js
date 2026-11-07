@@ -8,13 +8,21 @@ export function initTraining(S, ui) {
   let lastClass = null;
   const reset = () => { if (lastClass !== S.xClass) { topic = null; step = 0; P = null; lastClass = S.xClass; } };
   const head = (eyebrow, title, tag) => `<div class="card-h" style="padding-bottom:0"><span class="eyebrow-row">${eyebrow}${tag ? `<span class="tag">${tag}</span>` : ""}</span></div><div class="card-b"><div class="h1">${title}</div>`;
+  // set the explode amount and keep the dock's slider, percentage and Assemble/Explode button in step with the model
+  const explode = (v) => {
+    S.xray.setExplode(v);
+    const pct = Math.round(v * 100), ex = document.getElementById("explode"), xp = document.getElementById("xpct"), as = document.querySelector('#dock [data-d="assemble"]');
+    if (ex) ex.value = pct;
+    if (xp) xp.textContent = `${pct}%`;
+    if (as) as.innerHTML = `${icon(v > 0.05 ? "cube" : "expand")}${v > 0.05 ? "Assemble" : "Explode"}`;
+  };
   const bar = (n, i) => `<div class="progress">${Array.from({ length: n }, (_, k) => `<i class="${k < i ? "done" : k === i ? "cur" : ""}"></i>`).join("")}</div>`;
 
   // ---------------------------------------------------------------- LEARN
   let topic = null, step = 0;
   function learn() {
     reset();
-    S.xray.setHidden([]); S.xray.setGhost(true); S.xray.setExplode(0.3);
+    S.xray.setHidden([]); S.xray.setGhost(true); explode(0.3);
     if (!topic) return topics();
     const st = topic.steps[step];
     S.xray.highlight(st.focus);
@@ -54,7 +62,7 @@ export function initTraining(S, ui) {
     S.onComponentPick = null;
     let body = "";
     if (task.type === "select_component") {
-      S.xray.setExplode(0.8); S.xray.highlight([]);
+      explode(0.8); S.xray.highlight([]);
       body = `<p class="p" style="color:var(--text)">${esc(task.prompt)}</p><p class="note">Click a part in the model.</p><div id="fb"></div>`;
       S.onComponentPick = (id) => {
         const ok = task.answer.includes(id);
@@ -70,7 +78,7 @@ export function initTraining(S, ui) {
       body = `<p class="p" style="color:var(--text)">${esc(task.prompt)}</p><div class="quiz">${order.map((i) => `<button class="opt" data-i="${i}">${esc(task.options[i])}</button>`).join("")}</div><div id="fb"></div>`;
     } else {
       const dis = task.type === "disassembly", done = dis ? P.removed : P.reinstalled;
-      if (dis && !P.removed.length) { S.xray.setExplode(0.15); S.xray.setHidden([]); }
+      if (dis && !P.removed.length) { explode(0.15); S.xray.setHidden([]); }
       body = `<p class="p" style="color:var(--text)">${esc(task.prompt)}</p><p class="note">${dis ? "Click parts in the model to remove them." : "Choose the parts to refit, in order."}</p>
         <div class="section">${task.order.map((id, k) => `<div class="kv"><span>${k + 1}. ${esc(comp(id).name)}</span><span>${done.includes(id) ? (dis ? "Removed" : "Refitted") : "–"}</span></div>`).join("")}</div>
         ${dis ? "" : `<div class="section row">${[...task.order].sort().map((id) => `<button class="btn" data-re="${id}" ${done.includes(id) ? "disabled" : ""}>${esc(comp(id).name)}</button>`).join("")}</div>`}<div id="fb"></div>`;
@@ -106,7 +114,7 @@ export function initTraining(S, ui) {
 
   function intro() {
     const sc = def().practice_scenarios[0];
-    S.xray.setHidden([]); S.xray.setExplode(0); S.xray.highlight([]);
+    S.xray.setHidden([]); explode(0); S.xray.highlight([]);
     const spark = (v) => { const lo = Math.min(...v), hi = Math.max(...v), r = hi - lo || 1; return `<svg class="spark" viewBox="0 0 88 26"><polyline fill="none" stroke="var(--text-2)" stroke-width="1.25" points="${v.map((y, i) => `${(i / (v.length - 1)) * 88},${23 - ((y - lo) / r) * 20}`).join(" ")}"/></svg>`; };
     card(`${head(`Practice · ${esc(def().label)}`, esc(sc.title.replace(" (fictional training case)", "")), "Fictional case")}
       <p class="p" style="margin-top:10px">${esc(sc.brief)}</p>
@@ -128,8 +136,7 @@ export function initTraining(S, ui) {
   }
   function summary() {
     const pct = Math.round((100 * P.score) / Math.max(1, P.attempts));
-    S.onComponentPick = null; S.xray.setHidden([]); S.xray.setExplode(0.5);
-    const ex = document.getElementById("explode"), xp = document.getElementById("xpct"); if (ex) ex.value = 50; if (xp) xp.textContent = "50%";
+    S.onComponentPick = null; S.xray.setHidden([]); explode(0.5);
     card(`${head("Practice", pct >= 80 ? "Exercise passed" : "Review recommended")}
       <div class="sub">${P.score} of ${P.attempts} answers correct · ${Math.round((Date.now() - P.t0) / 1000)} s</div>
       <div class="meter" style="margin-top:12px"><i style="width:${pct}%"></i></div>

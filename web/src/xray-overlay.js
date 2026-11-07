@@ -79,7 +79,13 @@ function onClick(e) {
   if (a === "labels") { X.setLabels(!X.labelsOn); footer(); }
   if (a === "home") { X.isolate(null); const h = home(); APP.flyTo(h.pos, h.tgt, 0.9, XO.cam, XO.ctl); side(); }
   if (a === "isolate") { X.isolate(X.hidden.size === 0 ? S.xSelected : null); side(); }
-  if (a === "diag") { close(); APP.S.cardLock = true; APP.renderDiagnosis?.(); document.getElementById("right")?.classList.remove("min"); }
+  if (a === "diag") {
+    // the diagnosis of THIS asset (already loaded for the panel); S.diag may be empty or belong to another asset
+    const d = S.xDiag; close(); S.cardLock = true;
+    if (d) { S.diag = d; S.tab = "overview"; }
+    if (S.diag) APP.renderDiagnosis?.();
+    document.getElementById("right")?.classList.remove("min");
+  }
 }
 
 const xDef = () => APP.S.kb.classes[APP.S.xClass];
@@ -109,7 +115,9 @@ function side() {
 function partHTML() {
   const S = APP.S, D = S.xDiag, c = xDef().components.find((x) => x.id === S.xSelected);
   const lead = D?.hypotheses?.[0];
-  if (!c) return `<p class="p">${esc(xDef().function)}</p>${lead?.components?.length ? "" : `<p class="note">${esc(lead?.hypothesis || "No component is singled out by the evidence.")}</p>`}<p class="note">Select a part in the model or the list.</p>`;
+  // a healthy asset has no fault hypothesis worth showing (the engine's placeholder reads "Unspecified deviation")
+  const healthy = S.xAsset?.condition_state === "healthy" || S.xAsset?.issue_code === "NORMAL";
+  if (!c) return `<p class="p">${esc(xDef().function)}</p>${lead?.components?.length ? "" : `<p class="note">${healthy ? `No deviation for ${esc(S.xAsset.tag)} in the synthetic data, so no part is singled out.` : esc(lead?.hypothesis || "No component is singled out by the evidence.")}</p>`}<p class="note">Select a part in the model or the list.</p>`;
   const sus = (lead?.components || []).includes(c.id);
   const tel = Object.fromEntries((D?.telemetry?.signals || []).map((s) => [s.signal, s]));
   const sig = c.evidence_signals.map((s) => tel[s]).filter(Boolean)
@@ -146,6 +154,8 @@ function focusPart(id) {
   APP.flyTo(c.clone().addScaledVector(dir, h.pos.distanceTo(h.tgt) * 0.62), c, 0.9, XO.cam, XO.ctl);
 }
 function pick(id, { fly = true } = {}) {
+  const X = APP.S.xray;
+  if (X.hidden.size && X.parts.has(id)) X.isolate(id);   // "Show only this part" follows the selection (never select a hidden part)
   APP.selectComponent(id);                 // shared selection logic (S.xSelected, model highlight, Learn/Practice hooks)
   side();
   if (fly) focusPart(id);

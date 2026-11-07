@@ -38,7 +38,7 @@ const serverApi = {
     return r;
   },
   query: (question, asset_id, component) => post("/api/copilot/query", { question, asset_id, component }),
-  search: (q) => fetch(`/api/knowledge/search?q=${encodeURIComponent(q || "pump fouling flow current")}`).then(j),
+  search: (q, k = 8) => fetch(`/api/knowledge/search?q=${encodeURIComponent(q || "pump fouling flow current")}&k=${k}`).then(j),
   doc: (id) => fetch(`/api/knowledge/doc/${encodeURIComponent(id)}`).then(j),
   xrayModel: () => fetch("/api/xray/model").then(j),
   draftWO: (asset_id) => post("/api/work-orders/draft", { asset_id }),
