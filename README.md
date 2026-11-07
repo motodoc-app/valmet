@@ -1,31 +1,37 @@
-# Industrial X-Ray — From Factory to Component
+# Industrial X-Ray — the pre-visit copilot
 
 **Valmet × Since AI Hackathon 2026 · Industrial Metaverse: Semantic 3D Scene Understanding & Autonomous Field-Service Copilot**
 
-The demonstrator takes a raw Gaussian-splat scan of an equipment room and works out what is in it. An inspection robot
-plans a collision-free route to a faulty pump and reads every asset it passes. On arrival, a copilot explains the fault
-using cited evidence. The technician can then open an X-Ray view of the machine, learn why the fault happens and
-rehearse the inspection.
+**Explore the site. Understand the equipment. Plan the maintenance. Practise the task. Get expert support — before
+stepping onto the factory floor.**
+
+Industrial X-Ray turns a scan of an unfamiliar industrial site into an interactive workspace. The demo follows one
+technician preparing to service pump P-005: find it in the real 3D scan, read the cited diagnosis, clear its service
+area in a safe layout simulation, check the route in, rehearse on an exploded teaching model, and hand the whole
+context to a remote expert.
 
 ```
-fault detected → located → safe route (live reroute) → grounded diagnosis → X-Ray component view → learn / practise → work-order draft
+Explore (scan, semantic view, site map) → Understand (cited diagnosis) → Plan (move a virtual proxy: collisions,
+clearance, route) → Practise (X-Ray, Learn, Practice) → Support (pins + hand-off link to an expert) → Value
 ```
 
 ### In plain words
-Someone walked through a real equipment room with a 3D scanner. This software looks at that scan and works out,
-by itself, where every machine, pipe and valve is. It links those objects to the plant's maintenance records,
-sends a virtual inspection robot along a safe path to the machine that is failing, and explains what is probably
-wrong, showing where every fact came from. A new technician can then "X-ray" the machine to see its parts, learn
-why the fault happens and practise the inspection, all before touching real equipment. Press **Tour** in the app
-for a one-minute guided walk-through: each step has a plain explanation and one line for engineers.
+Someone walked through a real equipment room with a 3D scanner. This software splits that scan into hundreds of
+object candidates and guesses what each one is (with a confidence), links the pumps, motors and valves to the plant's
+maintenance records, and lets a technician prepare a visit from a laptop: where the machine is, what is probably
+wrong, how to get to it, what is in the way, what to do, and who to ask. Press **Tour** in the app for a guided
+walk-through: each step has a plain explanation and one line for engineers.
 
 | Criterion (weight) | What the demo shows |
 |---|---|
-| Semantic extraction & 3D frames (30 %) | **676 objects** with oriented 3D frames, plus floor, ceiling and **4 walls** fitted as planes, from the full 1.68 M-splat scan. A vision-language model names every cluster from renders, and each label carries its confidence and source. Four human review corrections are recorded and visible in the UI. |
-| Obstacle-aware navigation & proximity (25 %) | Multi-level height-field, clearance-aware A*, smoothing and an **independent validation** pass. The demo route is **8.4 m across the room**, with 0 collisions and minimum clearance of at least the 0.20 m robot radius. **Block aisle** reroutes live in about 10–20 ms. Every object within 1.2 m is framed (208 along the route), and the 19 workbook assets passed are read out. |
-| Grounded AI diagnostics (20 %) | A deterministic evidence engine combines telemetry z-scores against the asset's own baseline and its peers, alarms, work orders, similar cases and data-quality issues. The LLM narration may cite **only** IDs from that evidence; the server removes anything else. The confidence calculation is shown (0.52 for P-005). |
-| Backend architecture (15 %) | Modular Python pipeline and a FastAPI service following the workbook's `API_Contract`. Pytest covers the core guarantees. A serverless export runs the same app as a static site. |
-| Demo clarity & innovation (10 %) | Photoreal splats in the browser, natural-language commands, and a calm studio-style UI. The journey runs facility → X-Ray → Learn → Practice. |
+| Semantic extraction & 3D frames (30 %) | **676 segmented object candidates** with oriented 3D frames, plus floor, ceiling and 4 walls as planes, from the full 1.68 M-splat scan. A vision-language model names each candidate with a confidence. We report honest tiers — 416 with a specific type, 195 at confidence ≥ 0.70, 7 review corrections, 30 linked to records — plus an AI second-opinion audit and a human check sheet ([`docs/SCENE_QUALITY.md`](docs/SCENE_QUALITY.md)). Semantic colour view and an overhead site map. |
+| Obstacle-aware navigation & proximity (25 %) | Multi-level height-field, clearance-aware A*, smoothing and an independent validation pass (0 collisions, clearance ≥ the 0.20 m robot radius). **Block aisle** re-routes live; **Plan mode** moves a virtual proxy and re-plans with the changed layout; every asset within 1.2 m of the route is read out, exactly, forwards and in reverse. |
+| Grounded AI diagnostics (20 %) | An evidence engine combines telemetry z-scores against the asset's own baseline and its peers, alarms, work orders, similar cases and data-quality issues. The LLM narration may cite **only** IDs from that evidence; anything else is removed. Confidence is shown with its breakdown (0.52 for P-005). |
+| Backend architecture (15 %) | Modular Python pipeline and a FastAPI service following the workbook's `API_Contract`; a serverless export runs the same app as a static site; feature modules plug in through `web/src/ext.js`; 11 pytest guarantees and headless-browser suites. |
+| Demo clarity & innovation (10 %) | A pre-visit workflow Valmet described: explore, understand, plan, practise, get support. Interactive planning, remote hand-off, works without WebGL (2D floor plan), on phones, and from a fresh checkout. |
+
+Everything that is synthetic, approximate, precomputed or illustrative is labelled in the app (About sheet) and in
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
 
 ## What is automatic, what is labelled, what is illustrative
 
@@ -40,6 +46,9 @@ for a one-minute guided walk-through: each step has a plain explanation and one 
 | Diagnosis | Workbook telemetry, alarms, work orders, cases and documents; LLM wording limited to cited IDs | Grounded in synthetic data |
 | Exploded models, lessons, practice | One library entry per equipment type (pump, motor, control valve, pressure transmitter, vibration sensor) | Illustrative teaching models, not from the scan, not OEM |
 | Manuals | Retrieval over the builder pack's documents and the training notes, with citations | No OEM manuals were supplied |
+| Maintenance planning | Virtual proxy of an object moved on the floor; collisions vs object boxes and the occupancy grid, clearance from the distance transform, route re-planned | Approximate simulation; the scan is never changed; not an engineering check |
+| Remote support | Pins, question, plan and evidence serialised into a link or package; expert reply and draft work order come back the same way | Asynchronous hand-off; no live multi-user session; no plant controls |
+| Semantic view, site map | Category-coloured boxes over a dimmed scan; overhead plan with legend and PNG export | Derived from the candidates above (same caveats) |
 | Value page | Calculator with editable, clearly hypothetical inputs and the formula shown | Illustrative |
 
 ### Every feature works for every device

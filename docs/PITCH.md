@@ -1,59 +1,94 @@
-# Pitch deck (7 slides) + demo-video script (≤ 5 min)
+# Pitch: Industrial X-Ray — the pre-visit copilot
 
-## Slides
+**One line:** We turn a scan of an unfamiliar industrial site into an interactive workspace where technicians can
+understand equipment, plan maintenance, rehearse procedures and get expert support — before they arrive.
 
-**1 · Industrial X-Ray AI — From Factory to Component**
-A raw 3D scan becomes a plant that knows its equipment: it finds the fault, drives a safe route there, explains the
-diagnosis with evidence, and lets the technician look inside the machine.
-*Visual: the splat scene with coloured asset frames and the robot route.*
+**Promise:** Explore the site. Understand the equipment. Plan the maintenance. Practise the task. Get expert support.
+Before stepping onto the factory floor.
 
-**2 · The problem**
-Field-service context is split across the physical space, condition data and documents, and raw splat scans have no
-semantics. *Visual: the raw splat next to the same view with frames.*
+Everything below is shown live in the prototype, and every limit is stated on screen and in
+[`LIMITATIONS.md`](LIMITATIONS.md). Numbers come from the repository (`docs/SCENE_QUALITY.md`, tests, the app).
 
-**3 · Semantic 3D extraction (30 %)**
-Plane fitting → recursive DBSCAN → pipe merging → oriented 3-D frames → VLM labels on renders → human review layer.
-**676 objects**, floor, ceiling and 4 walls, each label with its confidence and source. *Visual: before/after, category chips.*
-Data integrity: every scan is validated record by record. The first distributed file was 67 % corrupt; the pipeline
-flagged it, and then ran unchanged on the clean 1.68 M-splat `Equipment Room.ply`.
+---
 
-**4 · Obstacle-aware navigation (25 %)**
-Multi-level height-field → clearance-aware A* → LOS smoothing → **independent validation** (8.4 m across the room,
-min clearance ≥ 0.20 m robot radius, 0 collisions). Live rerouting around a blocked aisle in about 10–20 ms.
-Proximity framing within 1.2 m (208 objects and 19 assets along the route).
-*Visual: the nav grid overlay and the reroute ghost path.*
+## Slides (7)
 
-**5 · Grounded diagnostics (20 %)**
-Evidence engine (telemetry z-scores against own baseline and peers, alarms, work orders, similar cases, data quality)
-→ LLM narration that may cite only evidence IDs. The server strips unsupported IDs. The confidence calculation is
-shown: 0.52 for P-005, lowered by data-quality issues and the mapping. Safe next steps follow DOC-FIELD-SAFETY.
-*Visual: the diagnosis panel.*
+**1 · The problem: the first visit is the expensive one**
+A technician is sent to service a pump at a plant they have never seen. Today they arrive with a work order, a PDF
+and a phone number. Finding the asset, understanding its condition, clearing access and getting expert advice all
+happen on site, under time pressure.
+*Visual: the raw scan opening on the briefing card "Service P-005".*
 
-**6 · From facility to component: X-Ray, Learn, Practice**
-Exploded *illustrative* pump with suspected parts linked to the diagnosis, component Q&A with citations, guided
-tutorials synced to 3D highlights, and a scored virtual exercise behind a safety gate. Clearly labelled as educational,
-non-OEM and not connected to controls.
+**2 · A real scan, understood — and measured honestly**
+The supplied Gaussian-splat scan (1.68 M splats, integrity-checked) is segmented into **676 object candidates**, each
+with an oriented 3D box, a name and a confidence. We report what that number means:
 
-**7 · Architecture & business value**
-Python pipeline + FastAPI (API_Contract) + three.js/Spark, with pytest guarantees. Illustrative ROI (hypothetical
-inputs): if locating equipment and gathering evidence and documents takes about
-25 min per corrective job today, and the copilot cuts that by 60 %, then a site with 600 such jobs a year saves
-about 150 technician-hours a year (≈ €9 k at €60/h). That is before the effect of better first-time-fix rates
-or the training value. *These are assumptions to validate with Valmet, not measurements.*
+| Tier | Count |
+|---|---:|
+| Segmented candidates | 676 |
+| Given a specific equipment type | 416 |
+| Specific type with confidence ≥ 0.70 | 195 |
+| Corrected in the team's visual review (not field-verified) | 7 |
+| Linked to a (synthetic) workbook asset | 30 |
 
-## Video script (target 4:30)
+An AI second-opinion check of a 60-object random sample agreed with 18 % of specific labels (95 % CI 11–30 %; half
+could not be judged from sparse renders). **We do not claim 676 recognised objects.** A human check sheet is ready
+(`docs/label_review_sample.csv`); a pilot would report precision and recall per category.
+*Visual: the Scene-understanding panel, then the colour-coded semantic view and the site map.*
 
-| t | Screen | Voice-over |
+**3 · Plan the visit: interactive maintenance planning**
+A pallet truck is parked in P-005's service area. In Plan mode the technician moves a virtual stand-in for it:
+collisions with known obstacles, approximate clearance, whether the service zone is clear, and the robot's route
+before and after are recomputed on the spot. The scan is never changed; the plan exports as a summary.
+*Approximate geometry (boxes + occupancy grid) — not an engineering clearance check.*
+*Visual: dragging the proxy from red to green; route before/after.*
+
+**4 · Understand the fault, with evidence**
+The copilot explains P-005's likely fouling: telemetry against its own baseline and its peers, alarms, work orders
+and similar cases, a confidence of 52 % with its breakdown, and the first safe step. Every claim cites a record;
+unsupported citations are removed automatically. A collision-free route (A* on a 2.5D heightfield, validated) shows
+the way in; it re-routes live when an aisle is blocked.
+*Data: the challenge's synthetic workbook. Hosted demo: diagnoses generated in advance by the same backend.*
+
+**5 · Rehearse before touching anything**
+X-Ray opens a teaching model of the pump with the suspect parts in red; Learn walks through the fault; Practice is a
+scored exercise behind a safety check. Five equipment types, 49 components.
+*Illustrative teaching models — not manufacturer drawings, not reconstructed from the scan, not certified training.*
+
+**6 · Expert support without a site visit**
+The technician pins notes on the scene and sends the whole context — asset, evidence, plan and pins — to a remote
+specialist as a link or package. The expert adds a recommendation (optionally AI-drafted, marked for review) and a
+draft work order, and sends it back.
+*Asynchronous hand-off: no live multi-user session in this prototype; no connection to plant controls.*
+
+**7 · Value, limits and the pilot**
+Proposed benefits: better-prepared technicians, less uncertainty at unfamiliar sites, faster equipment
+identification, planned access, knowledge transfer, more useful remote support, possibly fewer repeat visits.
+**None are measured yet.** The Value page shows the arithmetic with editable, hypothetical inputs.
+Pilot KPIs: object-identification precision/recall on a labelled sample · share of target assets located correctly
+· time to find equipment · time to prepare a visit · planning collisions caught · training scores · time to assemble
+a remote-support case · start-up time and frame rate on standard laptops · technician confidence (SUS).
+Roadmap: read-only plant data connectors (OPC UA / historian / CMMS, see [`DATA_INTEGRATION.md`](DATA_INTEGRATION.md)),
+per-object Gaussian extraction and IFC for key equipment ([`RESEARCH_NOTES.md`](RESEARCH_NOTES.md)), live sessions.
+Browser-based: no install, a shareable link — advantages over current tools are hypotheses to benchmark, not claims.
+
+---
+
+## Live presentation (≈ 4 min)
+
+| t | Do | Say |
 |---|---|---|
-| 0:00 | Title → splat scene | “This is Valmet's boiler-room scan. Raw splats know nothing. Here is what our pipeline turns it into.” |
-| 0:15 | Toggle frames all / assets; nav grid | “676 objects segmented and framed, floor and walls fitted, every label with its confidence and source. Green is where a robot can safely drive.” |
-| 0:40 | About panel | “Every scan is validated record by record. The first file was two-thirds corrupt; we flagged it, and the same pipeline ran unchanged on the clean 1.7-million-splat scan.” |
-| 1:00 | Ask “Where is the faulty pump?” | “The copilot ranks assets by criticality, health and confidence: P-005, a production-critical pump showing a fouling signature.” |
-| 1:15 | “Send a technician…” → robot drives | “A* on the multi-level height-field, then validated: minimum clearance at least the 0.2 m robot radius, zero collisions. Everything within 1.2 m gets framed and its status read from the workbook.” |
-| 1:50 | Block walkway → reroute | “Someone parks a trolley in the aisle. We replan in milliseconds from where the robot is now.” |
-| 2:10 | Arrival → diagnosis panel | “On arrival: observation, evidence, hypothesis, uncertainty and the next safe step. Every bracket is a real record: alarms, work orders, cases, documents. Unsupported citations are stripped automatically. Confidence is 0.52, and here is why.” |
-| 2:55 | ENTER X-RAY MODE → explode | “Now inside the machine. This model is illustrative, not from the scan. The parts linked to the leading hypothesis glow red: impeller and volute. The wear ring is the alternative.” |
-| 3:20 | Click impeller → ask | “Each part shows its function, symptoms, and P-005's own signals: flow down, current up.” |
-| 3:40 | LEARN fouling | “Learn mode explains why fouling lowers flow but raises current, step by step and synced to 3D.” |
-| 4:00 | PRACTICE quick run → summary | “Practice: a fictional bearing case behind a safety gate. Pick the part, answer, then disassemble in the right order. Scored, and never a substitute for certified training.” |
-| 4:20 | Work-order draft → closing | “Finally, a draft work order with evidence IDs and safety prerequisites. From factory to component, explained and verifiable.” |
+| 0:00 | App open on the briefing card | "A technician has to service pump P-005 at a site they've never seen. This is a real scan of that room." |
+| 0:20 | Rail → Scene understanding | "676 candidates — and we're honest about what that means: 416 typed, 195 confident, 30 linked to records." |
+| 0:45 | Rail → Semantic view, then Site map | "Readable from a distance: colour by equipment type. And a floor plan you can print before you travel." |
+| 1:05 | Ask "Where is P-005?" → Understand → Open | "The copilot finds it and explains the likely fouling — every claim links to its source. Synthetic data." |
+| 1:40 | Plan tab → pallet truck → drag | "The service area is blocked. Move a virtual stand-in — collisions, clearance and the route update instantly." |
+| 2:25 | Explore → Send robot (Broadcast, 4×) | "The way in is checked: a collision-free route that reads every asset it passes." |
+| 2:50 | X-Ray → Practice | "Rehearse: the suspect parts are red; a scored exercise behind a safety check." |
+| 3:20 | Support tab → Share | "Send everything to an expert as a link; they reply with a recommendation and a draft work order." |
+| 3:45 | Value / About | "These benefits are proposals — here is how a pilot measures them, and here is what this prototype is not." |
+
+## Recorded demo
+A frame-by-frame backup recording is produced by `web/tests/record-demo.cjs` (scene list in
+`web/tests/record-script.cjs`), with on-screen captions following the table above. Record the main video on a laptop
+with a GPU using the same order; [`DEMO_GUIDE.md`](DEMO_GUIDE.md) has the shot list.
