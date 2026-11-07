@@ -122,13 +122,14 @@ export function initTraining(S, ui) {
   // what this case teaches, taken from the scenario itself (works for every device type)
   function takeaways(sc) {
     const pick = sc.tasks.find((t) => t.type === "select_component");
-    const out = pick?.feedback_ok ? [pick.feedback_ok] : [];
+    const out = pick?.feedback_ok ? [pick.feedback_ok.replace(/^(Correct|Right|Yes)\s*[—–:,.-]\s*/i, "")] : [];
     for (const t of sc.tasks.filter((x) => x.type === "choice")) out.push(`${t.prompt.replace(/\?$/, "")}: ${t.options[t.answer].charAt(0).toLowerCase()}${t.options[t.answer].slice(1)}.`);
     return out.slice(0, 3);
   }
   function summary() {
     const pct = Math.round((100 * P.score) / Math.max(1, P.attempts));
     S.onComponentPick = null; S.xray.setHidden([]); S.xray.setExplode(0.5);
+    const ex = document.getElementById("explode"), xp = document.getElementById("xpct"); if (ex) ex.value = 50; if (xp) xp.textContent = "50%";
     card(`${head("Practice", pct >= 80 ? "Exercise passed" : "Review recommended")}
       <div class="sub">${P.score} of ${P.attempts} answers correct · ${Math.round((Date.now() - P.t0) / 1000)} s</div>
       <div class="meter" style="margin-top:12px"><i style="width:${pct}%"></i></div>

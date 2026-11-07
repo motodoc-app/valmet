@@ -130,9 +130,9 @@ async function boot() {
   if (!S.minimap) $("#minimap").classList.add("hidden");
   camera.position.copy(S.home.pos); controls.target.copy(S.home.tgt);
   initTraining(S, { $, esc, cites, setMode, card: (h) => ($("#right").innerHTML = h), xCam, xControls, toast, icon, focusPart });
-  Object.assign(APP, { S, THREE, scene: fac, camera, controls, renderer, canvas, labelsRoot: $(".labels"), api, flyTo, card, sheet,
+  Object.assign(APP, { S, THREE, scene: fac, camera, controls, xCam, xControls, renderer, canvas, labelsRoot: $(".labels"), api, flyTo, card, sheet,
     setMode, sceneMode, selectObject, selectAsset, restart, dispatch, blockAisle, replan, renderDock, renderLeft, renderRail,
-    renderOverviewCard, renderDiagnosis, renderAssetCard, showWorkOrder, enterXRay, ask, toast, viewOffset });
+    renderOverviewCard, renderDiagnosis, renderAssetCard, resetAll, showWorkOrder, enterXRay, ask, toast, viewOffset });
   emit("boot", APP);
   renderLeft(); renderOverviewCard(); renderDock();
   initMinimap().catch((e) => console.warn("mini-map", e));
@@ -177,7 +177,7 @@ function renderLeft() {
         <span class="n">${pad(i + 1)}</span>
         <span class="nm"><b>${a.tag}</b><small>${nice(a.asset_class)} · ${a.is_target ? "Simulated fault" : nice(a.issue_code)}</small></span>
         <span class="health s-${a.condition_state}">${a.health_score}</span></button>`).join("")}</div>
-    <div class="card-f"><span><b>${S.data.stats.n_objects}</b> objects</span><span><b>${nav.walkable_area_m2}</b> m² drivable</span><span><b>${(S.data.integrity.declared_vertex_count / 1e6).toFixed(1)}M</b> splats</span></div>`;
+    <div class="card-f"><span><b>${S.data.stats.n_objects}</b> object candidates</span><span><b>${nav.walkable_area_m2}</b> m² drivable</span><span><b>${(S.data.integrity.declared_vertex_count / 1e6).toFixed(1)}M</b> splats</span></div>`;
   $("#left").onclick = (e) => { if (e.target.closest("[data-min-card]")) return; const r = e.target.closest("[data-asset]"); if (r) selectAsset(r.dataset.asset, { fly: true }); };
 }
 
@@ -209,7 +209,8 @@ function renderOverviewCard() {
   const step = (n, title, text, act, label) => `<div class="journey-step"><span class="k">${n}</span><div><b>${title}</b><small>${text}</small></div>${act ? `<button class="btn" ${act}>${label}</button>` : ""}</div>`;
   card(`${header("Pre-visit briefing", `Service ${t.tag}`, '<span class="tag syn">Synthetic data</span>')}
     <div class="sub">${nice(t.asset_class)} · ${esc(t.area_name)} · <span class="status s-${t.condition_state}">${nice(t.condition_state)}</span> · health ${t.health_score}</div>
-    <p class="p" style="margin-top:12px">${esc(t.issue_summary)}. Prepare the visit here before you travel: find the pump, understand the evidence, plan access, rehearse, and get expert input.</p>
+    <div class="actions-top"><button class="btn primary" data-act="locate">${icon("target")}Show me ${t.tag}</button><button class="btn" data-act="dispatch">${icon("play")}Send robot</button></div>
+    <p class="p" style="margin-top:12px">${esc(t.issue_summary)}. Prepare the visit before you travel — follow the steps:</p>
     <div class="journey">
       ${step(1, "Explore", "Find the pump and its surroundings in the real scan.", 'data-act="locate"', "Show")}
       ${step(2, "Understand", "Read the cited diagnosis; see the suspect parts.", 'data-act="diagnose-target"', "Open")}
@@ -217,7 +218,7 @@ function renderOverviewCard() {
       ${step(has("plan") ? 4 : 3, "Practice", "Rehearse the inspection on the teaching model.", 'data-goto="practice"', "Practise")}
       ${has("support") ? step(has("plan") ? 5 : 4, "Support", "Hand the context to a remote specialist.", 'data-goto="support"', "Share") : ""}
     </div>
-    <div class="section stack"><button class="btn primary block" data-act="dispatch">${icon("play")}Send robot to check the route</button></div>
+    <p class="note" style="margin-top:12px"><button class="link" data-act="reset-all">${icon("reset")}Reset the whole demo</button></p>
     <div class="section">${kv("Criticality", esc(t.criticality))}${kv("Linked scene object", `${esc(S.target.label)} · ${Math.round(t.mapping_confidence * 100)}% (procedural link)`)}</div>
     <div class="section"><div class="label">See inside any device</div>
       <div class="row">${Object.entries(S.kb.classes).map(([cls, c]) => `<button class="chip" data-xclass="${cls}">${esc(SHORT[cls] || c.label)}</button>`).join("")}</div>
@@ -225,12 +226,14 @@ function renderOverviewCard() {
   </div>`);
 }
 
+const planActive = () => { const x = withExtras({}); return (x.blocks?.length || 0) + (x.clears?.length || 0) > 0; };
 function renderTransitCard() {
   if (APP.modes.get(S.mode)?.ownsCard) return;          // Plan / Support keep their own card while the robot drives
   const assets = [...S.seen.keys()].map((id) => S.data.objects.find((o) => o.id === id)).filter((o) => o?.asset);
   const others = S.seen.size - assets.length;
   card(`${header("En route", S.navObject.asset.tag, "")}
     <div class="sub">${S.route.length_m} m · ${S.route.validation.collision_free ? "collision-free" : "check route"} · min clearance ${S.route.validation.min_clearance_m} m</div>
+    ${planActive() ? `<p class="plan-note">${icon("layers")}<span>Uses your <b>proposed layout</b> from Plan mode. <button class="link" data-goto="plan">Open Plan to change or reset it</button></span></p>` : ""}
     <div class="section"><div class="label"><span>Assets read along the way</span><span>${assets.length}</span></div>
       <div class="feed">${assets.map((o) => `<button class="list-row" data-obj="${o.id}"><span class="dot s-${o.asset.condition_state}"></span>
         <span class="nm"><b style="font-family:var(--mono)">${o.asset.tag}</b><small>${nice(o.asset.condition_state)} · ${nice(o.asset.issue_code)}</small></span><span class="health s-${o.asset.condition_state}">${o.asset.health_score}</span></button>`).join("") || '<div class="note">Nothing in range yet.</div>'}</div></div>
@@ -247,12 +250,13 @@ function renderAssetCard(o) {
   }
   card(`${header(nice(a.asset_class), a.tag, '<span class="tag syn">Synthetic</span>', true)}
     <div class="sub"><span class="status s-${a.condition_state}">${nice(a.condition_state)}</span> · ${esc(a.issue_summary)}</div>
+    <div class="actions-top">
+      <button class="btn primary" data-act="dispatch-sel">${icon("play")}Send robot here</button>
+      <button class="btn" data-act="diagnose-sel">${icon("spark")}What's wrong?</button>
+      ${S.kb.classes[a.asset_class] ? `<button class="btn" data-act="xray-sel">${icon("layers")}See inside</button>` : ""}</div>
     <div class="section">${kv("Health", a.health_score)}${kv("Criticality", esc(a.criticality))}${kv("Area", esc(a.area_name))}</div>
     ${equipmentInfo(a)}
-    <div class="section"><div class="label">3D identity</div>${identityRows(o)}</div>
-    <div class="section stack"><button class="btn primary block" data-act="dispatch-sel">${icon("play")}Send robot here</button>
-      <button class="btn block" data-act="diagnose-sel">${icon("spark")}Diagnose now</button>
-      ${S.kb.classes[a.asset_class] ? `<button class="btn block" data-act="xray-sel">${icon("layers")}Explain and show components</button>` : ""}</div></div>`);
+    <div class="section"><div class="label">3D identity</div>${identityRows(o)}</div></div>`);
 }
 
 function equipmentInfo(a) {
@@ -277,9 +281,7 @@ function identityRows(o) {
 
 
 function renderDiagnosis() {
-  card(`${diagnosisHTML(S.diag, S.tab)}
-    <div class="section stack"><button class="btn primary block" data-act="xray">${icon("layers")}Open X-Ray view</button>
-      <button class="btn block" data-act="wo">${icon("doc")}Draft work order</button></div>
+  card(`${diagnosisHTML(S.diag, S.tab, { actions: `<button class="btn primary" data-act="xray">${icon("layers")}See inside (X-Ray)</button><button class="btn" data-act="wo">${icon("doc")}Draft work order</button>` })}
     <p class="note" style="margin-top:10px;text-align:center">Decision support only. No control actions.</p></div>`);
 }
 
@@ -295,6 +297,7 @@ $("#right").addEventListener("click", async (e) => {
   const act = t.closest("[data-act]")?.dataset.act;
   if (act === "dispatch") dispatch(S.target.asset.asset_id);
   if (act === "locate") selectObject(S.target, { fly: true });
+  if (act === "reset-all") return resetAll();
   if (act === "diagnose-target") { S.cardLock = true; S.diag = await api.diagnose(S.target.asset.asset_id); S.tab = "overview"; renderDiagnosis(); }
   if (act === "dispatch-sel") dispatch(S.selected.asset.asset_id);
   if (act === "diagnose-sel") { S.cardLock = true; S.diag = await api.diagnose(S.selected.asset.asset_id); S.tab = "overview"; renderDiagnosis(); }
@@ -467,6 +470,19 @@ async function dispatch(assetId, { start = null, quiet = false } = {}) {
   if (!quiet) toast(`Route planned: <b>${res.length_m} m</b> in ${res.compute_ms} ms. Collision-free, minimum clearance ${res.validation.min_clearance_m} m.`);
   renderDock(); renderTransitCard();
   return res;
+}
+
+/** Back to a clean start: no plan, no support hand-off, no barriers, robot at its dock, briefing card. */
+function resetAll() {
+  try { APP.planning?.reset?.(); } catch (e) { console.warn(e); }
+  try { APP.support?.reset?.(); } catch (e) { console.warn(e); }
+  S.blocks = []; S.fac.setBlocks([]); S.prevRoute = null; S.route = null; S.curve = null; S.diag = null; S.cardLock = false;
+  Object.assign(S.robot, { moving: false, s: 0, len: 0, v: 0, done: true, arrived: false });
+  S.fac.robot.position.set(...S.data.start); S.fac.routeGroup.clear();
+  S.seen = new Map(); S.seenBefore = new Set(); S.selected = null;
+  setMode("facility"); renderLeft(); renderOverviewCard(); renderDock();
+  flyTo(S.home.pos, S.home.tgt);
+  toast("Demo reset: original layout, no hand-off, robot at its dock.");
 }
 
 /** Re-plan the active route from where the robot is (e.g. after a planned layout change). Returns the plan result. */
@@ -782,9 +798,9 @@ function renderPartCard() {
       <p class="note">Answers come only from the builder-pack documents and the training notes, with citations. They are not OEM repair procedures.</p>`,
   };
   card(`${header(nice(c.group), esc(c.name), '<span class="tag">Illustrative</span>')}
+    <div class="actions-top"><button class="btn" data-act="isolate">${icon("target")}${isolated ? "Show all parts" : "Show only this part"}</button></div>
     <div class="tabs">${Object.entries(tabs).map(([k, v]) => `<button data-xtab="${k}" class="${S.xTab === k ? "on" : ""}">${v}</button>`).join("")}</div>
     ${body[S.xTab]}
-    <div class="section"><button class="btn block" data-act="isolate">${icon("target")}${isolated ? "Show all parts" : "Isolate component"}</button></div>
     <div class="section" style="text-align:center"><button class="link" data-docid="KB-XRAY-${S.xClass}#${c.id}">Training note ${icon("arrow")}</button></div></div>`);
 }
 
@@ -1016,7 +1032,7 @@ function showAbout() {
       ${row("Control", "Read-only: highlights, notes, plans and draft work orders.", "No connection to actuators, PLCs or plant controls.")}
       ${row("Value", "Calculator with editable, hypothetical inputs.", "No measured savings.")}</div>
     <div class="section"><div class="label">For engineers</div>
-      <p class="p">PLY integrity check → canonical Y-up frame → RANSAC structure planes + recursive DBSCAN + gravity-aligned OBBs → vision-model labels with confidence and a human review layer → class-aware asset mapping → 2.5D heightfield, clearance-aware A* with line-of-sight smoothing and validation → evidence engine (telemetry z-scores, events, work orders, cases) → LLM narration whose citations are checked against the evidence. The same code runs as a FastAPI service or as a static export with a JS port of the planner.</p></div>
+      <p class="p">PLY integrity check → canonical Y-up frame → RANSAC structure planes + recursive DBSCAN + gravity-aligned OBBs → vision-model labels with confidence and a review layer (team visual check, not field-verified) → class-aware asset mapping → 2.5D heightfield, clearance-aware A* with line-of-sight smoothing and validation → evidence engine (telemetry z-scores, events, work orders, cases) → LLM narration whose citations are checked against the evidence. The same code runs as a FastAPI service or as a static export with a JS port of the planner.</p></div>
     <div class="section"><div class="label">Keys</div>${kv("Ask", '<span class="kbd">/</span>')}${kv("Play / pause the robot", '<span class="kbd">Space</span>')}${kv("Focus (hide panels)", '<span class="kbd">F</span>')}${kv("Close panels", '<span class="kbd">Esc</span>')}${kv("Orbit · pan · zoom", "Drag · right-drag · scroll")}</div>
     <div class="section"><a class="link" href="#plan" onclick="setTimeout(()=>location.reload(),0)">Open the 2D floor plan view (works without 3D graphics) ${icon("arrow")}</a></div>`);
 }

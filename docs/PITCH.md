@@ -6,7 +6,7 @@ understand equipment, plan maintenance, rehearse procedures and get expert suppo
 **Promise:** Explore the site. Understand the equipment. Plan the maintenance. Practise the task. Get expert support.
 Before stepping onto the factory floor.
 
-Everything below is shown live in the prototype, and every limit is stated on screen and in
+Everything below is shown in the working prototype (in the hosted demo the diagnoses were generated in advance), and every limit is stated on screen and in
 [`LIMITATIONS.md`](LIMITATIONS.md). Numbers come from the repository (`docs/SCENE_QUALITY.md`, tests, the app).
 
 ---

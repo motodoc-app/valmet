@@ -380,3 +380,10 @@ body.touring .toast { top: auto; bottom: 120px; }
 @media (max-width: 1100px) and (min-width: 821px) { .wordmark { display: none; } .modes { left: 24px; } .plan-banner { left: 24px; } }
 @media (max-width: 1100px) and (min-width: 821px) { .ask { width: 200px; } }
 @media (max-width: 960px) and (min-width: 821px) { .ask { width: 150px; } .modes button { padding: 6px 7px; } }
+
+/* ---------- actions first: the main buttons sit right under a card's title ---------- */
+.actions-top { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
+.actions-top .btn { flex: 1 1 auto; min-width: 0; height: 38px; padding: 0 12px; }
+@media (max-width: 820px) { .actions-top .btn { height: 44px; } }
+.plan-note { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: rgba(10, 132, 255, .1); color: var(--text-2); font-size: 12.5px; }
+.plan-note b { color: var(--text); font-weight: 500; }

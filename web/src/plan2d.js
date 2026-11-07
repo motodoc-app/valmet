@@ -26,7 +26,7 @@ export async function startPlan(reason) {
   $("#app").innerHTML = `
 <canvas class="plan" aria-label="Floor plan of the scanned room. Coloured dots are workbook assets; click one to select it."></canvas>
 <div class="wordmark"><div class="eyebrow">Industrial X-Ray</div><div class="name" id="siteName">Equipment Room</div></div>
-<div class="plan-banner" role="note">${icon("grid")}<span><b>Floor plan view.</b><span class="long"> ${esc(reason)} Every feature except the 3D scan and X-Ray still works.</span></span><button class="link" id="try3d">Try 3D ${icon("arrow")}</button></div>
+<div class="plan-banner" role="note">${icon("grid")}<span><b>Floor plan view.</b><span class="long"> ${esc(reason)} Finding equipment, the robot route and the diagnosis work here; Plan, Support, X-Ray and training need 3D graphics.</span></span><button class="link" id="try3d">Try 3D ${icon("arrow")}</button></div>
 <div class="topright">
   <div class="ask">
     <label class="field">${icon("search")}<input id="ask" placeholder="Ask about the plant" autocomplete="off" aria-label="Ask the copilot"/><span class="kbd">/</span></label>
@@ -54,6 +54,7 @@ export async function startPlan(reason) {
     bind();
     requestAnimationFrame(loop);
     $("#loading").style.opacity = 0; setTimeout(() => $("#loading")?.remove(), 600);
+    if (/support=/.test(location.hash + location.search)) toast("This support hand-off link needs 3D graphics to open the pins and plan. Open it on a device with WebGL; the diagnosis is available here.", 9000);
     window.__plan = P;
     Object.assign(window, { __dispatch: dispatch, __block: blockAisle, __select: selectAsset, __ask: ask });
   } catch (e) {
@@ -353,13 +354,13 @@ function renderOverview() {
   const t = P.target.asset;
   card(withMin(`${header("Simulated fault", t.tag, '<span class="tag syn">Synthetic</span>')}
     <div class="sub">${nice(t.asset_class)} · ${esc(t.area_name)}</div>
-    <p class="p" style="margin-top:12px">${esc(t.issue_summary)}. It has the highest maintenance priority in the builder pack, so the inspection robot is sent to it.</p>
+    <p class="p" style="margin-top:12px">${esc(t.issue_summary)}. Prepare the visit before you travel: find the pump, check the route in, and read the cited diagnosis.</p>
     ${kv("Condition", `<span class="status s-${t.condition_state}">${nice(t.condition_state)}</span>`)}${kv("Health", t.health_score)}${kv("Criticality", esc(t.criticality))}
     ${kv("Mapped to", `${esc(P.target.label)} · ${Math.round(t.mapping_confidence * 100)}%`)}
     <div class="section stack"><button class="btn primary block" data-act="dispatch">${icon("play")}Send inspection robot</button></div>
     <div class="section"><div class="label">How to read the plan</div>
       <div class="step"><span class="k">1</span><span>You are looking down on the scanned room. Light grey is floor the robot can drive on; darker grey is equipment.</span></div>
-      <div class="step"><span class="k">2</span><span>Outlines are the ${P.data.stats.n_objects} objects found in the scan. Coloured dots are workbook assets; the pulsing ring is the faulty one.</span></div>
+      <div class="step"><span class="k">2</span><span>Outlines are the ${P.data.stats.n_objects} object candidates found in the scan. Coloured dots are workbook assets; the pulsing ring is the faulty one.</span></div>
       <div class="step"><span class="k">3</span><span>The white arrow is the robot. The blue circle is the ${NEAR} m range in which it reads nearby assets.</span></div></div>
   </div>`));
 }
@@ -388,9 +389,7 @@ function renderAsset(o) {
       <button class="btn block" data-act="parts-sel">${icon("layers")}List its components</button></div></div>`));
 }
 function renderDiagnosis() {
-  card(withMin(`${diagnosisHTML(P.diag, P.tab, { xray: false })}
-    <div class="section stack"><button class="btn primary block" data-act="wo">${icon("doc")}Draft work order</button>
-      <button class="btn block" data-act="parts">${icon("layers")}List suspected components</button></div>
+  card(withMin(`${diagnosisHTML(P.diag, P.tab, { xray: false, actions: `<button class="btn primary" data-act="wo">${icon("doc")}Draft work order</button><button class="btn" data-act="parts">${icon("layers")}Suspect parts</button>` })}
     <p class="note" style="margin-top:10px;text-align:center">Decision support only. No control actions.</p></div>`));
 }
 async function renderParts(assetId) {

@@ -14,7 +14,7 @@ function steps(A) {
       eng: `${S.data.integrity.declared_vertex_count.toLocaleString()} Gaussian splats from the supplied PLY, integrity-checked and re-oriented so the floor is y = 0.`,
       run: () => { A.setMode("facility"); A.pause(); A.setFrames("none"); A.setCamera("chase"); A.flyHome(); } },
     { title: "What the software found",
-      plain: `The scan was split into ${n} object candidates, each with a box, a name and a confidence. Not every candidate is a verified object: the Scene understanding panel on the right rail shows how many are categorised, confident, human-checked and linked to records.`,
+      plain: `The scan was split into ${n} object candidates, each with a box, a name and a confidence. Not every candidate is a verified object: the Scene understanding panel (check-mark button on the right-hand tool bar, or Tools on a phone) shows how many are categorised, confident, human-checked and linked to records.`,
       eng: "Room-envelope RANSAC planes, recursive DBSCAN, gravity-aligned oriented boxes, vision-model labels from rendered crops, a review layer of corrections (team visual check, not field-verified).",
       run: () => A.setFrames("all") },
     { title: `Find ${t.tag}`,
@@ -22,7 +22,7 @@ function steps(A) {
       eng: "Rule-based intent router over the asset register and scene labels; the asset-to-object link is procedural, with a stated confidence.",
       run: async () => { A.setMode("facility"); A.pause(); A.setFrames("assets"); await A.ask(`Where is ${t.tag}?`); } },
     { title: "Understand the problem",
-      plain: "The copilot explains what is probably wrong, how sure it is, and what to check first. Every grey tag is a source you can open. The asset data is synthetic.",
+      plain: "The copilot explains what is probably wrong, how sure it is, and what to check first. Every grey tag names its source; document tags open the document. The asset data is synthetic.",
       eng: "Evidence engine (telemetry z-scores against own baseline and peers, alarms, work orders, similar cases) → LLM narration; citations are checked and unsupported ones removed.",
       run: async () => { await A.diagnose(t.asset_id); } },
   ];
@@ -76,6 +76,6 @@ export async function startTour(A) {
     if (e.target.closest("[data-tour-b]") && i > 0) { i--; return show(); }
     if (e.target.closest("[data-tour-n]")) { if (i === list.length - 1) return end(); i++; return show(); }
   };
-  const end = () => { token++; el?.remove(); el = null; document.body.classList.remove("touring"); };
+  const end = () => { token++; el?.remove(); el = null; document.body.classList.remove("touring"); A.X.resetAll?.(); };
   show();
 }

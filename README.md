@@ -28,7 +28,7 @@ walk-through: each step has a plain explanation and one line for engineers.
 | Obstacle-aware navigation & proximity (25 %) | Multi-level height-field, clearance-aware A*, smoothing and an independent validation pass (0 collisions, clearance ≥ the 0.20 m robot radius). **Block aisle** re-routes live; **Plan mode** moves a virtual proxy and re-plans with the changed layout; every asset within 1.2 m of the route is read out, exactly, forwards and in reverse. |
 | Grounded AI diagnostics (20 %) | An evidence engine combines telemetry z-scores against the asset's own baseline and its peers, alarms, work orders, similar cases and data-quality issues. The LLM narration may cite **only** IDs from that evidence; anything else is removed. Confidence is shown with its breakdown (0.52 for P-005). |
 | Backend architecture (15 %) | Modular Python pipeline and a FastAPI service following the workbook's `API_Contract`; a serverless export runs the same app as a static site; feature modules plug in through `web/src/ext.js`; 11 pytest guarantees and headless-browser suites. |
-| Demo clarity & innovation (10 %) | A pre-visit workflow Valmet described: explore, understand, plan, practise, get support. Interactive planning, remote hand-off, works without WebGL (2D floor plan), on phones, and from a fresh checkout. |
+| Demo clarity & innovation (10 %) | A pre-visit workflow Valmet described: explore, understand, plan, practise, get support. Interactive planning and a remote hand-off; a 2D floor plan keeps finding, routing and the diagnosis working without WebGL; phone layout; runs from a fresh checkout. |
 
 Everything that is synthetic, approximate, precomputed or illustrative is labelled in the app (About sheet) and in
 [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
@@ -99,39 +99,23 @@ Everything site-specific (name, input files, robot size, proximity radius, LLM m
 `config/project.json`. To use another room, copy that file and pass `--project`. See
 [`docs/REPLICATE.md`](docs/REPLICATE.md) for the workbook sheets, adding an equipment type, and reusing single layers.
 
-## Demo script (≈ 4 min)
-Short on time? Press **Tour**: it drives the same journey by itself. The one-page presenter's version is
-[`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md).
+## Demo script (≈ 4 min) — "a technician preparing to service pump P-005"
+The full presenter version with plain-language and engineering lines is [`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md);
+**Tour** in the app drives the same story by itself.
 
-1. **Facility.** The left list shows the 30 workbook assets in priority order; asset frames are shown, coloured by
-   condition. The tool rail on the right switches frames (*all 676* / *assets* / *off*), the **floor map** (drivable
-   floor) and the mini-map.
-2. Press **/** and ask **“Where is the faulty pump?”**. The camera flies to **P-005**: fouling, health 44, production-critical.
-3. Ask **“Send a technician to inspect the faulty pump”**. The robot crosses the room, assets light up as it passes
-   and the right card lists every asset it reads.
-   Switch the camera in the bottom bar: **Chase** (behind the robot), **Broadcast** (high TV-style side camera),
-   **Top** (whole room from above, ceiling cut away) or **Free**. The mini-map shows the robot, route, barriers and
-   every asset; click it to look at any spot.
-4. Press **Block aisle**. A barrier drops across the route ahead and the robot replans from where it is. The old
-   route stays visible as a dashed line. **Play / Pause**, **Reverse**, the **speed** (1×, 2×, 4×) and the route
-   slider let you replay or rewind the run; the list of assets read stays exact in both directions. Press **F** (or
-   the focus button on the rail) to hide every panel and just watch; each card also has a minimise button.
-5. **Arrival.** The diagnosis card has three tabs. *Overview* covers observation, evidence, hypothesis, uncertainty,
-   the next safe step and the confidence breakdown. *Evidence* has telemetry sparklines with z-scores, alarms, work
-   orders and data quality. *Sources* lists the documents. Click any citation to open it.
-6. **Open X-Ray view.** An exploded illustrative pump appears on a studio podium. The parts linked to the leading
-   hypothesis (impeller, volute) are marked *Suspected* and the alternative (wear ring) is marked separately. Use
-   the explode slider, see-through and labels, isolate a component, and check its evidence or ask about it.
-7. **Learn.** Work through the fouling lesson; each step highlights the parts it describes. **Practice:** confirm
-   the safety gate, then do the bearing exercise (pick the part, quiz, disassemble and reassemble in order) and
-   finish on the scored summary.
-8. **Draft work order.** A draft with evidence IDs and safety prerequisites; it triggers no control actions.
-9. **Any device.** In X-Ray, the bottom bar switches device type: **Pump · Motor · Valve · Transmitter · Vibration
-   sensor**, each with its own exploded model, lesson and practice exercise. The same chips are on the facility
-   overview card. Or click any asset and choose *Explain and show components*, or ask about a part directly
-   (“What does the impeller do?” opens X-Ray on that part with a cited answer). “Where is the expansion vessel?”
-   searches the scan.
-10. **Value.** Adjust the hypothetical inputs and see the formula update; the page lists what a pilot should measure.
+1. **Explore.** The room loads on the *Pre-visit briefing* card. The tool rail on the right opens *Scene understanding*
+   (676 candidates → 416 typed → 195 confident → 7 review-corrected → 30 linked), the *semantic view*, the *site map*
+   and the *clean-scan* filter.
+2. **Find it.** Press **/** and ask *“Where is P-005?”*.
+3. **Understand.** *Open* on the briefing card: the cited diagnosis (confidence 52 %), evidence tab, sources.
+4. **Plan.** The *Plan* tab: the hand pallet truck blocks P-005's service area; move its virtual stand-in, watch
+   collisions, clearance, the service zone and the route update (8.40 m → 7.98 m); reset or export. The scan is never changed.
+5. **Check the way in.** *Explore* → *Send robot*; camera *Broadcast*, speed 4×; *Block aisle* re-routes live; *Reverse*
+   and the route slider replay the run.
+6. **Rehearse.** *X-Ray* (pump, motor, valve, transmitter, vibration sensor), *Learn*, *Practice*.
+7. **Support.** *Support* tab: pin notes, *Share* → the expert opens the link, adds a recommendation (AI drafts must be
+   reviewed) and a draft work order, and sends it back.
+8. **Value / About.** Hypothetical value with editable inputs; the About sheet lists what each capability is and is not.
 
 ## Data notes
 * **Scan.** `Equipment Room.ply`: 1,676,481 splats, all valid (`data/processed/integrity_report.md`). The originally

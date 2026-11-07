@@ -50,7 +50,7 @@ export function header(eyebrow, title, tags = "", closable = false) {
 }
 
 /** The arrival diagnosis (narrative, confidence, hypotheses, next steps / telemetry, events, work orders / sources). */
-export function diagnosisHTML(d, tab = "overview", { xray = true } = {}) {
+export function diagnosisHTML(d, tab = "overview", { xray = true, actions = "" } = {}) {
   const a = d.asset, c = d.confidence;
   const tabs = ["overview", "evidence", "sources"];
   const body = {
@@ -72,6 +72,7 @@ export function diagnosisHTML(d, tab = "overview", { xray = true } = {}) {
   };
   return `${header(nice(a.asset_class), `${a.tag} diagnosis`, '<span class="tag syn">Synthetic</span>', true)}
     <div class="sub"><span class="status s-${a.condition_state}">${nice(a.condition_state)}</span> · health ${a.health_score} · ${esc(a.criticality)}</div>
+    ${actions ? `<div class="actions-top">${actions}</div>` : ""}
     <div class="plain">${plainSummary(d)}</div>
     <div class="tabs" role="tablist">${tabs.map((t) => `<button role="tab" data-tab="${t}" class="${tab === t ? "on" : ""}">${nice(t)}</button>`).join("")}</div>
     ${body[tab]}`;

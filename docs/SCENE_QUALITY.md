@@ -265,6 +265,6 @@ These are for the team lead to accept or reject via `config/scene_annotations.js
 
 ## How to talk about it
 
-- Lead with the method (unsupervised 3D segmentation + VLM labels with provenance + human review layer), then show the funnel, not the 676.
+- Lead with the method (unsupervised 3D segmentation + VLM labels with provenance + a review layer of team corrections, not field-verified), then show the funnel, not the 676.
 - Point at the confidence filter and review layer as the honest part: every label carries its source and confidence, and corrections are logged.
 - Do not quote a percentage accuracy; quote the AI-audit interval only as an AI cross-check, and offer the CSV for a live human check.

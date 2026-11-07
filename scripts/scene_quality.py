@@ -587,7 +587,7 @@ def write_md(q: dict) -> None:
         L.append(f"- **{p[0]}** {p[1]}")
     L.append("")
     L.append("## How to talk about it\n")
-    L.append("- Lead with the method (unsupervised 3D segmentation + VLM labels with provenance + human review layer), "
+    L.append("- Lead with the method (unsupervised 3D segmentation + VLM labels with provenance + a review layer of team corrections, not field-verified), "
              "then show the funnel, not the 676.\n- Point at the confidence filter and review layer as the honest part: "
              "every label carries its source and confidence, and corrections are logged.\n- Do not quote a "
              "percentage accuracy; quote the AI-audit interval only as an AI cross-check, and offer the CSV for a "
