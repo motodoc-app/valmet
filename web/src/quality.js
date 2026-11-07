@@ -2,6 +2,7 @@
 // Data: web/public/static/quality.json, produced by scripts/scene_quality.py from the same scene.json the app shows.
 import { addRailButton } from "./ext.js";
 import "./quality.css";
+import { openReview } from "./review.js";
 
 let Q = null;            // quality.json (loaded on first open)
 let active = null;       // tier id currently highlighted in 3D, or null
@@ -101,6 +102,9 @@ function body() {
   return `
     <div class="h1" style="font-size:17px">What the scan understanding really contains</div>
     <p class="p" style="margin-top:6px">${esc(Q.caveat)}</p>
+    <div class="section q-review"><div class="label"><span>Check the labels yourself</span><span>the AI proposed, a person confirms</span></div>
+      <button class="btn primary block" data-q-review>Review labels</button>
+      <p class="note" style="margin-top:6px">One object at a time, uncertain ones first: confirm, rename or reject, then download a review layer for <code>config/scene_annotations.json</code>.</p></div>
     <div class="section"><div class="label"><span>From candidates to linked assets</span><span>click a tier to light it up in 3D</span></div>
       <div class="q-funnel">${funnel()}</div>
       ${active ? `<button class="btn block" data-q-clear style="margin-top:8px">Clear 3D highlight</button>` : ""}</div>
@@ -151,4 +155,8 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (e.target.closest("[data-q-clear]")) { highlight(null); render(); }
+  if (e.target.closest("[data-q-review]")) {
+    if (active) highlight(null);
+    openReview({ threshold: Q.threshold, flags: Q.flags_by_id });
+  }
 });
