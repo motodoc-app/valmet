@@ -1042,9 +1042,16 @@ canvas.addEventListener("pointerup", (e) => {
 const clock = new THREE.Clock();
 const QA = new URLSearchParams(location.search).has("qa");
 let lastQA = -1e9;
-renderer.setAnimationLoop(() => {
+// ?capture: frames are rendered only on request with a fixed time step (window.__step), so a video can be recorded
+// frame by frame on machines without a GPU (scripts/record-demo.cjs).
+const CAPTURE = new URLSearchParams(location.search).has("capture");
+let capT = 0;
+if (CAPTURE) window.__step = (dt = 1 / 12) => { capT += dt; frame(dt, capT); };
+else renderer.setAnimationLoop(() => {
   if (QA) { const now = performance.now(); if (now - lastQA < 2500) return; lastQA = now; }
-  const dt = QA ? 0.05 : Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  frame(QA ? 0.05 : Math.min(clock.getDelta(), 0.05), clock.elapsedTime);
+});
+function frame(dt, t) {
   updateTween(dt);
   if (!S.fac) return;
   if (!["xray", "learn", "practice"].includes(S.mode)) {
@@ -1061,7 +1068,7 @@ renderer.setAnimationLoop(() => {
     renderer.render(S.xray.scene, xCam);
     labels.render(S.xray.scene, xCam);
   }
-});
+}
 
 const TOUR_API = { S, $, X: APP, ask, diagnose: async (id) => { S.cardLock = true; S.diag = await api.diagnose(id); S.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }, setMode, setCamera: (m) => { setCamera(m); renderDock(); }, pause: () => { S.robot.moving = false; renderDock(); }, dispatch: (id) => restart(id), blockAisle, enterXRay, openClass, flyHome: () => flyTo(S.home.pos, S.home.tgt), selectAsset, toast, renderDock,
   setFrames: (f) => { S.frames = f; S.fac.setShowMode(f); renderDock(); }, setRate: (r) => { S.robot.rate = r; renderDock(); } };
