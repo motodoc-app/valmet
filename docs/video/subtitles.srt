@@ -1,0 +1,55 @@
+1
+00:00:00,000 --> 00:00:04,848
+When a technician is sent to an unfamiliar plant, the first visit is where the time goes.
+
+2
+00:00:05,198 --> 00:00:13,214
+Finding the equipment, understanding the fault, clearing access and reaching an expert all happen on site, under pressure.
+
+3
+00:00:13,564 --> 00:00:20,476
+Industrial X-Ray turns a scan of the site into a workspace you can prepare in before you travel.
+
+4
+00:00:20,826 --> 00:00:31,746
+This is Valmet's equipment room: 1.7 million Gaussian splats, split into 676 object candidates and linked to maintenance records.
+
+5
+00:00:32,096 --> 00:00:36,704
+And we show honestly how many of those are confidently identified.
+
+6
+00:00:37,054 --> 00:00:44,614
+A technician is preparing to service pump P-005. They ask where it is, and the copilot takes them there.
+
+7
+00:00:44,964 --> 00:00:51,876
+The likely fault is fouling, with 52 percent confidence, and every claim links to its source record.
+
+8
+00:00:52,226 --> 00:01:02,474
+A pallet truck blocks the service area. In Plan mode they move a virtual stand-in, and collisions, clearance and the route update at once. The scan itself never changes.
+
+9
+00:01:02,824 --> 00:01:06,328
+The inspection robot checks a collision-free way in.
+
+10
+00:01:06,678 --> 00:01:13,398
+X-Ray opens the pump, with the suspect parts in red, ready for a short scored practice run.
+
+11
+00:01:13,748 --> 00:01:23,108
+Finally, they pin a question on the scene and send the whole context to a remote expert, who replies with a recommendation and a draft work order.
+
+12
+00:01:23,458 --> 00:01:35,218
+For Valmet, that means technicians who arrive prepared: faster equipment identification, access planned in advance, and more useful remote support, in a browser with nothing to install.
+
+13
+00:01:35,568 --> 00:01:45,720
+The asset data here is synthetic and the savings are not yet measured. A pilot would measure time to find equipment and time to prepare a visit.
+
+14
+00:01:46,070 --> 00:01:50,390
+Industrial X-Ray. Know the site before you set foot in it.

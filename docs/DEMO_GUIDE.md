@@ -27,8 +27,23 @@ names are a vision model's guesses with a confidence. All asset data is syntheti
 generated in advance. Planning is approximate. Remote support is an asynchronous hand-off. X-Ray models are
 illustrative. No control of plant equipment. No savings are measured.
 
-## Recording the video on a laptop (main video)
-1. Chrome, full screen (F11), 1920×1080, fresh page load; close the "New here?" hint.
-2. Follow rows 1–10 above, about 25 seconds each; keep the mouse slow; use **Focus (F)** while the robot drives.
-3. Use the OS screen recorder (macOS: Cmd+Shift+5; Windows: Win+Alt+R) or OBS; voice over with the "Say this" column.
-4. A captioned backup recording made without a GPU is produced by `web/tests/record-demo.cjs`.
+## The 2-minute submission video (organisers' format: Problem 0–15 s · Solution 15–35 s · Live demo 35–95 s · Business impact 95–120 s)
+Everything for it is in `docs/video/`:
+- `script.json` — the 14 narration lines, each tied to a scene.
+- `narration.mp3` — the voice-over (110.7 s, **AI-generated voice**, OpenAI text-to-speech), made by `python scripts/make_narration.py`.
+- `subtitles.srt` — English subtitles timed to that narration (upload with the video, or burn in).
+- `timing.json` — when each line starts; the backup recorder uses it.
+
+| Time | Part | What is on screen | Narration (summary) |
+|---|---|---|---|
+| 0:00–0:13 | Problem | Title over the scan | The first visit to an unfamiliar plant is where the time goes. |
+| 0:14–0:37 | Solution | Scan → semantic view → Scene understanding | A scan becomes a prepare-before-you-travel workspace; 676 candidates, honestly measured. |
+| 0:37–0:83 | Live demo | Ask “Where is P-005?” → diagnosis → **Plan** (move the pallet truck) → robot route → X-Ray → **Support** hand-off | Find, understand, plan access, check the way in, rehearse, ask an expert. |
+| 1:23–1:50 | Impact | Value page → closing title | Arrive prepared; synthetic data, savings not yet measured; what a pilot measures. |
+
+**Recording it yourself (recommended, real GPU):** open the app full screen at 1920×1080, start your screen recorder
+(OBS, or Cmd+Shift+5 / Win+Alt+R), play `narration.mp3` in your headphones and click through the scenes in the table
+as the narration reaches them; afterwards put `narration.mp3` under the video and add `subtitles.srt` (CapCut / OBS /
+YouTube). Or narrate it in your own voice using the lines in `script.json`.
+**Backup recording (no GPU needed):** `node web/tests/record-demo.cjs http://localhost:4710/ out-dir` renders the same
+timeline frame by frame with the narration and burned-in English subtitles.

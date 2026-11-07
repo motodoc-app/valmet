@@ -49,8 +49,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   fs.writeFileSync(path.join(OUT, "frames.ffconcat"), "ffconcat version 1.0\n" + cat);
   const total = list.reduce((s, [, d]) => s + d, 0);
   console.log(`\n${n} frames, ${total.toFixed(1)} s of video`);
+  // narration (docs/video/narration.mp3 from scripts/make_narration.py) is mixed in when present
+  const audio = path.join(__dirname, "../../docs/video/narration.mp3");
+  const withAudio = fs.existsSync(audio) && !process.env.NO_AUDIO;
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", path.join(OUT, "frames.ffconcat"),
-    "-vf", "fps=24,format=yuv420p", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-movflags", "+faststart", path.join(OUT, "industrial-x-ray-demo.mp4")], { stdio: "inherit" });
+    ...(withAudio ? ["-i", audio] : []),
+    "-vf", "fps=24,format=yuv420p", "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+    ...(withAudio ? ["-c:a", "aac", "-b:a", "160k", "-af", "apad"] : []), "-shortest", "-movflags", "+faststart",
+    path.join(OUT, "industrial-x-ray-demo.mp4")], { stdio: "inherit" });
   console.log("wrote", path.join(OUT, "industrial-x-ray-demo.mp4"));
   await browser.close();
 })().catch((e) => { console.error(e); process.exit(1); });

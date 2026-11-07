@@ -1,0 +1,20 @@
+{
+  "title": "Industrial X-Ray — the pre-visit copilot (2-minute demo)",
+  "voice": { "model": "gpt-4o-mini-tts", "voice": "onyx", "instructions": "Calm, confident, warm product-demo narrator. Clear international English, steady moderate pace, short natural pauses between sentences." },
+  "lines": [
+    { "part": "Problem", "scene": "title", "text": "When a technician is sent to an unfamiliar plant, the first visit is where the time goes." },
+    { "part": "Problem", "scene": "title", "text": "Finding the equipment, understanding the fault, clearing access and reaching an expert all happen on site, under pressure." },
+    { "part": "Solution", "scene": "scan", "text": "Industrial X-Ray turns a scan of the site into a workspace you can prepare in before you travel." },
+    { "part": "Solution", "scene": "semantic", "text": "This is Valmet's equipment room: 1.7 million Gaussian splats, split into 676 object candidates and linked to maintenance records." },
+    { "part": "Solution", "scene": "quality", "text": "And we show honestly how many of those are confidently identified." },
+    { "part": "Demo", "scene": "find", "text": "A technician is preparing to service pump P-005. They ask where it is, and the copilot takes them there." },
+    { "part": "Demo", "scene": "diagnosis", "text": "The likely fault is fouling, with 52 percent confidence, and every claim links to its source record." },
+    { "part": "Demo", "scene": "plan", "text": "A pallet truck blocks the service area. In Plan mode they move a virtual stand-in, and collisions, clearance and the route update at once. The scan itself never changes." },
+    { "part": "Demo", "scene": "robot", "text": "The inspection robot checks a collision-free way in." },
+    { "part": "Demo", "scene": "xray", "text": "X-Ray opens the pump, with the suspect parts in red, ready for a short scored practice run." },
+    { "part": "Demo", "scene": "support", "text": "Finally, they pin a question on the scene and send the whole context to a remote expert, who replies with a recommendation and a draft work order." },
+    { "part": "Impact", "scene": "value", "text": "For Valmet, that means technicians who arrive prepared: faster equipment identification, access planned in advance, and more useful remote support, in a browser with nothing to install." },
+    { "part": "Impact", "scene": "value", "text": "The asset data here is synthetic and the savings are not yet measured. A pilot would measure time to find equipment and time to prepare a visit." },
+    { "part": "Impact", "scene": "end", "text": "Industrial X-Ray. Know the site before you set foot in it." }
+  ]
+}
