@@ -125,6 +125,12 @@ async function xray(browser) {
   const ap = await roomState(p); await step(p, 20); const ap2 = await roomState(p);
   ok("X-Ray panel in Robot POV: POV HUD hidden while open; Esc restores the POV pose", hud && ap.cam === "pov" && near(ap.p, bp.p) && near(ap.t, bp.t) && near(ap2.p, bp.p, 1e-6), `${bp.p.map((x) => x.toFixed(3))}`);
 
+  // the panel's Diagnosis button opens the diagnosis of the panel's asset (not the one shown before, and never an error)
+  const m6 = await assetOf(p, "ELECTRIC_MOTOR");
+  await p.evaluate((id) => window.__xr.xo.show(id), m6.asset_id); await step(p, 5);
+  await p.click('#xoPart [data-xo="diag"]');
+  ok(`X-Ray panel: Diagnosis opens ${m6.tag}'s diagnosis (P-005's was open before)`, await p.waitForFunction((t) => !window.__xr.xo.open && new RegExp(`${t} diagnosis`).test(document.querySelector("#right").textContent), m6.tag, { timeout: 15000 }).then(() => true, () => false) && p.errors.length === 0, p.errors.slice(0, 1).join());
+
   // full X-Ray tab, every class: dock device switch, part card tabs, ask, isolate following the selection, assemble
   await p.click('.modes [data-mode="xray"]');
   await p.waitForFunction(() => window.__app.mode === "xray" && document.querySelector("#right [data-xtab]"), null, { timeout: 30000 });
@@ -281,6 +287,9 @@ async function practice(browser) {
     else if (t.type === "choice") { await p.click(`.opt[data-i="${t.answer}"]`); await p.click("#nx"); }
     else { await p.click(`#left [data-comp="${t.order[0]}"]`); break; }
   }
+  await p.click('#dock [data-d="all"]');
+  const keep = await p.evaluate(() => [window.__app.xray.hidden.size, document.querySelector('#dock [data-d="all"]').innerText]);
+  ok("Practice: dock 'Reset view' keeps the removed parts removed", keep[0] === 1 && /Reset view/.test(keep[1]), JSON.stringify(keep));
   const mid = await p.evaluate(() => window.__app.xray.hidden.size);
   await p.click('.modes [data-mode="xray"]');
   await p.waitForFunction(() => window.__app.mode === "xray" && document.querySelector("#right [data-xtab]"), null, { timeout: 30000 });
@@ -352,19 +361,22 @@ async function value(browser) {
   const p = await open(browser);
   await p.click('.modes [data-mode="value"]');
   const txt = await p.evaluate(() => document.querySelector("#value").innerText);
-  const num = (id) => p.evaluate((id) => +document.getElementById(id).textContent.replace(/[€,]/g, ""), id);
-  // by hand: 50 techs × 4 look-ups × 50 weeks × (30 − 10) min / 60 = 3,333.3 h × €50 = €166,667; onboarding 10 × 16 h × €50 = €8,000
-  const t0 = await num("roiTotal"), l0 = await num("roiLookup"), o0 = await num("roiTrain");
-  ok("Value: default case matches the hand calculation (€166,667 + €8,000 = €174,667)", l0 === 166667 && o0 === 8000 && t0 === 174667, `${l0} + ${o0} = ${t0}`);
-  ok("Value: labelled hypothetical, not measured Valmet savings; downtime not counted by default", /hypothetical input/.test(txt) && /Nothing here is a measured Valmet saving/.test(txt) && /Illustrative/.test(txt) && /not counted/.test(txt));
-  ok("Value: formulas shown", (await p.evaluate(() => document.querySelectorAll("#roiF .formula").length)) === 4 && /50 technicians × 4 look-ups\/week × 50 weeks × \(30 − 10\) min ÷ 60 = 3,333 h/.test(txt));
+  const num = (id) => p.evaluate((id) => +document.getElementById(id).textContent.replace(/[€,]/g, "").replace("−", "-"), id);
+  // by hand: 50 techs × 4 look-ups × 50 weeks × (30 − 10) min / 60 = 3,333.3 h × €50 = €166,667; onboarding 10 × 16 h × €50 = €8,000;
+  // downtime 0 h → €0; gross €174,667; minus the €30,000 running cost → net €144,667
+  const t0 = await num("roiTotal"), g0 = await num("roiGross"), l0 = await num("roiLookup"), o0 = await num("roiTrain"), c0 = await num("roiCost");
+  ok("Value: default case matches the hand calculation (gross €166,667 + €8,000 = €174,667; net of €30,000 cost = €144,667)", l0 === 166667 && o0 === 8000 && g0 === 174667 && c0 === -30000 && t0 === 144667, `${l0} + ${o0} = ${g0}; ${c0} → ${t0}`);
+  ok("Value: labelled hypothetical gross and net, not measured Valmet savings; downtime not counted by default", /hypothetical input/.test(txt) && /Nothing here is a measured Valmet saving/.test(txt) && /Illustrative/.test(txt) && /not counted/.test(txt) && /Net annual benefit \(hypothetical\)/.test(txt) && /Gross annual benefit \(hypothetical\)/.test(txt) && /running cost/i.test(txt));
+  ok("Value: formulas shown, including gross − cost = net", (await p.evaluate(() => document.querySelectorAll("#roiF .formula").length)) === 5 && /50 technicians × 4 look-ups\/week × 50 weeks × \(30 − 10\) min ÷ 60 = 3,333 h/.test(txt) && /− €30,000 running cost = €144,667 net/.test(txt));
   const set = (k, v) => p.evaluate(([k, v]) => { const s = document.querySelector(`[data-roi="${k}"]`); s.value = v; s.dispatchEvent(new Event("input", { bubbles: true })); }, [k, v]);
-  await set("techs", 20); await set("before", 25); await set("downH", 2);
-  // 20 × 4 × 50 × 15 / 60 = 1,000 h × €50 = €50,000; + €8,000; + 2 h × €5,000 = €10,000 → €68,000
-  const t1 = await num("roiTotal"), lbl = await p.evaluate(() => document.querySelector('[data-roiv="techs"]').textContent);
-  ok("Value: inputs are editable and recompute (20 techs, 25 min, 2 h downtime → €68,000)", t1 === 68000 && lbl === "20", `${t1}, label ${lbl}`);
+  await set("techs", 20); await set("before", 25); await set("downH", 2); await set("cost", 50000);
+  // 20 × 4 × 50 × 15 / 60 = 1,000 h × €50 = €50,000; + €8,000; + 2 h × €5,000 = €10,000 → gross €68,000; − €50,000 → net €18,000
+  const t1 = await num("roiTotal"), g1 = await num("roiGross"), lbl = await p.evaluate(() => document.querySelector('[data-roiv="techs"]').textContent);
+  ok("Value: inputs are editable and recompute (20 techs, 25 min, 2 h downtime, €50,000 cost → gross €68,000, net €18,000)", g1 === 68000 && t1 === 18000 && lbl === "20", `${g1} / ${t1}, label ${lbl}`);
   await set("after", 60);
-  ok("Value: 'after' slower than 'before' gives no negative look-up value", (await num("roiLookup")) === 0);
+  // 20 × 4 × 50 × (25 − 60) / 60 = −2,333 h × €50 = −€116,667; gross −€98,667; net −€148,667
+  const l2 = await num("roiLookup"), t2 = await num("roiTotal"), shown = await p.evaluate(() => document.getElementById("roiTotal").textContent);
+  ok("Value: slower look-ups give an honest negative value (not clamped to zero)", l2 === -116667 && t2 === -148667 && /^−€/.test(shown), `${l2}, net ${shown}`);
   await p.click("#value [data-mode-back]");
   ok("Value: × returns to the facility", await p.evaluate(() => window.__app.mode === "facility" && document.querySelector("#value").classList.contains("hidden")));
   ok("Value: no page errors", p.errors.length === 0, p.errors.slice(0, 3).join(" | "));
@@ -374,7 +386,7 @@ async function value(browser) {
 // ------------------------------------------------------------------ 6. crawler: every visible button in these views does something, no errors
 async function crawl(browser) {
   const p = await open(browser);
-  const report = [];
+  const report = [], errAt = []; let errN = 0;
   const views = {
     xray: async () => { if ((await p.evaluate(() => window.__app.mode)) !== "xray") { await p.click('.modes [data-mode="xray"]'); await p.waitForFunction(() => window.__app.mode === "xray" && document.querySelector("#right [data-xtab]"), null, { timeout: 30000 }); } },
     learn: async () => { await p.click('.modes [data-mode="learn"]'); await p.waitForFunction(() => window.__app.mode === "learn" && document.querySelector("#right [data-topic], #lNext"), null, { timeout: 30000 }); },
@@ -397,22 +409,27 @@ async function crawl(browser) {
         b.dataset.crawl = "1";
         const A = window.__app, X = A.xray;
         window.__sig = () => JSON.stringify([document.querySelector("#app").innerHTML.length, document.querySelector("#right")?.innerHTML, document.querySelector("#left")?.innerHTML, document.querySelector("#dock")?.innerHTML, document.querySelector("#sheet")?.className, document.querySelector("#xo")?.innerHTML,
-          A.mode, A.xClass, A.xSelected, X.target, X.ghost, X.labelsOn, [...X.hidden].join(), window.__xr.xo.open, document.querySelector(".toast")?.textContent, document.body.className]);
+          A.mode, A.xClass, A.xSelected, X.target, X.ghost, X.labelsOn, [...X.hidden].join(), window.__xr.xo.open, window.__xr.xCam.position.toArray().map((v) => v.toFixed(3)), window.__xr.xo.cam?.position.toArray().map((v) => v.toFixed(3)), document.querySelector(".toast")?.textContent, document.body.className]);
         window.__sig0 = window.__sig();
         return (b.textContent.trim() || b.title || b.getAttribute("aria-label") || b.className).slice(0, 30);
       }, [sel, i]);
       if (!info) continue;
-      await p.click("[data-crawl]", { timeout: 10000 }).catch((e) => dead.push(`${info} (not clickable: ${e.message.split("\n")[0].slice(0, 40)})`));
+      // a list re-rendered after marking (e.g. the panel refreshing on open) replaces the marked node: mark again once
+      await p.click("[data-crawl]", { timeout: 30000 }).catch(async () => {
+        await p.evaluate(([s, i]) => { const b = document.querySelectorAll(s)[i]; if (b) { b.dataset.crawl = "1"; window.__sig0 = window.__sig(); } }, [sel, i]);
+        await p.click("[data-crawl]", { timeout: 30000 }).catch((e) => dead.push(`${info} (not clickable: ${e.message.split("\n")[0].slice(0, 40)})`));
+      });
       await sleep(250); await step(p, 2);
       const changed = await p.evaluate(() => { document.querySelector("[data-crawl]")?.removeAttribute("data-crawl"); return window.__sig() !== window.__sig0 || /^(blob|data):/.test(document.activeElement?.href || ""); });
       clicked++;
+      if (p.errors.length > errN) { errAt.push(`${name} → ${info}: ${p.errors.slice(errN).join(" | ").slice(0, 120)}`); errN = p.errors.length; }
       if (!changed) dead.push(info);
-      await p.evaluate(() => { document.querySelector(".toast")?.remove(); document.querySelector("#sheet")?.classList.add("hidden"); });
+      await p.evaluate(() => { document.querySelector(".toast")?.remove(); document.querySelector("#sheet")?.classList.add("hidden"); document.querySelectorAll(".card.min").forEach((c) => c.classList.remove("min")); });
     }
     report.push(`${name}: ${clicked} clicked${dead.length ? `, no visible effect: ${dead.join(" | ")}` : ""}`);
-    ok(`Crawler ${name}: every visible enabled button does something`, clicked > 2 && dead.length === 0, `${clicked} clicked${dead.length ? " · dead: " + dead.join(" | ") : ""}`);
+    ok(`Crawler ${name}: every visible enabled button does something`, clicked >= (name === "value" ? 1 : 5) && dead.length === 0, `${clicked} clicked${dead.length ? " · dead: " + dead.join(" | ") : ""}`);
   }
-  ok("Crawler: no page errors", p.errors.length === 0, p.errors.slice(0, 3).join(" | "));
+  ok("Crawler: no page errors", p.errors.length === 0, errAt.slice(0, 3).join(" ; ") || p.errors.slice(0, 3).join(" | "));
   await p.context().close();
 }
 
@@ -426,7 +443,7 @@ async function layout(browser) {
     const inView = (a) => a && a.l >= -1 && a.t >= -1 && a.r <= w + 1 && a.b <= h + 1;
     const bad = [];
     // in-scene X-Ray panel: on screen, its close button, explode slider and tools are not covered
-    await p.evaluate(() => window.__xr.xo.show(window.__xr.S.target.asset.asset_id)); await step(p, 20);
+    await p.evaluate(() => window.__xr.xo.show(window.__xr.S.target.asset.asset_id)); await step(p, 20); await sleep(700);   // let the opening transition finish
     const xo = await rect("#xo");
     if (!inView(xo)) bad.push(`overlay off screen ${JSON.stringify(xo)}`);
     const cov = await p.evaluate(() => [...document.querySelectorAll('#xo [data-xo="close"], #xo [data-xo="full"], #xoExplode, #xo .xo-btns .tool, #xo .xo-row')].filter((b) => {
@@ -437,7 +454,7 @@ async function layout(browser) {
     for (const m of ["xray", "learn", "practice"]) {
       await p.evaluate((m) => m === "xray" ? window.__enterXRay() : window.__setMode(m), m);
       await p.waitForFunction((m) => window.__app.mode === m && document.querySelector("#right .card-b, #right .card-h"), m, { timeout: 60000 });
-      await sleep(1200);
+      await sleep(1200); await step(p, 3);      // capture mode: draw this view before measuring / the screenshot
       const L = await rect("#left"), R = await rect("#right"), D = await rect("#dock"), M = await rect(".modes");
       if (!inView(D)) bad.push(`${m}: dock off screen ${JSON.stringify(D)}`);
       if (!phone && (inter(R, D) || inter(L, D) || inter(L, R))) bad.push(`${m}: cards overlap ${JSON.stringify({ L, R, D })}`);

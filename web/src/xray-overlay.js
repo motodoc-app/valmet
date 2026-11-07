@@ -79,7 +79,13 @@ function onClick(e) {
   if (a === "labels") { X.setLabels(!X.labelsOn); footer(); }
   if (a === "home") { X.isolate(null); const h = home(); APP.flyTo(h.pos, h.tgt, 0.9, XO.cam, XO.ctl); side(); }
   if (a === "isolate") { X.isolate(X.hidden.size === 0 ? S.xSelected : null); side(); }
-  if (a === "diag") { close(); APP.S.cardLock = true; APP.renderDiagnosis?.(); document.getElementById("right")?.classList.remove("min"); }
+  if (a === "diag") {
+    // the diagnosis of THIS asset (already loaded for the panel); S.diag may be empty or belong to another asset
+    const d = S.xDiag; close(); S.cardLock = true;
+    if (d) { S.diag = d; S.tab = "overview"; }
+    if (S.diag) APP.renderDiagnosis?.();
+    document.getElementById("right")?.classList.remove("min");
+  }
 }
 
 const xDef = () => APP.S.kb.classes[APP.S.xClass];

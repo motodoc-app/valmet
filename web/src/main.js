@@ -396,7 +396,7 @@ function renderDock() {
     $("#dock").innerHTML = `
       <div class="grp"><button class="tool" data-d="assemble">${icon(S.xray.target > 0.05 ? "cube" : "expand")}${S.xray.target > 0.05 ? "Assemble" : "Explode"}</button></div>
       <div class="grp slider"><div class="top"><span>Explode</span><span id="xpct">${pct}%</span></div><input type="range" id="explode" min="0" max="100" value="${pct}" aria-label="Explode"/></div>
-      <div class="grp"><button class="tool" data-d="all">${icon("expand")}All parts</button><button class="tool ${S.xray.ghost ? "on" : ""}" data-d="ghost"><span class="switch"></span>See-through</button><button class="tool ${S.xray.labelsOn ? "on" : ""}" data-d="labels"><span class="switch"></span>Labels</button></div>
+      <div class="grp"><button class="tool" data-d="all">${S.mode === "practice" ? `${icon("reset")}Reset view` : `${icon("expand")}All parts`}</button><button class="tool ${S.xray.ghost ? "on" : ""}" data-d="ghost"><span class="switch"></span>See-through</button><button class="tool ${S.xray.labelsOn ? "on" : ""}" data-d="labels"><span class="switch"></span>Labels</button></div>
       <div class="grp"><div class="seg" role="group" aria-label="Device type">${Object.keys(S.kb.classes).map((cls) => `<button data-xclass="${cls}" class="${S.xClass === cls ? "on" : ""}">${SHORT[cls] || nice(cls)}</button>`).join("")}</div></div>`;
     $("#explode").oninput = (e) => { const was = S.xray.target > 0.05; S.xray.setExplode(e.target.value / 100); $("#xpct").textContent = `${e.target.value}%`; if (was !== S.xray.target > 0.05) $('#dock [data-d="assemble"]').innerHTML = `${icon(was ? "expand" : "cube")}${was ? "Explode" : "Assemble"}`; };
     return;
@@ -453,7 +453,7 @@ $("#dock").addEventListener("click", async (e) => {
 
   if (d === "block") blockAisle();
   if (d === "assemble") { S.xray.setExplode(S.xray.target > 0.05 ? 0 : 0.65); renderDock(); }
-  if (d === "all") { S.xray.isolate(null); flyTo(xHome().pos, xHome().tgt, 1, xCam, xControls); if (S.xSelected) renderPartCard(); }
+  if (d === "all") { if (S.mode !== "practice") S.xray.isolate(null); /* in Practice the removed parts stay removed */ flyTo(xHome().pos, xHome().tgt, 1, xCam, xControls); if (S.xSelected) renderPartCard(); }
   if (d === "ghost") { S.xray.setGhost(!S.xray.ghost); renderDock(); }
   if (d === "labels") { S.xray.setLabels(!S.xray.labelsOn); renderDock(); }
 });
@@ -961,18 +961,22 @@ const ROI_INPUTS = [
   ["trainH", "Onboarding hours saved per new technician", 16, 0, 160, 1, "h"],
   ["downH", "Downtime hours avoided per year (needs validated plant data)", 0, 0, 200, 1, "h"],
   ["downC", "Cost of one downtime hour", 5000, 0, 50000, 500, "€"],
+  ["cost", "Annual running cost (licences, integration, scan upkeep)", 30000, 0, 500000, 1000, "€"],
 ];
 export function computeROI(v) {
-  const hours = v.techs * v.tasks * v.weeks * Math.max(0, v.before - v.after) / 60;
-  const lookup = hours * v.rate, training = v.hires * v.trainH * v.rate, downtime = v.downH * v.downC;
-  return { hours, lookup, training, downtime, total: lookup + training + downtime };
+  // no clamping: if the tool makes look-ups slower, the value is negative and shown as such
+  const hours = v.techs * v.tasks * v.weeks * (v.before - v.after) / 60;
+  const lookup = hours * v.rate, training = v.hires * v.trainH * v.rate, downtime = v.downH * v.downC, gross = lookup + training + downtime;
+  return { hours, lookup, training, downtime, gross, cost: v.cost, net: gross - v.cost, total: gross };
 }
 S.roi = Object.fromEntries(ROI_INPUTS.map(([k, , d]) => [k, d]));
-const eur = (x) => "€" + Math.round(x).toLocaleString("en-US");
-const num = (x) => Math.round(x).toLocaleString("en-US");
+const eur = (x) => (Math.round(x) < 0 ? "−€" : "€") + Math.abs(Math.round(x)).toLocaleString("en-US");
+const num = (x) => (Math.round(x) < 0 ? "−" : "") + Math.abs(Math.round(x)).toLocaleString("en-US");
 function roiNumbers() {
   const v = S.roi, r = computeROI(v);
-  $("#roiTotal").textContent = eur(r.total);
+  $("#roiTotal").textContent = eur(r.net);
+  $("#roiGross").textContent = eur(r.gross);
+  $("#roiCost").textContent = eur(-r.cost);
   $("#roiLookup").textContent = eur(r.lookup);
   $("#roiTrain").textContent = eur(r.training);
   $("#roiDown").textContent = r.downtime ? eur(r.downtime) : "not counted";
@@ -980,7 +984,8 @@ function roiNumbers() {
     <div class="formula">${v.techs} technicians × ${v.tasks} look-ups/week × ${v.weeks} weeks × (${v.before} − ${v.after}) min ÷ 60 = <b>${num(r.hours)} h</b></div>
     <div class="formula">${num(r.hours)} h × €${v.rate}/h = <b>${eur(r.lookup)}</b></div>
     <div class="formula">${v.hires} new technicians × ${v.trainH} h × €${v.rate}/h = <b>${eur(r.training)}</b></div>
-    <div class="formula">${v.downH} h × ${eur(v.downC)} = <b>${eur(r.downtime)}</b></div>`;
+    <div class="formula">${v.downH} h × ${eur(v.downC)} = <b>${eur(r.downtime)}</b></div>
+    <div class="formula">${eur(r.lookup)} + ${eur(r.training)} + ${eur(r.downtime)} − ${eur(r.cost)} running cost = <b>${eur(r.net)}</b> net</div>`;
   for (const [k, , , , , , unit] of ROI_INPUTS) {
     const el = $(`[data-roiv="${k}"]`);
     if (el) el.textContent = `${unit === "€" ? "€" : ""}${num(v[k])}${unit && unit !== "€" ? " " + unit : ""}`;
@@ -998,10 +1003,12 @@ function renderValue() {
           <span class="roi-row"><input type="range" min="${min}" max="${max}" step="${step}" value="${v[k]}" data-roi="${k}" aria-label="${label}"/><b data-roiv="${k}"></b></span></label>`).join("")}
       </div>
       <div>
-        <div class="roi-total"><span>Potential annual value</span><b id="roiTotal"></b><small>Labour-time value. It becomes cash only if the saved time is redeployed or costs fall.</small></div>
+        <div class="roi-total"><span>Net annual benefit (hypothetical)</span><b id="roiTotal"></b><small>Gross labour-time value minus the running cost you entered. It becomes cash only if the saved time is redeployed or costs fall. Negative means the assumptions do not pay back.</small></div>
+        <div class="kv"><span>Gross annual benefit (hypothetical)</span><span id="roiGross"></span></div>
         <div class="kv"><span>Faster information look-ups</span><span id="roiLookup"></span></div>
         <div class="kv"><span>Faster onboarding</span><span id="roiTrain"></span></div>
         <div class="kv"><span>Avoided downtime</span><span id="roiDown"></span></div>
+        <div class="kv"><span>Running cost</span><span id="roiCost"></span></div>
         <div class="section"><div class="label">How it is calculated</div><div id="roiF"></div></div>
         <div class="section"><div class="label">What a pilot should measure</div>
           <div class="step"><span class="k">1</span><span>Time from work order to standing at the right asset with the right documents.</span></div>
