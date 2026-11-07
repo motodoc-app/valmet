@@ -4,6 +4,7 @@ import "./layers.css";
 import { addRailButton, on, APP } from "./ext.js";
 import { CATEGORIES, catOf, isUncertain, UNCERTAIN_BELOW } from "./semantic.js";
 import { drawSiteMap, pickSiteMap } from "./sitemap.js";
+import "./look.js";          // backdrop, floor plate, adaptive resolution, auto cut-away (presentation only)
 
 const L = { tick: 0, legend: null, grid: null, hoverNdc: null, hoverDirty: false, mapView: null, mapHover: null };
 const fac = () => APP.S?.fac;

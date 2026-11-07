@@ -99,3 +99,17 @@ GPU memory (estimate): ≈ 16 B/splat packed + ≈ 40 B/splat SH → ≈ 95 MB f
 Recommendation: before the deadline, ship the full-fidelity scan with the cleaned high views, pins and Twin toggle
 (this branch). In a pilot: obtain the capture images to re-train with floater suppression, and build per-asset splat
 segments for "move the real pump" planning.
+
+## 6. Round 2: polish without new cost
+
+Same method: identical poses in `?capture` mode, left = before (round-1 branch as merged), right = after.
+
+| Change | What it does | Evidence / numbers |
+|---|---|---|
+| **Establishing shot** (`main.js` boot intro) | The page opens on the whole room from above (cut-away: no ceiling, haze or wall skins), then one 2.6 s dolly down to the eye-level home view as soon as the first scan chunk is on screen. Any drag, camera button or mode change ends it; skipped for `?capture`, `?qa`, `?scan=off`, `?intro=0` and deep links (`#…`). | `docs/rendering/r2-establishing-shot-backdrop.jpg`. Verdict: better than starting at eye level: the visitor first sees the layout (where the target is, where the robot starts), then stands in it. Costs nothing extra: the same scan, one tween. On very slow GPUs the dolly takes longer (flyTo is frame-stepped), and it can always be skipped by dragging. |
+| **Studio backdrop + floor plate** (`look.js`) | Vertical dark gradient instead of flat black; a soft-edged slate slab 0.9 m larger than the room, just under the floor (rendered before the splats, so the scan composites over it). | `r2-establishing-shot-backdrop.jpg`, `r2-top-backdrop.jpg`, `r2-broadcast-backdrop.jpg`: the room now sits on a plate like a product render instead of floating in a void. Eye level is unchanged (`r2-home-unchanged.jpg`): the plate only shows through gaps in the scanned floor. Cost: one textured quad + a background texture. |
+| **Adaptive resolution** (`look.js`) | Desktop: pixel ratio between 1 and min(devicePixelRatio, 2), stepped by 0.25 every second from the measured frame time (down above 24 ms, up after 3 s below 14 ms). Phones stay at 1. `?dpr=<n>` pins it; `?capture` leaves it fixed. | `r2-pixel-ratio-1-vs-2-crop.jpg` (eye level, 2× zoom crop): ratio 2 resolves cable runs, labels and edges visibly better. Software GL frame cost: intro pose 18.6 s → 22.0 s, eye pose 22.3 s → 27.0 s (≈ 1.2×, because a CPU rasteriser is dominated by per-splat work; a real GPU is fill-bound and closer to 4× pixels, which is exactly why the ratio adapts instead of being fixed). |
+| **Auto cut-away for the free camera** (`look.js`) | Orbiting the free / chase camera above the ceiling now hides the ceiling, haze and wall skins exactly like the Broadcast / Top cameras; coming back below restores them. | Previously, zooming out by hand showed the ceiling's blurry top and the outside rim. |
+| Spark quality options | Not changed. | Round 1 measured blur / pre-blur at ≤ 1.3 / 255 mean difference; `focalAdjustment` > 1 would sharpen splats beyond what this model was trained for (not faithful). Spark defaults are the reference for this model. |
+| Colour / exposure | Not changed (faithful to the capture). | Eye-level frames use the full range without clipping: luminance p1 / p50 / p99 = 30 / 127 / 223, 0.03 % of pixels ≥ 250. The warm cast (R > G > B) is the room's tungsten light as captured; "correcting" it would fabricate a look. |
+| Clean scan at eye level | Not made default. | The haze filter's eye-level effect is barely visible (round-1 images) and it is one click away; in high / angled views it is now always on (cut-away). |
