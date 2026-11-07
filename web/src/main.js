@@ -129,6 +129,7 @@ async function boot() {
   S.fac.setShowMode(S.frames);
   if (!S.minimap) $("#minimap").classList.add("hidden");
   camera.position.copy(S.home.pos); controls.target.copy(S.home.tgt);
+  startIntro();                      // [render: Agent V] establishing shot (see introView)
   initTraining(S, { $, esc, cites, setMode, card: (h) => ($("#right").innerHTML = h), xCam, xControls, toast, icon, focusPart });
   Object.assign(APP, { S, THREE, scene: fac, camera, controls, xCam, xControls, renderer, canvas, labelsRoot: $(".labels"), api, flyTo, card, sheet,
     setMode, sceneMode, selectObject, selectAsset, restart, dispatch, blockAisle, replan, renderDock, renderLeft, renderRail,
@@ -148,6 +149,7 @@ async function boot() {
     pill.classList.remove("hidden");
     pill.textContent = phase === "done" ? "" : total ? `Loading scan · ${mb(received)} of ${mb(total)} MB` : "Loading scan…";
     if (phase === "done") pill.classList.add("hidden");
+    if (phase !== "download" && S.intro?.stage === "hold") setTimeout(playIntro, 900);   // [render: Agent V] first chunk is up
   }, { splats: S.sparkOk, fallback: SCAN_FALLBACK, lite: LITE }).then(() => {
     if (S.fac.splatMode === "points") toast("Showing the scan as a point cloud: this browser could not start the splat renderer.", 6000);
   }).catch((e) => { pill.textContent = "The scan could not be loaded. Everything else still works."; console.warn(e); });
@@ -166,6 +168,33 @@ function homeView() {
   t[L] = c[L] + (c[L] - p[L]) * 0.33;
   t[W] = c[W] - (p[W] - c[W]) * 0.45;
   return { pos: new THREE.Vector3(p[0], 1.65, p[1]), tgt: new THREE.Vector3(t[0], 0.5, t[1]) };
+}
+
+// [render: Agent V] ---- boot camera intro: an establishing shot of the whole room from above (cut-away: no ceiling,
+// haze or wall skins, see look.js), then one smooth 2.6 s dolly down to the eye-level home view once the first scan
+// chunk is on screen. Skipped for ?capture / ?qa / ?scan=off / ?intro=0 and deep links (#...); any drag, camera
+// button or mode change during the shot ends it where it is.
+function introView() {
+  const b = S.data.bounds, h = S.home.pos, cx = (b.min[0] + b.max[0]) / 2, cz = (b.min[2] + b.max[2]) / 2;
+  const d = new THREE.Vector3(h.x - cx, 0, h.z - cz).normalize();
+  return { pos: new THREE.Vector3(cx + d.x * 5.2, 6.4, cz + d.z * 5.2), tgt: new THREE.Vector3(cx - d.x * 0.6, 0, cz - d.z * 0.6) };
+}
+function startIntro() {
+  if (/[?&](capture|qa|intro=0|scan=off)\b/.test(location.search) || location.hash) return;
+  const v = introView();
+  camera.position.copy(v.pos); controls.target.copy(v.tgt);
+  S.fac.setCutaway(true);            // look.js keeps it while the camera is above the ceiling and lifts it on the way down
+  S.intro = { stage: "hold" };
+  const stop = () => { if (S.intro) { if (S.intro.stage === "fly") tween = null; S.intro = null; } };
+  controls.addEventListener("start", stop, { once: true });
+  setTimeout(playIntro, 9000);       // scan slow or unavailable: fly home anyway
+}
+function playIntro() {
+  if (S.intro?.stage !== "hold") return;
+  if (S.cam !== "chase" || S.mode !== "facility" || tween) { S.intro = null; return; }
+  S.intro.stage = "fly";
+  flyTo(S.home.pos, S.home.tgt, 2.6);
+  setTimeout(() => { if (S.intro?.stage === "fly") S.intro = null; }, 2800);
 }
 
 // ------------------------------------------------------------------ left card: assets (facility) / components (x-ray)

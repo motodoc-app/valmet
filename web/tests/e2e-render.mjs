@@ -78,6 +78,17 @@ try {
   ok("Twin: a condition pin per asset that is not healthy", tw.pins > 0 && tw.pins === (await p.evaluate(() => window.__app.data.objects.filter((o) => o.asset && o.asset.condition_state !== "healthy").length)), `${tw.pins} pins`);
   ok("Twin: overlay builds and toggles", tw.twin && tw.floor && tw.walls >= 8 && tw.off, JSON.stringify(tw));
   ok("Twin: pins step aside for the semantic view", tw.pinsHiddenInSemantic);
+  // look.js: studio backdrop + floor plate; no adaptive resolution while capturing
+  const look = await p.evaluate(() => ({ bg: !!window.__xr.scene.background?.isTexture, plate: !!window.__xr.scene.getObjectByName("floor-plate"), adapt: window.__look.adapt }));
+  ok("Look: backdrop gradient and floor plate", look.bg && look.plate, JSON.stringify(look));
+  ok("Look: ?capture keeps a fixed pixel ratio", look.adapt === false);
+  // free camera above the ceiling cuts the ceiling away; back below restores it
+  const auto = await p.evaluate(() => {
+    const X = window.__xr, S = window.__app; S.cam = "free"; S.fac.setCutaway(false);
+    X.camera.position.set(0, 6, 4); window.__step(1 / 30); const up = S.fac.cutaway;
+    X.camera.position.set(0, 1.6, 1); window.__step(1 / 30); return { up, down: S.fac.cutaway };
+  });
+  ok("Look: auto cut-away above the ceiling (free camera)", auto.up === true && auto.down === false, JSON.stringify(auto));
   // one rendered frame must not throw
   await p.evaluate(() => window.__step(1 / 30));
   ok("HQ: no page errors", p.errors.length === 0, p.errors.slice(0, 3).join(" | "));
@@ -110,6 +121,34 @@ try {
   s = await info(p);
   const t0 = hq.chunks.filter((c) => c.tier === 0);
   ok("Phone: loads tier 0 only", s.path === "hq" && s.hq === t0.length && s.n === t0.reduce((a, c) => a + c.count, 0), `${s.n} splats`);
+  await p.context().close();
+
+  // 6. adaptive resolution on a 2x desktop screen (scan off: only the UI and overlays render)
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 2 });
+    p = await ctx.newPage(); p.errors = []; p.on("pageerror", (e) => p.errors.push(e.message));
+    await p.goto(BASE + "?scan=off");
+    await waitFor(p, () => window.__app?.fac && window.__look);
+    await sleep(8000);
+    const d = await p.evaluate(() => ({ ...window.__look, plate: undefined, pr: window.__renderer.getPixelRatio() }));
+    ok("Adaptive resolution: active on desktop, bounded to [1, 2]", d.adapt && d.dprMax === 2 && d.pr >= 1 && d.pr <= 2 && d.frameMs > 0, `pixel ratio ${d.pr}, ${d.frameMs} ms/frame, ${d.changes} changes`);
+    await ctx.close();
+  }
+  // 7. establishing shot: starts above the room with the cut-away, then flies home
+  {
+    p = await open(browser, "?render=classic");
+    const s0 = await waitFor(p, () => window.__app?.intro?.stage === "hold" && window.__xr.camera.position.y > 5, null, 60000);
+    const cut = s0 && await p.evaluate(() => window.__app.fac.cutaway);
+    ok("Intro: starts with the whole room from above (cut-away)", s0 && cut);
+    ok("Intro: flies to the eye-level home view once the scan is up", await waitFor(p, () => !window.__app.intro || window.__app.intro.stage === "fly", null, 240000));
+    ok("Intro: no page errors", p.errors.length === 0, p.errors.slice(0, 3).join(" | "));
+    await p.context().close();
+  }
+  // 8. phones keep pixel ratio 1
+  p = await open(browser, "?scan=off", { device: "iPhone 13" });
+  await waitFor(p, () => window.__app?.fac && window.__look);
+  const ph = await p.evaluate(() => ({ adapt: window.__look.adapt, max: window.__look.dprMax, pr: window.__renderer.getPixelRatio() }));
+  ok("Phone: fixed pixel ratio 1, no adaptation", !ph.adapt && ph.max === 1 && ph.pr === 1, JSON.stringify(ph));
   await p.context().close();
 } finally { await browser.close(); server?.kill(); }
 const failed = results.filter((r) => !r[1]);
