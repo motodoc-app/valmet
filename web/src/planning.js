@@ -272,10 +272,11 @@ function tag(html, cls = "") {
 function buildZone() {
   const T = P.three, z = P.zone;
   T.zone.clear();
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(z.w, z.d), new THREE.MeshBasicMaterial({ color: COL.bad, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }));
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(z.w, z.d), new THREE.MeshBasicMaterial({ color: COL.bad, transparent: true, opacity: 0.12, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
   plane.rotation.x = -Math.PI / 2;
-  const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(z.w, z.d)), new THREE.LineDashedMaterial({ color: COL.bad, dashSize: 0.05, gapSize: 0.035, transparent: true, opacity: 0.9 }));
+  const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(z.w, z.d)), new THREE.LineDashedMaterial({ color: COL.bad, dashSize: 0.05, gapSize: 0.035, transparent: true, opacity: 0.9, depthTest: false }));
   edge.rotation.x = -Math.PI / 2; edge.computeLineDistances();
+  plane.renderOrder = 3; edge.renderOrder = 4;
   const g = new THREE.Group(); g.add(plane, edge);
   g.position.set(z.x, 0.012, z.z); g.rotation.y = -z.yaw;
   const lab = tag(`<span class="d"></span>${esc(P.target.asset?.tag || "Target")} service zone<small>assumed</small>`, "zone");
@@ -302,7 +303,8 @@ function proxyItem(id) {
   const ghost = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)), new THREE.LineDashedMaterial({ color: COL.ghost, dashSize: 0.04, gapSize: 0.03, transparent: true, opacity: 0.9 }));
   ghost.computeLineDistances();
   ghost.position.set(o.center[0], bottom + h / 2, o.center[2]); ghost.rotation.y = -o.yaw;
-  const ghostFloor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: COL.ghost, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide }));
+  const ghostFloor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: COL.ghost, transparent: true, opacity: 0.16, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
+  ghostFloor.renderOrder = 4;
   ghostFloor.rotation.x = -Math.PI / 2;
   const gf = new THREE.Group(); gf.add(ghostFloor); gf.position.set(o.center[0], 0.014, o.center[2]); gf.rotation.y = -o.yaw;
   const ghostTag = tag(`Original position<small>scan</small>`, "ghost");
@@ -313,20 +315,22 @@ function proxyItem(id) {
   const edgeMat = new THREE.LineBasicMaterial({ color: COL.ok });
   const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), fillMat); box.position.y = bottom + h / 2;
   const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)), edgeMat); edges.position.y = bottom + h / 2;
-  const floorMat = new THREE.MeshBasicMaterial({ color: COL.ok, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
+  const floorMat = new THREE.MeshBasicMaterial({ color: COL.ok, transparent: true, opacity: 0.3, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const fl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), floorMat); fl.rotation.x = -Math.PI / 2; fl.position.y = 0.016;
   const rr = Math.hypot(w, d) / 2 + 0.1;
-  const ringMat = new THREE.MeshBasicMaterial({ color: COL.ok, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
+  const ringMat = new THREE.MeshBasicMaterial({ color: COL.ok, transparent: true, opacity: 0.55, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(new THREE.RingGeometry(rr, rr + 0.018, 64), ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.018;
   // heading tick on the ring shows the rotation
   const tick = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.022), ringMat); tick.rotation.x = -Math.PI / 2; tick.position.set(rr + 0.06, 0.018, 0);
+  fl.renderOrder = ring.renderOrder = tick.renderOrder = 6;
   proxy.add(box, edges, fl, ring, tick);
   const ptag = tag(`<span class="d"></span><b>Planning proxy</b><small>${esc(shortName(o))}</small>`, "proxy");
   ptag.position.set(0, bottom + h + 0.1, 0);
   proxy.add(ptag);
   // displacement arrow on the floor (dashed)
   const arrow = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, 1)]),
-    new THREE.LineDashedMaterial({ color: 0xf2f3f5, dashSize: 0.05, gapSize: 0.04, transparent: true, opacity: 0.7 }));
+    new THREE.LineDashedMaterial({ color: 0xf2f3f5, dashSize: 0.05, gapSize: 0.04, transparent: true, opacity: 0.8, depthTest: false }));
+  arrow.renderOrder = 6;
   const atag = tag("", "dist");
   T.proxies.add(ghost, gf, ghostTag, proxy, arrow, atag);
   it = { id, ghost, gf, ghostTag, proxy, box, edges, fl, ring, tick, ptag, arrow, atag, fillMat, edgeMat, floorMat, ringMat, h, bottom, w, d };
@@ -357,8 +361,10 @@ function drawGauge(ev) {
   if (!ev?.gauge || APP.S.mode !== "plan") return;
   const { from, to } = ev.gauge;
   const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(from[0], 0.03, from[1]), new THREE.Vector3(to[0], 0.03, to[1])]),
-    new THREE.LineBasicMaterial({ color: COL[ev.status], transparent: true, opacity: 0.9 }));
-  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.025, 16), new THREE.MeshBasicMaterial({ color: COL[ev.status], side: THREE.DoubleSide }));
+    new THREE.LineBasicMaterial({ color: COL[ev.status], transparent: true, opacity: 0.9, depthTest: false }));
+  line.renderOrder = 7;
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.025, 16), new THREE.MeshBasicMaterial({ color: COL[ev.status], side: THREE.DoubleSide, depthTest: false }));
+  dot.renderOrder = 7;
   dot.rotation.x = -Math.PI / 2; dot.position.set(to[0], 0.03, to[1]);
   const t = tag(`clearance ${f2(ev.clearance)} m`, "gauge");
   t.position.set(to[0], 0.08, to[1]);
@@ -370,20 +376,27 @@ function tubeFor(wp, radius, color, opacity) {
   for (let i = 1; i < pts.length; i++) if (pts[i].distanceTo(pts[i - 1]) > 1e-4) path.add(new THREE.LineCurve3(pts[i - 1], pts[i]));
   if (!path.curves.length) return null;
   return new THREE.Mesh(new THREE.TubeGeometry(path, Math.max(32, Math.round(path.getLength() * 30)), radius, 6, false),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false }));
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: false }));
 }
 function drawRoutes() {
   const T = ensureThree();
   T.routes.clear();
   if (APP.S.mode !== "plan" || !P.compare) return;
   if (P.before?.ok) {
-    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(P.before.waypoints.map((p) => new THREE.Vector3(p[0], 0.03, p[2]))),
-      new THREE.LineDashedMaterial({ color: 0xc7ccd3, dashSize: 0.08, gapSize: 0.06, transparent: true, opacity: 0.95 }));
-    line.computeLineDistances();
-    T.routes.add(line);
+    // the original route as a dashed ribbon (thick enough to read over the scan): one instanced draw
+    const wp = P.before.waypoints, dashes = [];
+    for (let i = 1; i < wp.length; i++) {
+      const dx = wp[i][0] - wp[i - 1][0], dz = wp[i][2] - wp[i - 1][2], L = Math.hypot(dx, dz);
+      for (let s = 0; s + 0.08 <= L; s += 0.15) dashes.push([wp[i - 1][0] + (dx * (s + 0.04)) / L, wp[i - 1][2] + (dz * (s + 0.04)) / L, Math.atan2(dz, dx)]);
+    }
+    const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.08, 0.022), new THREE.MeshBasicMaterial({ color: 0xd8dce2, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, side: THREE.DoubleSide }), Math.max(1, dashes.length));
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1), v = new THREE.Vector3();
+    dashes.forEach(([x, z, a], i) => mesh.setMatrixAt(i, m4.compose(v.set(x, 0.03, z), q.setFromEuler(e.set(-Math.PI / 2, 0, -a, "YXZ")), one)));
+    mesh.count = dashes.length; mesh.renderOrder = 5;
+    T.routes.add(mesh);
   }
   if (P.after?.ok) {
-    const t = tubeFor(P.after.waypoints, 0.016, COL.route, 0.95); if (t) T.routes.add(t);
+    const t = tubeFor(P.after.waypoints, 0.016, COL.route, 0.95); if (t) { t.renderOrder = 6; T.routes.add(t); }
     const end = P.after.waypoints.at(-1), ring = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.125, 40), new THREE.MeshBasicMaterial({ color: COL.route, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2; ring.position.set(end[0], 0.03, end[2]);
     T.routes.add(ring);

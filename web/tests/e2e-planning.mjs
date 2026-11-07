@@ -113,7 +113,7 @@ try {
     `${d1.route.before.length_m} m → ${d1.route.after.length_m} m`);
   ok("demo() is idempotent", strip(d1) === strip(d2));
   ok("Summary card shows the before/after comparison", (await p.$$("#right .pl-rt")).length === 2 && /Clear/.test(await p.textContent("#right .pl-tiles")));
-  ok("Both routes drawn in 3D", await p.evaluate(() => window.__xr.scene.getObjectByName("planning").children.some((g) => g.children.length >= 2 && g.children.some((c) => c.type === "Line") && g.children.some((c) => c.geometry?.type === "TubeGeometry"))));
+  ok("Both routes drawn in 3D", await p.evaluate(() => window.__xr.scene.getObjectByName("planning").children.some((g) => g.children.length >= 2 && g.children.some((c) => c.isInstancedMesh) && g.children.some((c) => c.geometry?.type === "TubeGeometry"))));
   await sleep(1500);
   await p.screenshot({ path: path.join(SHOTS, "plan-3-demo.png") });
 
