@@ -1,0 +1,22 @@
+/* Scene layers: semantic legend, site map sheet, hover tag. Uses the design tokens from style.css only. */
+.sem-legend { position: absolute; z-index: 5; left: 50%; bottom: 96px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px;
+  flex-wrap: wrap; justify-content: center; padding: 5px 6px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; font-size: 11px; color: var(--text-2); box-shadow: 0 12px 30px rgba(0, 0, 0, .3); animation: in .25s var(--ease); }
+.sem-legend .it { display: inline-flex; align-items: center; gap: 6px; padding: 3px 7px; border-radius: 6px; white-space: nowrap; }
+.sem-legend .it small { color: var(--text-3); font-variant-numeric: tabular-nums; }
+.sem-legend .sw, .tag3d .sw { width: 9px; height: 9px; border-radius: 2px; flex: none; display: inline-block; }
+.sem-legend .ring { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--ok); flex: none; }
+.sem-legend .sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 2px; }
+.sem-legend button.it { color: var(--text-2); }
+.sem-legend button.it:hover { color: var(--text); background: var(--surface-2); }
+.sem-legend button.it.on { color: var(--text); background: var(--surface-3); }
+.sem-legend .hatch { width: 9px; height: 9px; border-radius: 2px; flex: none; border: 1px dashed var(--text);
+  background: repeating-linear-gradient(135deg, rgba(242, 243, 245, .55) 0 2px, transparent 2px 4px); }
+.tag3d.hover-tag { pointer-events: none; border-color: var(--line-2); }
+
+.sitemap { display: block; width: 100%; border-radius: 8px; cursor: pointer; background: #0d0e11; }
+.sitemap-bar { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin: 0 0 10px; flex-wrap: wrap; }
+.sitemap-info { min-height: 18px; margin-top: 8px; font-size: 12px; color: var(--text-2); }
+.sitemap-info b { color: var(--text); font-weight: 500; }
+.sitemap-info code { font: 500 11px var(--mono); }
+@media (max-width: 820px) { .sem-legend { display: none; } }
