@@ -1,0 +1,56 @@
+1
+00:00:00,000 --> 00:00:07,500
+Before a technician services a pump in an unfamiliar plant,
+
+2
+00:00:07,500 --> 00:00:15,000
+most of the visit goes on finding the asset, working out what's wrong, clearing access and calling an expert — on site, on the clock.
+
+3
+00:00:15,000 --> 00:00:24,000
+Industrial X-Ray turns a 3D scan into a workspace you prepare in before you travel.
+
+4
+00:00:24,000 --> 00:00:35,000
+From Valmet's Gaussian-splat scan we segment 676 object candidates — and show honestly how many are confidently identified.
+
+5
+00:00:35,000 --> 00:00:41,000
+Ask about pump P-005. The copilot pulls telemetry, alarms and work orders from the synthetic workbook:
+
+6
+00:00:41,000 --> 00:00:47,000
+likely fouling, evidence score 0.52 — not a calibrated probability — with every source cited.
+
+7
+00:00:47,000 --> 00:00:55,000
+The robot plans a collision-free way in. This is its camera — simulated from the scan, not a live feed.
+
+8
+00:00:55,000 --> 00:01:02,000
+Block the aisle and it finds a detour.
+
+9
+00:01:02,000 --> 00:01:09,000
+It stops in front of the pump and turns to face it.
+
+10
+00:01:09,000 --> 00:01:17,000
+Inspect equipment opens an illustrative teaching model right here in the room — suspect parts in red. Close it, and we're exactly where we were.
+
+11
+00:01:17,000 --> 00:01:26,000
+The pallet truck blocks the service area. Pick it up and move it, like in a game:
+
+12
+00:01:26,000 --> 00:01:35,000
+collisions, clearance and the robot's route update instantly. It's an approximate check, not an engineering certificate.
+
+13
+00:01:35,000 --> 00:01:46,000
+Technicians arrive knowing where the asset is, what's likely wrong and how to get to it.
+
+14
+00:01:46,000 --> 00:02:00,000
+The data here is synthetic and the savings aren't measured yet — a pilot would measure the time to find equipment and to prepare each visit.
+

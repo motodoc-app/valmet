@@ -72,13 +72,15 @@ Close with rail → **About this demo** (what each capability is and is not). **
 briefing card puts everything back for the next run.
 
 ## Presenter script (≈ 2 min, organisers' format)
+For recording, use the full shot list with exact lines: [`RECORDING_SCRIPT.md`](RECORDING_SCRIPT.md) (subtitles: `video/subtitles-v2.srt`).
+
 | Time | Part | Do | Say (summary) |
 |---|---|---|---|
 | 0:00–0:15 | Problem | Title over the scan | "The first visit to an unfamiliar plant is where the time goes: finding the asset, the fault, access and an expert all happen on site." |
 | 0:15–0:35 | Solution | Scan → semantic view → Scene understanding | "A scan becomes a workspace you prepare in before you travel: 676 object candidates, and we show honestly how many are confidently identified." |
-| 0:35–0:42 | Live demo | Ask *Where is P-005?* → card → **What's wrong?** | "Likely fouling, 52 % confidence, every claim cited. Synthetic data." |
+| 0:35–0:42 | Live demo | Ask *Where is P-005?* → card → **What's wrong?** | "Likely fouling, evidence score 0.52 (not a calibrated probability), every source cited. Synthetic data." |
 | 0:42–0:55 | | **Send robot here** → switch to **Robot POV** mid-route | "The robot checks a collision-free way in. This is its camera — simulated from the scan, not a live feed." |
-| 0:55–1:10 | | *You've arrived at P-005* → **Inspect equipment** → explode, suspect parts red → **×** | "Look inside without leaving the room: an illustrative teaching model. Close it and we're exactly where we were." |
+| 0:55–1:10 | | Robot stops in front of the pump, facing it → *You've arrived at P-005* → **Inspect equipment** → explode, suspect parts red → **×** | "Look inside without leaving the room: an illustrative teaching model. Close it and we're exactly where we were." |
 | 1:10–1:35 | | **Plan access** → grab the pallet truck → drop it clear | "The truck blocks the service area. Move it: collisions, clearance and the route update — the route gets shorter. Approximate, not an engineering check." |
 | 1:35–2:00 | Business impact | Value page → closing title | "Technicians arrive prepared. Data is synthetic and savings are not yet measured; a pilot measures time to find equipment and to prepare a visit." |
 
