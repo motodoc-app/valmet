@@ -291,7 +291,7 @@ def build() -> dict:
     rows = []
     for lab, lst in sorted(defaultdict(list, {k: [o for o in objs if o["label"] == k]
                                               for k in {o["label"] for o in objs}}).items(),
-                           key=lambda kv: -len(kv[1])):
+                           key=lambda kv: (-len(kv[1]), kv[0])):
         cats = Counter(o["category"] for o in lst)
         rows.append({
             "label": lab, "family": FAMILY.get(lab, "other"), "count": len(lst),
@@ -516,7 +516,9 @@ def write_md(q: dict) -> None:
              f"{dq['objects_in_fragment_groups']} candidates; merging each group would remove "
              f"{dq['excess_if_merged']} candidates. Groups by label: "
              + ", ".join(f"{k} {v}" for k, v in dq["fragment_groups_by_label"].items()) + ". Largest groups: "
-             + "; ".join(", ".join(g) for g in dq["largest_fragment_groups"][:5]) + ".\n")
+             + "; ".join(", ".join(g) for g in dq["largest_fragment_groups"][:5]) + ". Touching is not proof of "
+             "duplication: groups chain through large frames (the largest one chains through the 1.6 m OBJ-005 frame), "
+             "so the merge count is an upper bound for pipe-run fragments, not an exact duplicate count.\n")
     pt = dq["pipe_tags"]
     L.append(f"**'pipe label / tag' ({pt['n']}).** {pt['tiny']} tiny, {pt['flat']} flat, {pt['low_points']} "
              f"low-support, and {pt['longer_than_mismatch']} are ≥ {MISMATCH_EXT} m long, which is not tag-sized "

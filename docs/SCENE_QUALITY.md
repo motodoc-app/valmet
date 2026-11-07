@@ -45,8 +45,8 @@ Label = the VLM taxonomy class (or the human-review label). 'VLM categories' sho
 |---|---|---:|---:|---:|---:|---|---|---:|
 | other equipment | unidentified | 258 | 0.25 | 0 | 0 | vlm+geometry 256, human-verified 2 | other 258 | 124 |
 | pipe label / tag | piping (tag) | 121 | 0.70 | 76 | 0 | vlm+geometry 121 | piping 117, other 4 | 91 |
-| pipe elbow / fitting | piping | 50 | 0.56 | 8 | 0 | vlm+geometry 50 | piping 50 | 28 |
 | insulated pipe (horizontal) | piping | 50 | 0.87 | 48 | 0 | vlm+geometry 50 | piping 50 | 32 |
+| pipe elbow / fitting | piping | 50 | 0.56 | 8 | 0 | vlm+geometry 50 | piping 50 | 28 |
 | control valve | valve | 43 | 0.54 | 6 | 5 | vlm+geometry 43 | valve 43 | 28 |
 | pump-motor unit | rotating | 21 | 0.70 | 15 | 8 | vlm+geometry 20, human-verified 1 | rotating 21 | 11 |
 | temperature sensor | instrument | 21 | 0.45 | 0 | 3 | vlm+geometry 21 | instrument 21 | 15 |
@@ -61,12 +61,12 @@ Label = the VLM taxonomy class (or the human-review label). 'VLM categories' sho
 | pressure gauge | instrument | 5 | 0.43 | 0 | 1 | vlm+geometry 5 | instrument 5 | 4 |
 | pressure transmitter | instrument | 4 | 0.55 | 0 | 1 | vlm+geometry 4 | instrument 4 | 3 |
 | heat exchanger | vessel | 3 | 0.64 | 1 | 0 | vlm+geometry 3 | other 2, vessel 1 | 3 |
-| wall-mounted board | structure-like | 2 | 0.46 | 0 | 0 | vlm+geometry 2 | structure 2 | 1 |
 | circulation pump | rotating | 2 | 0.69 | 1 | 0 | vlm+geometry 2 | rotating 2 | 1 |
+| wall-mounted board | structure-like | 2 | 0.46 | 0 | 0 | vlm+geometry 2 | structure 2 | 1 |
+| cable tray | electrical | 1 | 0.86 | 1 | 0 | vlm+geometry 1 | electrical 1 | 1 |
+| centrifugal pump | rotating | 1 | 0.69 | 0 | 0 | vlm+geometry 1 | rotating 1 | 0 |
 | expansion vessel | vessel | 1 | 0.88 | 1 | 0 | vlm+geometry 1 | vessel 1 | 0 |
 | trolley / cart | logistics | 1 | 0.90 | 1 | 0 | human-verified 1 | logistics 1 | 0 |
-| centrifugal pump | rotating | 1 | 0.69 | 0 | 0 | vlm+geometry 1 | rotating 1 | 0 |
-| cable tray | electrical | 1 | 0.86 | 1 | 0 | vlm+geometry 1 | electrical 1 | 1 |
 
 | Family | Count | Confident | Mean conf. |
 |---|---:|---:|---:|
@@ -114,7 +114,7 @@ Visual check of the largest 'possible over-merge' frames: OBJ-005 (chair + uprig
 | label_size_mismatch | 30 | small-device label (control valve, flow meter, junction box, manual valve, pipe label / tag, pressure gauge, pressure transmitter, temperature sensor, valve actuator) on a frame >= 0.6 m long |
 | nested | 55 | centre lies inside a larger candidate's frame (likely a part of it) |
 
-**Fragments / duplicates.** 25 groups of same-label touching frames contain 58 candidates; merging each group would remove 33 candidates. Groups by label: pipe label / tag 8, insulated pipe (horizontal) 6, pipe elbow / fitting 2, insulated pipe (vertical) 2, electric motor 2, pump-motor unit 1, control panel 1, valve actuator 1, temperature sensor 1, control valve 1. Largest groups: OBJ-005, OBJ-009, OBJ-062, OBJ-143, OBJ-235; OBJ-100, OBJ-148, OBJ-175, OBJ-612; OBJ-021, OBJ-469, OBJ-501; OBJ-041, OBJ-528, OBJ-621; OBJ-239, OBJ-462, OBJ-634.
+**Fragments / duplicates.** 25 groups of same-label touching frames contain 58 candidates; merging each group would remove 33 candidates. Groups by label: pipe label / tag 8, insulated pipe (horizontal) 6, pipe elbow / fitting 2, insulated pipe (vertical) 2, electric motor 2, pump-motor unit 1, control panel 1, valve actuator 1, temperature sensor 1, control valve 1. Largest groups: OBJ-005, OBJ-009, OBJ-062, OBJ-143, OBJ-235; OBJ-100, OBJ-148, OBJ-175, OBJ-612; OBJ-021, OBJ-469, OBJ-501; OBJ-041, OBJ-528, OBJ-621; OBJ-239, OBJ-462, OBJ-634. Touching is not proof of duplication: groups chain through large frames (the largest one chains through the 1.6 m OBJ-005 frame), so the merge count is an upper bound for pipe-run fragments, not an exact duplicate count.
 
 **'pipe label / tag' (121).** 14 tiny, 32 flat, 38 low-support, and 27 are ≥ 0.6 m long, which is not tag-sized (they look like thin pipe or conduit segments). Real pipe tags are small and flat, so many of these are plausible, but this class is the biggest single source of inflated counts.
 

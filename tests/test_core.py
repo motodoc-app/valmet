@@ -125,3 +125,35 @@ def test_scene_search_finds_objects_by_meaning():
     assert vessels and "vessel" in vessels[0]["label"]
     cabinets = find_objects("electrical cabinets")
     assert len(cabinets) >= 3 and all("cabinet" in o["label"] or o.get("category") == "electrical" for o in cabinets[:3])
+
+
+def test_scene_quality_tiers_are_consistent_with_scene_json():
+    """The honest 'what was recognised' funnel (scripts/scene_quality.py -> quality.json) must match the scene the
+    app shows, and each tier must be a subset of the one it narrows."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import scene_quality as sq
+    scene = json.loads((ROOT / "web" / "public" / "static" / "scene.json").read_text())
+    shipped = json.loads((ROOT / "web" / "public" / "static" / "quality.json").read_text())
+    objs = {o["id"]: o for o in scene["objects"] if o["kind"] == "object"}
+    tiers = {k: set(v) for k, v in sq.compute_tiers(scene).items()}
+    # recomputed tiers == shipped tiers (quality.json is not stale)
+    assert {k: set(v) for k, v in shipped["tier_ids"].items()} == tiers
+    assert {t["id"]: t["n"] for t in shipped["tiers"]} == {k: len(v) for k, v in tiers.items()}
+    # subset relations
+    assert tiers["categorised"] <= tiers["candidates"]
+    assert tiers["confident"] <= tiers["categorised"]
+    assert tiers["human_verified"] <= tiers["candidates"]
+    assert tiers["linked"] <= tiers["candidates"]
+    # counts agree with scene.json's own fields
+    assert len(tiers["candidates"]) == scene["stats"]["n_objects"] == len(objs)
+    assert len(tiers["linked"]) == scene["n_bound_assets"] == sum("asset" in o for o in objs.values())
+    assert len(tiers["human_verified"]) == sum(o["label_source"] == "human-verified" for o in objs.values())
+    assert all(objs[i]["label"] != "other equipment" and objs[i]["confidence"] >= shipped["threshold"]
+               for i in tiers["confident"])
+    # flags and the audit sample only reference real candidates; the sample is unique and complete
+    assert set(shipped["flags_by_id"]) <= tiers["candidates"]
+    ids = [r["id"] for r in shipped["audit"]["sample"]]
+    assert len(ids) == len(set(ids)) and set(ids) <= tiers["candidates"]
+    a = shipped["audit"]
+    assert a["agree"] + a["disagree"] + a["cant_tell"] + a["pending"] == a["n"]
+    assert a["wilson95_all"][0] <= a["agree_rate_all"] <= a["wilson95_all"][1]
