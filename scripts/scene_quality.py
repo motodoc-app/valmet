@@ -427,10 +427,14 @@ def build() -> dict:
         "data_quality": data_quality,
         "audit": audit,
         "flags_by_id": {i: f for i, f in flags.items() if f},
-        "caveat": ("676 is the number of segmented 3D candidates, not the number of correctly recognised physical "
-                   "objects. Candidates include fragments of one object (pipe runs split into pieces), small tags "
-                   "and clutter. Confidence is the vision model's own estimate and is not calibrated; only a few "
-                   "labels were corrected in a team review of renders (AI-assisted), and none has been verified on site. Workbook links are procedural to synthetic records."),
+        "caveat": (f"{len(objs)} is the number of segmented 3D candidates, not the number of correctly recognised "
+                   "physical objects. Candidates include fragments of one object (pipe runs split into pieces), small "
+                   f"tags and clutter: {sum(o['label'] == 'pipe label / tag' for o in objs)} are 'pipe label / tag' "
+                   f"clusters and {sum(not specific(o) for o in objs)} stay 'other equipment'. Confidence is the vision "
+                   "model's own estimate and is not calibrated; only a few labels were corrected in a team review of "
+                   "renders (AI-assisted), and none has been verified on site. Precision and recall against human "
+                   "ground truth are unknown: nobody has checked a labelled sample yet. Workbook links are procedural "
+                   "to synthetic records."),
         "_sample_rows": sample, "_other_rows": other, "_strata": strata,
     }
 

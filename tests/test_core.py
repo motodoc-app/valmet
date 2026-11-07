@@ -69,6 +69,30 @@ def test_reroute_around_blocked_walkway(world):
     world.plan(world.start_xz, tid, [])   # reset
 
 
+def test_unreachable_target_is_not_reported_as_a_blocked_walkway(world):
+    """A linked asset outside the robot's drivable area (no barriers placed) gets an honest no-route reason."""
+    from xray.navigation import NO_ROUTE_UNREACHABLE
+    linked = [b["object_id"] for b in world.mapping["bindings"].values()]
+    unreachable = [i for i in linked if i not in world.reachable]
+    assert unreachable, "expected at least one linked asset the robot cannot drive to"
+    r = world.plan(world.start_xz, unreachable[0])
+    assert not r["ok"] and r["reason"] == NO_ROUTE_UNREACHABLE and "blocked" not in r["reason"]
+
+
+def test_route_clearance_is_meaningful_at_the_destination_and_for_a_blocked_start(world):
+    tid = world.mapping["bindings"][world.mapping["target_asset_id"]]["object_id"]
+    first = world.plan(world.start_xz, tid)
+    assert first["start_snap_m"] < 0.05
+    end = first["waypoints"][-1]
+    here = world.plan((end[0], end[2]), tid)          # mission that starts at its destination
+    assert here["ok"] and here["already_there"] and here["length_m"] < 0.1
+    assert 0 < here["validation"]["min_clearance_m"] < 5, "never the 1e9 placeholder"
+    sx, sz = world.start_xz                           # a barrier right on the robot's spot
+    blocked = world.plan(world.start_xz, tid, [{"x": sx, "z": sz, "w": 0.6, "d": 0.6, "yaw": 0.0}])
+    assert blocked["ok"] and blocked["start_snap_m"] >= 0.3
+    world.plan(world.start_xz, tid, [])               # reset
+
+
 def test_layout_plan_clears_one_footprint_and_blocks_another(world):
     """Maintenance planning: moving equipment frees its old footprint and occupies the new one; the route stays valid."""
     import numpy as np

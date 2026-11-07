@@ -245,6 +245,58 @@ try {
   await sleep(1200);
   await p.screenshot({ path: path.join(SHOTS, "plan-4-grab.png") });
 
+  // acceptance gates: "It fits" (card, stepper, Markdown/JSON export) must hold for EVERY move, on scanned floor, with a route
+  const GOOD = { id: "OBJ-028", x: 2.75, z: 0.9, yaw: 2.3123 };
+  const verdictNow = () => p.evaluate(() => { const A = window.__xr.planning, s = A.summary(); return { fits: s.verdict.fits, problems: s.verdict.problems, md: A.exportMarkdown(), card: document.querySelector("#right").textContent, good: !!document.querySelector("#right .pl-result.ok") }; });
+  await p.evaluate((g) => window.__xr.planning.setState({ moves: [g], active: g.id }), GOOD);
+  const vg = await verdictNow();
+  ok("Gate baseline: the suggested spot fits (card + summary + Markdown)", vg.fits && vg.good && /## Verdict\nIt fits/.test(vg.md), vg.problems.join("; "));
+  const edge = await p.evaluate(() => {
+    const A = window.__xr, o = A.S.data.objects.find((x) => x.id === "OBJ-028"), b = A.S.data.bounds;
+    let best = null;      // the pose with the fewest footprint cells off the scanned floor (just over the edge)
+    for (let x = b.min[0]; x <= b.max[0]; x += 0.1) for (let z = b.min[2]; z <= b.max[2]; z += 0.1) {
+      const ev = A.planning._evaluate("OBJ-028", { x, z, yaw: o.yaw });
+      if (ev.offFloor > 0 && !ev.collision && (!best || ev.offFloor < best.off)) best = { x: +x.toFixed(2), z: +z.toFixed(2), yaw: o.yaw, off: ev.offFloor, cells: ev.cells };
+    }
+    return best;
+  });
+  if (edge) await p.evaluate((e) => window.__xr.planning.setState({ moves: [{ id: "OBJ-028", x: e.x, z: e.z, yaw: e.yaw }] }), edge);
+  const ve = await verdictNow();
+  ok("Gate: floor-edge placement (part of the footprint off the scanned floor) does not fit", edge && !ve.fits && !ve.good && /off the scanned floor/.test(ve.md) && /Does NOT fit/.test(ve.md), edge ? `${edge.off}/${edge.cells} cells off floor at ${edge.x}, ${edge.z}` : "no edge pose found");
+  const far = await p.evaluate(() => window.__xr.planning._evaluate("OBJ-028", { x: 100, z: 100, yaw: 0 }));
+  ok("Gate: a pose far outside the room is off the scanned floor", far.status === "bad" && far.offScan && !far.collision);
+  const imp = await p.evaluate(async (g) => {
+    const A = window.__xr.planning;
+    const st = await A.setState({ moves: [{ id: "OBJ-028", x: 100, z: 100, yaw: 0 }, { id: "OBJ-NOPE", x: 0, z: 0, yaw: 0 }, g, { ...g, x: 1 }, { id: "OBJ-256", x: 1, z: 1, yaw: 0 }, { id: "OBJ-010", x: "a", z: 1, yaw: 0 }] });
+    return { st, imp: A.lastImport() };
+  }, GOOD);
+  ok("Gate: import drops out-of-bounds, unknown, duplicate, unmovable and malformed moves", imp.st.moves.length === 1 && imp.st.moves[0].x === GOOD.x && imp.imp.rejected.length === 5,
+    imp.imp.rejected.map((r) => `${r.id}: ${r.why}`).join("; "));
+  await p.evaluate(async (g) => {
+    const A = window.__xr, c = A.S.data.objects.find((o) => o.id === "OBJ-618");    // OBJ-010 dropped onto a pump set: collides
+    await A.planning.setState({ moves: [{ id: "OBJ-010", x: c.center[0], z: c.center[2], yaw: 0 }, g], active: g.id });
+  }, GOOD);
+  const v2 = await verdictNow();
+  ok("Gate: two moved proxies, the inactive one colliding, does not fit (card + Markdown)", !v2.fits && !v2.good && /Another moved object fails/.test(v2.card) && /OBJ-010/.test(v2.problems.join(" ")) && /Does NOT fit/.test(v2.md), v2.problems.join("; "));
+  await p.evaluate(async (g) => {
+    const A = window.__xr, real = A.api.plan;
+    A.api.plan = async (req) => (req.clears?.length ? { ok: false, reason: "no collision-free route (walkway blocked)" } : real(req));   // the proposed layout cuts the robot off
+    try { await A.planning.setState({ moves: [g], active: g.id }); } finally { A.api.plan = real; }
+  }, GOOD);
+  const vr = await verdictNow();
+  ok("Gate: a proposal with no robot route does not fit (card + Markdown)", !vr.fits && !vr.good && /no robot route/.test(vr.problems.join(" ")) && /Does NOT fit/.test(vr.md), vr.problems.join("; "));
+  await p.evaluate(() => window.__xr.planning.reset());
+  // route clearance is meaningful for a mission that starts at its destination and for a blocked start
+  const rt = await p.evaluate(async () => {
+    const A = window.__xr, tgt = A.S.target, first = await A.api.plan({ object_id: tgt.id, start: [A.S.data.start[0], A.S.data.start[2]], blocks: [] });
+    const end = first.waypoints.at(-1), here = await A.api.plan({ object_id: tgt.id, start: [end[0], end[2]], blocks: [] });
+    const s = A.S.data.start, blocked = await A.api.plan({ object_id: tgt.id, start: [s[0], s[2]], blocks: [{ x: s[0], z: s[2], w: 0.6, d: 0.6, yaw: 0 }] });
+    await A.api.plan({ object_id: tgt.id, start: [s[0], s[2]], blocks: [] });
+    return { here: { ok: here.ok, len: here.length_m, minc: here.validation?.min_clearance_m, there: here.already_there }, blocked: { ok: blocked.ok, snap: blocked.start_snap_m, minc: blocked.validation?.min_clearance_m }, first: first.start_snap_m };
+  });
+  ok("Route: starting at the destination reports a real clearance, not 1e9", rt.here.ok && rt.here.minc > 0 && rt.here.minc < 5 && rt.here.len < 0.1, JSON.stringify(rt.here));
+  ok("Route: a blocked start reports how far the start was moved", rt.blocked.ok && rt.blocked.snap >= 0.3 && rt.blocked.minc < 5 && rt.first < 0.05, JSON.stringify(rt.blocked));
+
   // phone-ish width keeps the planning card usable
   await p.setViewportSize({ width: 900, height: 700 });
   await p.evaluate(() => window.__xr.setMode("plan"));

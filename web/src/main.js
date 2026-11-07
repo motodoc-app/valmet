@@ -327,7 +327,7 @@ function deviceOptions() {
 
 function identityRows(o) {
   return `${kv("Label", `${esc(o.label)} · ${Math.round(o.confidence * 100)}%`)}${kv("Source", { "vlm+geometry": "Vision model + geometry", "review-corrected": "Review-corrected (team visual check, not field-verified)", "geometry-heuristic": "Geometry rules" }[o.label_source] || o.label_source)}
-    ${kv("Frame", `${o.size.map((v) => v.toFixed(2)).join(" × ")} m`)}${o.asset ? kv("Mapping", `${Math.round(o.asset.mapping_confidence * 100)}%`) : ""}
+    ${kv("Frame", `${o.size.map((v) => v.toFixed(2)).join(" × ")} m`)}${o.asset ? kv("Link to workbook asset", `${Math.round(o.asset.mapping_confidence * 100)}% · procedural, not field-verified`) : ""}
     ${o.review_note ? `<p class="note" style="margin-top:8px">${esc(o.review_note)}</p>` : o.vlm_rationale ? `<p class="note" style="margin-top:8px">${esc(o.vlm_rationale)}</p>` : ""}`;
 }
 
@@ -525,7 +525,9 @@ async function dispatch(assetId, { start = null, quiet = false } = {}) {
   await applyRoute(res, { keepSpeed: quiet });
   S.diag = null;
   S.diagPromise = api.diagnose(assetId);
-  if (!quiet) toast(`Route planned: <b>${res.length_m} m</b> in ${res.compute_ms} ms. Collision-free, minimum clearance ${res.validation.min_clearance_m} m.`);
+  const snap = res.start_snap_m > 0.1 ? ` The robot's spot is not drivable floor: the route starts ${res.start_snap_m} m away, at the nearest free cell.` : "";
+  if (!quiet) toast(res.already_there || res.length_m < 0.1 ? `Already at <b>${esc(o.asset.tag)}</b>: no driving needed. Clearance here ${res.validation.min_clearance_m} m.${snap}`
+    : `Route planned: <b>${res.length_m} m</b> in ${res.compute_ms} ms. ${res.validation.collision_free ? "Collision-free" : "Check the route"}, minimum clearance ${res.validation.min_clearance_m} m.${snap}`, snap ? 6500 : undefined);
   renderDock(); renderTransitCard();
   return res;
 }

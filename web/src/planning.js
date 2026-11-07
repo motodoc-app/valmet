@@ -117,15 +117,20 @@ function polyDist(b, pts) {            // footprint to polyline [[x,z],...]
   }
   return d;
 }
-/** Grid cells whose centre lies inside the footprint (same rule as the planners' rasterise). */
-function cellsOf(b) {
+/** Grid cells whose centre lies inside the footprint (same rule as the planners' rasterise). With `stats`, also counts
+ *  the footprint cells that fall beyond the mapped grid (stats.outside). */
+function cellsOf(b, stats = null) {
   const g = P.grid, out = [], cs = Math.cos(b.yaw), sn = Math.sin(b.yaw), hx = b.w / 2, hz = b.d / 2, rad = Math.hypot(hx, hz);
-  const r0 = Math.max(0, Math.floor((b.z - rad - g.z0) / g.res)), r1 = Math.min(g.H - 1, Math.floor((b.z + rad - g.z0) / g.res));
-  const c0 = Math.max(0, Math.floor((b.x - rad - g.x0) / g.res)), c1 = Math.min(g.W - 1, Math.floor((b.x + rad - g.x0) / g.res));
-  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
-    const dx = g.x0 + (c + 0.5) * g.res - b.x, dz = g.z0 + (r + 0.5) * g.res - b.z;
-    if (Math.abs(dx * cs + dz * sn) <= hx && Math.abs(-dx * sn + dz * cs) <= hz) out.push(r * g.W + c);
+  let r0 = Math.floor((b.z - rad - g.z0) / g.res), r1 = Math.floor((b.z + rad - g.z0) / g.res);
+  let c0 = Math.floor((b.x - rad - g.x0) / g.res), c1 = Math.floor((b.x + rad - g.x0) / g.res);
+  const inside = (r, c) => { const dx = g.x0 + (c + 0.5) * g.res - b.x, dz = g.z0 + (r + 0.5) * g.res - b.z; return Math.abs(dx * cs + dz * sn) <= hx && Math.abs(-dx * sn + dz * cs) <= hz; };
+  if (stats) {
+    stats.outside = 0;
+    if (r1 - r0 < 400 && c1 - c0 < 400) { for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if ((r < 0 || r >= g.H || c < 0 || c >= g.W) && inside(r, c)) stats.outside++; }
+    else stats.outside = Infinity;
   }
+  r0 = Math.max(0, r0); r1 = Math.min(g.H - 1, r1); c0 = Math.max(0, c0); c1 = Math.min(g.W - 1, c1);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (inside(r, c)) out.push(r * g.W + c);
   return out;
 }
 const unpackHex = (hex, n) => { const o = new Uint8Array(n); for (let i = 0; i < n; i++) o[i] = (parseInt(hex.substr((i >> 3) * 2, 2), 16) >> (7 - (i & 7))) & 1; return o; };
@@ -233,8 +238,9 @@ function evaluate(id, pose) {
   if (P.dirtyField || P.fieldFor !== id) buildField(id);
   const o = objOf(id), fp = footprint(o, pose), g = P.grid;
   const bottom = o.center[1] - o.size[1] / 2, top = o.center[1] + o.size[1] / 2;
-  const cells = cellsOf(fp);
-  let scanCells = 0, offFloor = 0, clearance = Infinity, minCell = -1;
+  // footprint cells beyond the mapped grid are off the scanned floor too
+  const st = {}, cells = cellsOf(fp, st);
+  let scanCells = 0, offFloor = Math.min(st.outside, 1e6), clearance = Infinity, minCell = -1;
   for (const i of cells) {
     if (g.occ[i] && !P.clearMask[i]) scanCells++;
     if (!g.floor[i]) offFloor++;
@@ -255,7 +261,9 @@ function evaluate(id, pose) {
   near.sort((a, b) => a[0] - b[0]);
   if (!cells.length) clearance = 0;
   const collision = hits.length > 0 || scanCells > 0;
-  const status = collision ? "bad" : clearance < TIGHT || offFloor > 0 ? "tight" : "ok";
+  // the scan can only vouch for floor it mapped: a footprint that leaves it (even partly) is not a valid placement
+  const offScan = offFloor > 0;
+  const status = collision || offScan ? "bad" : clearance < TIGHT ? "tight" : "ok";
   // the nearest obstacle cell, to draw the clearance gauge
   let gauge = null;
   if (!collision && minCell >= 0 && isFinite(clearance)) {
@@ -267,7 +275,7 @@ function evaluate(id, pose) {
       if (d < best) { best = d; gauge = { from: [g.x0 + (c0 + 0.5) * g.res, g.z0 + (r0 + 0.5) * g.res], to: [g.x0 + (c + 0.5) * g.res, g.z0 + (r + 0.5) * g.res] }; }
     }
   }
-  return { fp, cells: cells.length, scanCells, offFloor, hits, collision, status,
+  return { fp, cells: cells.length, scanCells, offFloor, offScan, hits, collision, status,
     clearance: isFinite(clearance) ? clearance : null, nearest: near[0] ? { o: near[0][1], d: near[0][0] } : null, gauge };
 }
 
@@ -535,7 +543,8 @@ function refresh() {
   syncCut();
   let act = null;
   // the active proxy last, so the obstacle field stays built for it while dragging
-  for (const m of [...P.moves].sort((a, b) => (a.id === P.active) - (b.id === P.active))) { const ev = evaluate(m.id, m); poseItem(m, ev); if (m.id === P.active) act = ev; }
+  P.evs = new Map();
+  for (const m of [...P.moves].sort((a, b) => (a.id === P.active) - (b.id === P.active))) { const ev = evaluate(m.id, m); P.evs.set(m.id, ev); poseItem(m, ev); if (m.id === P.active) act = ev; }
   P.ev = act;
   P.zoneNow = zoneStatus();
   paintZone(P.zoneNow);
@@ -800,11 +809,19 @@ export function summary() {
       scan_cells_overlapped: ev.scanCells, off_floor_cells: ev.offFloor,
       clearance_m: ev.clearance == null ? null : +ev.clearance.toFixed(2),
       nearest_object: ev.nearest ? { object_id: ev.nearest.o.id, label: ev.nearest.o.label, distance_m: +ev.nearest.d.toFixed(2) } : null,
-      status: { ok: "clear", tight: "tight", bad: "collision" }[ev.status] };
+      status: ev.collision ? "collision" : ev.offScan ? "off scanned floor" : { ok: "clear", tight: "tight" }[ev.status] };
   });
   const r = (x) => (x ? (x.ok ? { ok: true, length_m: x.length_m, min_clearance_m: x.min_clearance_m, collision_free: x.collision_free, compute_ms: x.compute_ms } : { ok: false, reason: x.reason }) : null);
-  const before = r(P.before), after = r(P.after) || before;
+  const before = r(P.before), after = P.moves.length ? r(P.after) : before;
+  // one verdict for the whole plan, computed from every move (same rule as the card)
+  const problems = [
+    ...(!moves.length ? ["no equipment moved"] : !movedAny() ? ["nothing has been moved from its scanned position yet"] : []),
+    ...moves.filter((m) => m.status === "collision" || m.status === "off scanned floor").map((m) => `${m.name} ${m.status === "collision" ? "collides with known obstacles" : "is off the scanned floor"}`),
+    ...(z1.clear ? [] : [`${P.target.asset?.tag || "target"} service zone still obstructed by ${z1.obstructions.map((o) => o.id).join(", ")}`]),
+    ...(moves.length && !after ? ["route with the proposed layout not computed yet"] : after && !after.ok ? [`no robot route with the proposed layout (${after.reason})`] : after && after.collision_free === false ? ["robot route not collision-free"] : []),
+  ];
   return {
+    verdict: { fits: problems.length === 0, problems },
     title: `Service access for ${P.target.asset?.tag || P.target.id}`, disclaimer: DISCLAIMER,
     created: new Date().toISOString(), scan_modified: false,
     target: { object_id: P.target.id, tag: P.target.asset?.tag, asset_id: P.target.asset?.asset_id },
@@ -821,13 +838,15 @@ export function summary() {
 function markdown(s) {
   const L = [`# Maintenance plan · ${s.title}`, "", `> ${s.disclaimer}.`, "> The scan data is unchanged; moved equipment is shown as virtual planning proxies. Verify on site before moving anything.",
     "> In the 3D view a moved object may be drawn as an approximate cut-out of the scan inside its box (it can include nearby fragments); collisions and clearance always use the oriented boxes.", "",
-    `Created ${s.created}`, "", "## Proposed moves"];
+    `Created ${s.created}`, "", "## Verdict", s.verdict.fits ? "It fits (approximate check): no collisions with known obstacles, every footprint is on scanned floor, the service zone is clear and the robot has a collision-free route."
+      : `Does NOT fit:\n${s.verdict.problems.map((p) => `- ${p}`).join("\n")}`, "", "## Proposed moves"];
   if (!s.moves.length) L.push("", "No equipment moved (original layout).");
   for (const m of s.moves) {
     L.push("", `### ${m.name}`, `- Label: ${m.label} (${m.label_source})`,
       `- Original: x ${m.original.x}, z ${m.original.z}, yaw ${m.original.yaw_deg}°`,
       `- Proposed: x ${m.proposed.x}, z ${m.proposed.z}, yaw ${m.proposed.yaw_deg}°`,
       `- Displacement: ${m.displacement_m} m, rotation ${m.rotation_deg > 0 ? "+" : ""}${m.rotation_deg}°`,
+      `- Check: ${m.status}${m.off_floor_cells ? ` (${m.off_floor_cells} footprint cells outside the scanned floor)` : ""}`,
       `- Collisions with known obstacles: ${m.collisions.length || m.scan_cells_overlapped ? [...m.collisions.map((c) => `${c.object_id} (${c.label})`), ...(m.scan_cells_overlapped ? [`${m.scan_cells_overlapped} occupied scan cells`] : [])].join(", ") : "none"}`,
       `- Approximate clearance to the nearest obstacle: ${m.clearance_m == null ? "n/a" : m.clearance_m + " m"}${m.nearest_object ? ` (nearest known object ${m.nearest_object.object_id}, ${m.nearest_object.label}, ${m.nearest_object.distance_m} m)` : ""}`);
   }
@@ -863,22 +882,29 @@ async function draftWorkOrder() {
   const a = P.target.asset; if (!a) return;
   await APP.showWorkOrder(a.asset_id);
   const s = summary(), body = $("#sheet .card-b"); if (!body) return;
-  const moves = s.moves.map((m) => `<div class="step"><span class="k">${icon("check")}</span><span>Move ${esc(m.name)} ${m.displacement_m} m to x ${m.proposed.x}, z ${m.proposed.z}${m.rotation_deg ? `, turned ${m.rotation_deg}°` : ""}. ${m.status === "clear" ? "No collision with known obstacles" : m.status === "tight" ? "Tight clearance" : "Collision: re-plan"}, ≈${m.clearance_m ?? "?"} m clearance.</span></div>`).join("");
+  const moves = s.moves.map((m) => `<div class="step"><span class="k">${icon("check")}</span><span>Move ${esc(m.name)} ${m.displacement_m} m to x ${m.proposed.x}, z ${m.proposed.z}${m.rotation_deg ? `, turned ${m.rotation_deg}°` : ""}. ${m.status === "clear" ? "No collision with known obstacles" : m.status === "tight" ? "Tight clearance" : m.status === "collision" ? "Collision: re-plan" : "Off the scanned floor: re-plan"}, ≈${m.clearance_m ?? "?"} m clearance.</span></div>`).join("");
   body.insertAdjacentHTML("beforeend", `<div class="section"><div class="label">Access preparation <span class="pill amber">Planning simulation</span></div>
     ${moves || '<p class="note">No layout change planned.</p>'}
     ${kv("Service zone", s.service_zone.after.clear ? '<span class="pl-ok">Clear (assumed 1.0 m zone)</span>' : `<span class="pl-bad">Obstructed by ${esc(s.service_zone.after.obstructed_by.join(", "))}</span>`)}
     ${kv("Robot route", s.route.after?.ok ? `${s.route.after.length_m} m · clearance ${s.route.after.min_clearance_m} m` : "No route")}
+    ${kv("Plan check", s.verdict.fits ? '<span class="pl-ok">Fits (approximate check)</span>' : `<span class="pl-bad">Does not fit: ${esc(s.verdict.problems.join("; "))}</span>`)}
     <p class="note" style="margin-top:8px">${esc(DISCLAIMER)}. Confirm the new position on site.</p></div>`);
 }
 
 // ------------------------------------------------------------------ stages: 1 Pick → 2 Move → 3 Check
 const stage = () => (!P.moves.length ? "pick" : P.editing ? "move" : "check");
 const movedAny = () => P.moves.some((m) => { const o = objOf(m.id); return Math.hypot(m.x - o.center[0], m.z - o.center[2]) > 0.04 || Math.abs(wrap(m.yaw - o.yaw)) > 0.01; });
-/** The plan is good: something moved, no collision, the service zone is clear and the robot still has a route. */
+/** Moves that fail on their own (every move, not only the active one): collision or off the scanned floor. */
+const evOf = (m) => P.evs?.get(m.id) || evaluate(m.id, m);
+const failingMoves = () => P.moves.map((m) => ({ m, ev: evOf(m) })).filter(({ ev }) => ev.status === "bad")
+  .map(({ m, ev }) => ({ id: m.id, name: shortName(objOf(m.id)), why: ev.collision ? "collides" : "is off the scanned floor", ev }));
+const whyText = (f) => `${esc(f.name)} (${f.id}) ${f.why}`;
+/** The plan is good: something moved, no move collides or leaves the scanned floor, the service zone is clear and the
+ *  robot still has a collision-free route. The card, the stepper, the toast and the exports all use this one verdict. */
 const planGood = () => {
   if (!P.moves.length || !P.after || P.routeBusy) return false;
-  const ev = P.ev || evaluate(P.moves[0].id, P.moves[0]), z = P.zoneNow || zoneStatus();
-  return movedAny() && ev.status !== "bad" && z.clear && P.after.ok;
+  const z = P.zoneNow || zoneStatus();
+  return movedAny() && !failingMoves().length && z.clear && P.after.ok && P.after.collision_free !== false;
 };
 function stepperHTML() {
   const st = stage(), good = planGood();
@@ -933,7 +959,8 @@ async function done() {
   if (P.moves.length) await computeAfter();
   const z = P.zoneNow || zoneStatus(), ev = P.ev;
   APP.toast(planGood() ? `It fits: no collisions, ${esc(P.target.asset?.tag)} can be reached and the robot still has a route.`
-    : ev?.status === "bad" ? "It collides with something: press “Move it again” and find free floor." : !z.clear ? `${esc(P.target.asset?.tag)} service zone is still blocked: move it further away.` : "Checked. See the result in the card.", 4200);
+    : ev?.status === "bad" ? (ev.collision ? "It collides with something: press “Move it again” and find free floor." : "It is off the scanned floor: press “Move it again” and put it on mapped floor.")
+    : failingMoves().length ? `Another moved object fails: ${failingMoves().map(whyText).join("; ")}.` : !z.clear ? `${esc(P.target.asset?.tag)} service zone is still blocked: move it further away.` : "Checked. See the result in the card.", 4200);
 }
 async function suggest() {
   if (!P.active || P.active === SUGGESTED || !moveOf(P.active)) return demo();
@@ -954,7 +981,7 @@ function leftHTML() {
   const act = P.active && objOf(P.active);
   let body;
   if (act) {
-    body = `<div class="section"><div class="label"><span>Moving</span><span class="pl-pill ${P.ev?.status || "ok"}">${{ ok: "Clear", tight: "Tight", bad: "Collision" }[P.ev?.status || "ok"]}</span></div>
+    body = `<div class="section"><div class="label"><span>Moving</span><span class="pl-pill ${P.ev?.status || "ok"}">${P.ev?.status === "bad" && !P.ev.collision ? "Off scan" : { ok: "Clear", tight: "Tight", bad: "Collision" }[P.ev?.status || "ok"]}</span></div>
       <div class="pl-moving"><b>${esc(nameOf(act))}</b><small>${esc(act.label)} · ${act.label_source === "review-corrected" ? "review-corrected label" : Math.round(act.confidence * 100) + "% label confidence"}</small></div>
       <div class="pl-keys"><span>${ic("move")}Drag it on the floor in the 3D view, or use the arrow buttons in the card</span><span>Mouse wheel while holding it, <span class="kbd">Q</span> <span class="kbd">E</span> turn 15° · <span class="kbd">R</span> turn 90°</span><span><span class="kbd">←↑↓→</span> or <span class="kbd">W A S D</span> move 5 cm · <span class="kbd">Shift</span> 25 cm</span><span><span class="kbd">Ctrl</span> <span class="kbd">Z</span> undo · <span class="kbd">Ctrl</span> <span class="kbd">Shift</span> <span class="kbd">Z</span> redo</span></div></div>
       ${proxiesHTML()}
@@ -1027,6 +1054,7 @@ function pick(id) {
 // ------------------------------------------------------------------ UI: right card (actions first, then the summary)
 const verdict = (ev, z, after) => {
   if (!ev) return "";
+  if (ev.status === "bad" && !ev.collision) return `<div class="pl-verdict bad">${icon("close")}<span><b>Off the scanned floor.</b> ${ev.offFloor} footprint cells lie where the scan shows no floor, so it cannot confirm the spot. Move it onto mapped floor.</span></div>`;
   if (ev.status === "bad") return `<div class="pl-verdict bad">${icon("close")}<span><b>Collision</b> with ${ev.hits.length ? esc(ev.hits.slice(0, 2).map((h) => h.proxy ? `proxy ${h.id}` : `${h.id} (${h.label})`).join(", ")) : "scanned geometry"}${ev.hits.length > 2 ? ` +${ev.hits.length - 2}` : ""}. Move it to free floor.</span></div>`;
   const zt = z.clear ? `${esc(P.target.asset?.tag)} service zone clear` : `Service zone still blocked by ${esc(z.obstructions.map((o) => o.name).join(", "))}`;
   const rt = after && !after.ok ? " · <b>no robot route</b>" : "";
@@ -1041,7 +1069,9 @@ function resultHTML(ev, z) {
   if (P.routeBusy || !P.after) return `<div class="pl-result wait">${icon("spark")}<span><b>Checking the route…</b></span></div>`;
   if (planGood()) return `<div class="pl-result ok">${icon("check")}<span><b>It fits.</b> No collisions, the ${esc(P.target.asset?.tag)} service zone is clear and the robot can still reach it.</span></div>`;
   if (!movedAny()) return `<div class="pl-result tight">${icon("help")}<span><b>Nothing moved yet.</b> Press “Move it again” and use the arrows.</span></div>`;
-  if (ev.status === "bad") return `<div class="pl-result bad">${icon("close")}<span><b>It hits something.</b> Move it to free floor.</span></div>`;
+  if (ev.status === "bad") return `<div class="pl-result bad">${icon("close")}<span><b>${ev.collision ? "It hits something." : "It is off the scanned floor."}</b> Move it to free, mapped floor.</span></div>`;
+  const other = failingMoves();
+  if (other.length) return `<div class="pl-result bad">${icon("close")}<span><b>Another moved object fails:</b> ${other.map(whyText).join("; ")}. Select it and move it again.</span></div>`;
   if (!z.clear) return `<div class="pl-result bad">${icon("close")}<span><b>Still in the way.</b> Part of it is inside the ${esc(P.target.asset?.tag)} service zone.</span></div>`;
   return `<div class="pl-result bad">${icon("close")}<span><b>The robot has no route</b> with this layout. Try another spot.</span></div>`;
 }
@@ -1100,7 +1130,7 @@ function cardHTML() {
     ${cutNoteHTML()}
     <div class="pl-tiles">
       ${tile("Moved", `${f2(disp)} m`, rot ? `turned ${rot > 0 ? "+" : ""}${rot}°` : "same heading")}
-      ${tile("Clearance", ev.collision ? "0 m" : `≈${f2(ev.clearance)} m`, ev.collision ? "collision" : ev.nearest ? `nearest object ${f2(ev.nearest.d)} m` : "to the nearest obstacle", ev.status)}
+      ${tile("Clearance", ev.collision ? "0 m" : ev.offScan ? "?" : `≈${f2(ev.clearance)} m`, ev.collision ? "collision" : ev.offScan ? "off the scanned floor" : ev.nearest ? `nearest object ${f2(ev.nearest.d)} m` : "to the nearest obstacle", ev.status)}
       ${tile(`${esc(a?.tag)} zone`, z.clear ? "Clear" : "Blocked", z.clear ? `${z.freePct}% free floor (was ${z0.freePct}%)` : `${esc(z.obstructions.map((x) => x.name).join(", "))} still inside`, z.clear ? "ok" : "bad")}
       ${tile("Robot route", A?.ok ? `${f2(A.length_m)} m` : A ? "None" : "…", B?.ok ? `was ${f2(B.length_m)} m · ${dl}` : "", A && !A.ok ? "bad" : "")}
     </div>
@@ -1276,13 +1306,29 @@ async function waitReady() { for (let i = 0; i < 200 && !P.ready; i++) await sle
 function getState() {
   return { v: 1, target: P.target?.id, moves: P.moves.map((m) => ({ id: m.id, x: +m.x.toFixed(3), z: +m.z.toFixed(3), yaw: +m.yaw.toFixed(4) })), active: P.active };
 }
+/** Imported plans (shared links, Remote Support, JSON) are untrusted: unknown or unmovable objects, duplicates,
+ *  non-numeric or out-of-room poses are dropped and reported (APP.planning.lastImport), never applied. */
+function sanitise(list) {
+  const b = APP.S.data.bounds, seen = new Set(), ok = [], rejected = [];
+  for (const m of Array.isArray(list) ? list : []) {
+    const id = m?.id, o = objOf(id), x = +m?.x, z = +m?.z, yaw = +m?.yaw;
+    const why = !o ? "unknown object" : seen.has(id) ? "duplicate" : !movable(o).ok ? "cannot be moved in a plan"
+      : ![x, z, yaw].every(Number.isFinite) || m.x === null || m.z === null || m.yaw === null ? "invalid pose"
+      : x < b.min[0] || x > b.max[0] || z < b.min[2] || z > b.max[2] ? "outside the scanned room" : null;
+    if (why) { rejected.push({ id: String(id ?? "?").slice(0, 40), why }); continue; }
+    seen.add(id); ok.push({ id, x, z, yaw: wrap(yaw) });
+  }
+  return { ok, rejected };
+}
 async function setState(state) {
   await waitReady();
-  const moves = (state?.moves || []).filter((m) => objOf(m.id) && [m.x, m.z, m.yaw].every(Number.isFinite));
+  const { ok: moves, rejected } = sanitise(state?.moves);
+  P.lastImport = { applied: moves.map((m) => m.id), rejected };
+  if (rejected.length) APP.toast(`Plan import: ${rejected.length} move${rejected.length > 1 ? "s" : ""} ignored (${esc(rejected.map((r) => `${r.id}: ${r.why}`).join("; "))}).`, 5200);
   if (P.drag) endDrag({ silent: true });
   record();
-  P.moves = moves.map((m) => ({ id: m.id, x: +m.x, z: +m.z, yaw: +m.yaw }));
-  P.active = moves.some((m) => m.id === state.active) ? state.active : P.moves.at(-1)?.id || null;
+  P.moves = moves;
+  P.active = moves.some((m) => m.id === state?.active) ? state.active : P.moves.at(-1)?.id || null;
   P.dirtyField = true; P.after = null; P.editing = false;
   refresh(); renderAll();
   if (P.moves.length) await computeAfter(); else { drawRoutes(); if (APP.S.curve && !APP.S.robot.done) APP.replan({ quiet: true }); }
@@ -1399,8 +1445,8 @@ on("boot", () => {
   }).observe($(sel), { childList: true });
   guard("#right", ".pl-disc", renderCard);
   guard("#left", ".pl-steps", renderLeft);
-  APP.planning = { view: (k) => frameView(0.9, k), getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _scanBusy: (id, pose) => scanBusy(footprint(objOf(id), pose)), _evaluate: (id, pose) => evaluate(id, pose),
-    undo, redo, history: () => ({ undo: P.undo.length, redo: P.redo.length }), pick: (id) => pick(id), pickObject, movable: (id) => movable(objOf(id) || APP.S.objById?.get(id)),
+  APP.planning = { view: (k) => frameView(0.9, k), getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _scanBusy: (id, pose) => scanBusy(footprint(objOf(id), pose)), _standing: (opt) => (P.cut?.available ? P.cut.standing(opt) : null), _evaluate: (id, pose) => evaluate(id, pose),
+    lastImport: () => P.lastImport || null, undo, redo, history: () => ({ undo: P.undo.length, redo: P.redo.length }), pick: (id) => pick(id), pickObject, movable: (id) => movable(objOf(id) || APP.S.objById?.get(id)),
     cutStats: () => ({ available: !!P.cut?.available, enabled: P.cutOn, shown: P.moves.filter((m) => P.cut?.isCut(m.id)).map((m) => m.id), objects: P.moves.map((m) => ({ id: m.id, ...(P.cut?.stats(m.id) || {}) })), log: P.cut?.log || [] }),
     setCutout: (on) => { P.cutOn = !!on; P.dirtyField = true; refresh(); renderAll(); return P.cutOn; } };
 });

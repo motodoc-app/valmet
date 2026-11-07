@@ -127,6 +127,8 @@ class World:
         for a, b in zip(waypoints[:-1], waypoints[1:]):
             n = max(2, int(math.dist(a, b) / 0.1))
             pts += [(a[0] + (b[0] - a[0]) * t, a[2] + (b[2] - a[2]) * t) for t in np.linspace(0, 1, n)]
+        if not pts:   # a one-point route (already at the destination): what the robot sees from where it stands
+            pts = [(w[0], w[2]) for w in waypoints[:1]]
         for o in self.scene["objects"]:
             if o["kind"] != "object":
                 continue
