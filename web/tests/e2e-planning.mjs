@@ -191,7 +191,10 @@ try {
   await sleep(600);
   const g1 = await p.evaluate(() => window.__xr.planning.getState()), m10 = g1.moves.find((m) => m.id === OTHER);
   ok("Dragging moves it on the floor", Math.hypot(m10.x - o10[0], m10.z - o10[2]) > 0.4, `${m10.x}, ${m10.z}`);
-  ok("It settles back on the floor after the drop", await p.evaluate(() => { const g = window.__xr.scene.getObjectByName("planning"); let y = 0; g.traverse((n) => { if (n.isGroup && n.children.some((c) => c.geometry?.type === "BoxGeometry")) y = Math.max(y, n.position.y); }); return y < 1e-3; }));
+  // software GL renders a few frames per second and dt is capped at 50 ms: give the drop animation time
+  await p.waitForFunction(() => { const g = window.__xr.scene.getObjectByName("planning"); let y = 0; g.traverse((n) => { if (n.isGroup && n.children.some((c) => c.geometry?.type === "BoxGeometry")) y = Math.max(y, n.position.y); }); return y < 1e-3; }, null, { timeout: 15000 }).catch(() => {});
+  const settled = await p.evaluate(() => { const g = window.__xr.scene.getObjectByName("planning"); let y = 0; g.traverse((n) => { if (n.isGroup && n.children.some((c) => c.geometry?.type === "BoxGeometry")) y = Math.max(y, n.position.y); }); return y; });
+  ok("It settles back on the floor after the drop", settled < 1e-3, `y ${settled.toFixed(4)} m`);
   ok("Route re-planned on drop", await p.evaluate(() => !!window.__xr.planning.summary().route.after));
   ok("Undo is available after the move", (await p.evaluate(() => window.__xr.planning.history())).undo >= 1 && !(await p.$('#dock [data-pd="undo"][disabled]')));
   ok("Without the scan the object is a box proxy (cut-out unavailable, said so)", !(await p.evaluate(() => window.__xr.planning.cutStats().available)) && /box proxy/.test(await p.textContent("#right .pl-cut")));
@@ -234,6 +237,12 @@ try {
   await p.keyboard.press("Control+z"); await sleep(400);
   ok("Reset all can be undone", (await p.evaluate(() => window.__xr.planning.getState())).moves.length === 2);
   await p.evaluate(() => window.__xr.planning.reset());
+  const po = await p.evaluate(async () => { window.__xr.setMode("facility"); const r = await window.__xr.planning.pickObject("OBJ-010"); return { r, mode: window.__app.mode }; });
+  ok("APP.planning.pickObject(id) enters Plan with that object active", po.mode === "plan" && po.r.ok && po.r.state.active === "OBJ-010");
+  const pt = await p.evaluate(async () => window.__xr.planning.pickObject(window.__app.target.id));
+  ok("pickObject(pump) explains instead of moving the pump", !pt.ok && /being serviced/.test(pt.why));
+  await p.evaluate(() => window.__xr.planning.reset());
+  await sleep(1200);
   await p.screenshot({ path: path.join(SHOTS, "plan-4-grab.png") });
 
   // phone-ish width keeps the planning card usable

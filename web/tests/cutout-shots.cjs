@@ -31,7 +31,19 @@ fs.mkdirSync(SHOTS, { recursive: true });
   // a clean look at the scan: no drivable-floor overlay, no object frames
   await p.evaluate(() => { const A = window.__xr; A.S.fac.setTwin(false); A.S.fac.setShowMode("none"); });
   // each __step renders one frame; the screenshot waits for the (software) GPU to finish it
-  const step = async (n = 2) => { for (let i = 0; i < n; i++) { const t0 = Date.now(); await p.evaluate(() => window.__step(1 / 12)); await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => r()))); console.log(`  frame ${Date.now() - t0} ms`); await sleep(1500); } };
+  // Spark generates and sorts asynchronously and only swaps in the new splat set on a later frame: in software GL
+  // the sort of 1.67 M splats takes seconds, so render until the sorter is idle and the displayed set is current.
+  const step = async (n = 2) => {
+    const t0 = Date.now();
+    for (let i = 0; i < 40; i++) {
+      await p.evaluate(() => window.__step(1 / 12));
+      await sleep(700);
+      const idle = await p.evaluate(() => { const s = window.__xr.scene.children.find((c) => c.accumulators); return !s || (!s.sorting && !s.sortDirty && s.display === s.current); });
+      if (idle && i >= n) break;
+    }
+    await p.evaluate(() => window.__step(1 / 12));
+    console.log(`  settled in ${Date.now() - t0} ms`);
+  };
   // camera: look at the original and the new spot from the room side at 45°
   const look = (id, to) => p.evaluate(([id, to]) => {
     const A = window.__xr, o = A.S.data.objects.find((x) => x.id === id), V = A.THREE.Vector3;

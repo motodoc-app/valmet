@@ -432,7 +432,8 @@ const bounceOut = (t) => {          // settles with one small rebound (no physic
   const n = 7.5625, d = 2.75;
   if (t < 1 / d) return n * t * t;
   if (t < 2 / d) return n * (t -= 1.5 / d) * t + 0.75;
-  return n * (t -= 2.25 / d) * t + 0.9375;
+  if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + 0.9375;
+  return n * (t -= 2.625 / d) * t + 0.984375;
 };
 /** Per frame: ease held proxies towards the pointer, lift / settle animation, cut-out visibility. */
 function animate(dt) {
@@ -469,7 +470,8 @@ function poseItem(m, ev) {
   for (const mat of [it.edgeMat, it.fillMat, it.floorMat, it.ringMat]) mat.color.setHex(c);
   // with the scan cut-out shown, the box is only a subtle outline around the real-looking object
   const cut = !!P.cut?.isCut(m.id);
-  it.fillMat.opacity = cut ? 0.035 : 0.16; it.edgeMat.opacity = cut ? 0.55 : 1;
+  it.fillMat.opacity = cut ? 0.035 : 0.16; it.edgeMat.opacity = cut ? 0.55 : 1; it.floorMat.opacity = cut ? 0.07 : 0.3;
+  it.fl.renderOrder = cut ? 1 : 6; it.floorMat.depthTest = cut;   // under the moved scan, not painted over it
   it.ptag.element.querySelector("small").textContent = cut ? `${shortName(o)} · scan cut-out` : shortName(o);
   it.ringMat.opacity = m.id === P.active ? 0.6 : 0.2;
   it.ptag.element.className = `pl-tag proxy ${ev?.status || "ok"} ${m.id === P.active ? "on" : ""}`;
@@ -632,7 +634,7 @@ function hitBox(ray, x, z, yaw, w, hgt, d, bottom, pad = 0) {
   return null;
 }
 /** The scene object under the ray (Facility.pick), skipping the original boxes of objects that already have a proxy. */
-function pickObject(ray) {
+function pickUnder(ray) {
   const fac = APP.S.fac, id = fac.pick(ray);
   if (!id || !moveOf(id)) return id;
   let best = null;                               // same rule as Facility.pick: the smallest box under the cursor
@@ -659,7 +661,7 @@ function onPointerDown(e) {
   const hit = pickProxy(ray);
   if (hit) { id = hit.m.id; y = hit.y; }
   else {
-    const oid = pickObject(ray), o = oid && objOf(oid);
+    const oid = pickUnder(ray), o = oid && objOf(oid);
     if (!o || !movable(o).ok) return;            // orbit as usual; a click explains why it stays put (onPick)
     const [w, h, d] = o.size.map((v) => Math.max(v, 0.04)), bottom = Math.max(0, o.center[1] - o.size[1] / 2);
     y = hitBox(ray, o.center[0], o.center[2], o.yaw, w, h, d, bottom) ?? bottom + h / 2;
@@ -741,7 +743,7 @@ function doHover() {
   const e = P.hoverEvt; if (!e || P.drag || APP.S?.mode !== "plan" || !P.ready) return;
   const ray = rayFrom(e), ph = pickProxy(ray);
   if (ph) return setHover({ id: ph.m.id, ok: true, proxy: true, name: shortName(objOf(ph.m.id)), x: e.clientX, y: e.clientY, mouse: e.mouse });
-  const id = pickObject(ray), o = id && objOf(id);
+  const id = pickUnder(ray), o = id && objOf(id);
   if (!o) return setHover(null);
   setHover({ id, ok: movable(o).ok, proxy: false, name: shortName(o), x: e.clientX, y: e.clientY, mouse: e.mouse });
 }
@@ -1239,6 +1241,16 @@ async function demo({ animate = true } = {}) {
   renderAll();
   return summary();
 }
+/** For other modules (asset card "Plan access"): enter Plan, make `id` the active movable object, Top view.
+ *  The pump being serviced, pipework and wall-mounted parts are not picked up: Plan opens with a short note instead. */
+async function pickObject(id) {
+  if (APP.S.mode !== "plan") APP.setMode("plan");
+  await waitReady();
+  const o = objOf(id), mv = movable(o || APP.S.objById?.get(id));
+  if (!mv.ok) { if (o) { APP.S.selected = o; highlight(); renderLeft(); } APP.toast(mv.why); frameView(0.9, "top"); return { ok: false, why: mv.why.replace(/<[^>]+>/g, ""), state: getState() }; }
+  pick(id);
+  return { ok: true, state: getState() };
+}
 async function waitReady() { for (let i = 0; i < 200 && !P.ready; i++) await sleep(50); }
 
 // ------------------------------------------------------------------ state for shared links (Remote Support)
@@ -1337,7 +1349,7 @@ registerMode({
     const hit = pickProxy(ray);
     if (hit) { if (P.active !== hit.m.id || !P.editing) { P.active = hit.m.id; P.dirtyField = true; P.editing = true; refresh(); renderAll(); } return true; }
     if (!P.ready) return true;
-    const id = pickObject(ray);
+    const id = pickUnder(ray);
     if (id) {
       const o = APP.S.data.objects.find((x) => x.id === id), mv = movable(o);
       APP.S.selected = o;
@@ -1369,7 +1381,7 @@ on("boot", () => {
   guard("#right", ".pl-disc", renderCard);
   guard("#left", ".pl-steps", renderLeft);
   APP.planning = { view: (k) => frameView(0.9, k), getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _evaluate: (id, pose) => evaluate(id, pose),
-    undo, redo, history: () => ({ undo: P.undo.length, redo: P.redo.length }), pick: (id) => pick(id), movable: (id) => movable(objOf(id) || APP.S.objById?.get(id)),
+    undo, redo, history: () => ({ undo: P.undo.length, redo: P.redo.length }), pick: (id) => pick(id), pickObject, movable: (id) => movable(objOf(id) || APP.S.objById?.get(id)),
     cutStats: () => ({ available: !!P.cut?.available, enabled: P.cutOn, shown: P.moves.filter((m) => P.cut?.isCut(m.id)).map((m) => m.id), objects: P.moves.map((m) => ({ id: m.id, ...(P.cut?.stats(m.id) || {}) })), log: P.cut?.log || [] }),
     setCutout: (on) => { P.cutOn = !!on; P.dirtyField = true; refresh(); renderAll(); return P.cutOn; } };
 });

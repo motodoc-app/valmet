@@ -19,7 +19,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await p.evaluate(() => { window.__xr.setMode("plan"); document.body.classList.add("focus"); });
   await sleep(1500);
   const MV = (process.env.MOVE || "OBJ-028,2.0,1.6,0.5").split(","); await p.evaluate((mv) => window.__xr.planning.setState({ moves: [{ id: mv[0], x: +mv[1], z: +mv[2], yaw: +mv[3] }] }), MV);
-  for (let i = 0; i < 3; i++) { await p.evaluate(() => window.__step(1 / 12)); await sleep(500); }
+  for (let i = 0; i < +(process.env.STEPS || 3); i++) { await p.evaluate(() => window.__step(1 / 12)); await sleep(600); }
   console.log(await p.evaluate(() => {
     const A = window.__xr, g = A.scene.getObjectByName("splatcut");
     const ms = g.children.filter((c) => c.isSplatMesh || c.packedSplats);
@@ -33,11 +33,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   if (process.argv[3]) {
     const cam = (process.env.CAM || "2.6,2.0,0.9").split(",").map(Number), tgt = (process.env.TGT || "2.0,0.2,2.15").split(",").map(Number);
     await p.evaluate(([cam, tgt]) => { const A = window.__xr; A.S.cam = "free"; A.S.fac.setCutaway(true); A.S.fac.setTwin(false); A.S.fac.setShowMode("none"); A.flyTo(new A.THREE.Vector3(...cam), new A.THREE.Vector3(...tgt), 0.01); }, [cam, tgt]);
-    for (let i = 0; i < 3; i++) { await p.evaluate(() => window.__step(1 / 12)); await sleep(500); }
+    for (let i = 0; i < +(process.env.STEPS || 3); i++) { await p.evaluate(() => window.__step(1 / 12)); await sleep(600); }
     await p.screenshot({ path: path.join(__dirname, "shots", process.argv[3]), timeout: 300000 });
     if (process.argv[4]) {                         // the same view with the plan reset (before)
       await p.evaluate(() => window.__xr.planning.reset());
-      for (let i = 0; i < 3; i++) { await p.evaluate(() => window.__step(1 / 12)); await sleep(500); }
+      for (let i = 0; i < +(process.env.STEPS || 3); i++) { await p.evaluate(() => window.__step(1 / 12)); await sleep(600); }
       await p.screenshot({ path: path.join(__dirname, "shots", process.argv[4]), timeout: 300000 });
     }
   }
