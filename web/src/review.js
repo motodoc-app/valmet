@@ -17,7 +17,7 @@ const CATS = [
   ["electrical", "Electrical"], ["vessel", "Vessels, exchangers"], ["logistics", "Logistics (carts, pallets)"],
   ["structure", "Structure"], ["other", "Other / unidentified"],
 ];
-const SORTS = { conf: "Lowest confidence first", linked: "Linked to an asset first", size: "Largest first" };
+const SORTS = { conf: "Least confident first", linked: "Linked assets first", size: "Largest first" };
 const SCOPES = { needs: "Needs review", all: "All candidates" };
 
 const R = {
@@ -234,14 +234,14 @@ function summaryHTML() {
         ${s.low.n ? kv(`Confidence < ${R.T.toFixed(2)}`, `${s.low.agree}/${s.low.n} <span class="q-ci">(${w(s.low.ci)})</span>`) : ""}` : `<p class="note">No decisions yet.</p>`}
       <p class="note" style="margin-top:8px">This is <b>your review</b>: a person judged each object, unlike the AI second-opinion audit in the
       Scene understanding panel. The queue puts uncertain objects first, so the rate describes the objects you reviewed, not all ${objects().length} candidates.</p></div>
-    <div class="section"><div class="label"><span>Export</span><span>download only: the hosted demo cannot write files</span></div>
+    <div class="section"><div class="label"><span>Export</span><span>download only</span></div>
       <div class="rv-row">
-        <button class="btn primary" data-rv="json" ${s.n ? "" : "disabled"}>Review layer (.json)</button>
-        <button class="btn" data-rv="csv" ${s.n ? "" : "disabled"}>Precision study (.csv)</button></div>
+        <button class="btn primary" data-rv="json" ${s.n ? "" : "disabled"}>Review layer .json</button>
+        <button class="btn" data-rv="csv" ${s.n ? "" : "disabled"}>Study .csv</button></div>
       ${s.n && !name ? `<p class="note q-warn" style="margin-top:8px">Add your name above so the notes say who confirmed each label.</p>` : ""}
       <p class="note" style="margin-top:8px">The JSON is in the <code>config/scene_annotations.json</code> format (one <code>relabel_near</code> entry per decision,
       point = object centre). Merge it with <code>python scripts/merge_review.py &lt;file&gt;</code>, then re-run
-      <code>python scripts/run_pipeline.py --from 2</code>. See <code>docs/REPLICATE.md</code>.</p></div>
+      <code>python scripts/run_pipeline.py --from 2</code>. The hosted demo cannot write files; see <code>docs/REPLICATE.md</code>.</p></div>
     <div class="section"><button class="link" data-rv="reset" ${s.n ? "" : "disabled"}>Clear all decisions in this browser</button></div>`;
 }
 

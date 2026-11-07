@@ -90,17 +90,17 @@ the app, so every label that reaches the asset register says who checked it.
 
 1. Open the scene, press the **✓ Scene understanding** rail button (phones: Tools → Scene understanding) and choose
    **Review labels**. The queue holds the uncertain candidates first (confidence < 0.70 or "other equipment"; 481 in
-   this room); switch to *All candidates* or sort by *Linked to an asset first* / *Largest first*.
+   this room); switch to *All candidates* or sort by *Linked assets first* / *Largest first*.
 2. For each object the camera flies to it and outlines it in amber. Decide: **✓ Correct as is** (`Y`),
    **✎ Rename** (`R`: free text + category from the scene taxonomy), **✗ Not an object / fragment** (`N`) or
    **Skip** (`→`). `←` goes back, `U` undoes. Decisions are kept in this browser (localStorage) until exported.
 3. In **Summary & export** enter your name, check the tally (agreed / renamed / rejected) and the observed
    agreement with a 95 % Wilson interval. This is *your* review, a human check, unlike the AI second-opinion audit;
    because the queue starts with the uncertain objects, the rate describes the reviewed objects, not the whole room.
-4. Download **Review layer (.json)**: the `config/scene_annotations.json` format, one `relabel_near` entry per
+4. Download **Review layer .json**: the `config/scene_annotations.json` format, one `relabel_near` entry per
    decision (`point` = object centre, `label`, `category`, `note` = "Confirmed / Renamed / Rejected in review by
    <name> on <date> …"; rejected objects get the label `not an object / fragment`). Optionally download the
-   **Precision study (.csv)**: the columns of `docs/label_review_sample.csv` plus `verdict, new_label, reviewer, time`.
+   **Study .csv** (precision study): the columns of `docs/label_review_sample.csv` plus `verdict, new_label, reviewer, time`.
 5. Merge and rebuild:
 
 ```bash
