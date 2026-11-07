@@ -2,6 +2,8 @@
 import * as THREE from "three";
 import { SplatMesh } from "@sparkjsdev/spark";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import { hazeMask } from "./scanfilter.js";
+import { CATEGORIES, CAT, CONDITION, catOf, isUncertain, hexRGB } from "./semantic.js";
 
 export const STATUS = { healthy: 0x30d158, watch: 0xffd60a, degraded: 0xff9f0a, attention_required: 0xff453a };
 const NEUTRAL = 0xc8ccd2;
@@ -66,6 +68,21 @@ export function splitByHeight(splat, cut) {
   return [["low", low], ["high", high]];
 }
 
+/**
+ * Partition 32-byte .splat records into up to four layers: below / above the cut-away height, each split into
+ * "clean" and "haze" (see scanfilter.js). Every layer becomes its own SplatMesh, so the cut-away and the
+ * clean-scan filter are instant visibility flips instead of re-uploads. Returns [{ layer, haze, bytes }] and the counts.
+ */
+export function splitScan(splat, cut, bounds) {
+  const n = splat.length / 32, dv = new DataView(splat.buffer, splat.byteOffset, splat.byteLength);
+  const haze = bounds ? hazeMask(splat, bounds) : new Uint8Array(n);
+  const kind = new Uint8Array(n), count = [0, 0, 0, 0];      // 0 low, 1 high, 2 low haze, 3 high haze
+  for (let i = 0; i < n; i++) { const k = (dv.getFloat32(i * 32 + 4, true) <= cut ? 0 : 1) + 2 * haze[i]; kind[i] = k; count[k]++; }
+  const out = count.map((c) => new Uint8Array(c * 32)), at = [0, 0, 0, 0];
+  for (let i = 0; i < n; i++) { const k = kind[i]; out[k].set(splat.subarray(i * 32, i * 32 + 32), at[k]++ * 32); }
+  return { parts: out.map((bytes, k) => ({ layer: k % 2 ? "high" : "low", haze: k >= 2, bytes })), total: n, haze: count[2] + count[3] };
+}
+
 let _dot;
 function dotTexture() {
   if (_dot) return _dot;
@@ -87,6 +104,10 @@ export class Facility {
     this.previews = [];
     this.cutY = 1.7;          // metres above the floor
     this.cutaway = false;
+    this.cleanScan = false;   // hide haze splats (scanfilter.js)
+    this.semantic = false;    // category-coloured boxes over a dimmed scan
+    this.showUncertain = false;
+    this.scanStats = { splats: 0, haze: 0 };
     this._buildFrames();
     this._buildRobot();
     this.routeGroup = new THREE.Group();
@@ -145,23 +166,28 @@ export class Facility {
       const all = format === "xq16" ? decodeXq16(bytes, c.count, manifest) : bytes;
       // split each chunk at the cut-away height: the upper part (ceiling, overhead pipes) can be hidden so
       // high spectator cameras look straight into the room, like an architectural floor-plan cut
-      const parts = splitByHeight(all, this.cutY);
-      for (const [layer, splat] of parts) {
+      // ...and partition out the haze (clean-scan filter) the same way
+      const { parts, total: nAll, haze: nHaze } = splitScan(all, this.cutY, this.data.bounds);
+      this.scanStats.splats += nAll; this.scanStats.haze += nHaze;
+      for (const { layer, haze, bytes: splat } of parts) {
         if (!splat.length) continue;
         const preview = this._points(splat);
-        preview.userData.layer = layer;
-        preview.visible = layer === "low" || !this.cutaway;
+        preview.userData.layer = layer; preview.userData.haze = haze;
+        preview.visible = this._layerOn(preview);
+        this._stylePreview(preview);
         this.previews.push(preview);
         if (!splats) continue;
         try {
           const m = new SplatMesh({ fileBytes: splat, fileType: "splat", fileName: "scene.splat" });
-          m.userData.layer = layer;
-          m.visible = layer === "low" || !this.cutaway;
+          m.userData.layer = layer; m.userData.haze = haze;
+          m.visible = this._layerOn(m);
+          this._styleSplat(m);
           this.root.add(m);
           this.splats.push(m);
           await Promise.race([m.initialized, new Promise((_, rej) => setTimeout(() => rej(new Error("splat engine timeout")), timeoutMs))]);
           preview.userData.replaced = true;   // splats are up: drop the preview for this part
           preview.visible = false;
+          m.visible = this._layerOn(m);       // toggles may have changed while this part was initialising
           this.splatMode = "splats";
         } catch (e) {
           console.warn("Gaussian splats unavailable, keeping point view:", e);
@@ -254,7 +280,7 @@ export class Facility {
     let best = null;
     const o3 = ray.origin, d3 = ray.direction;
     for (const f of this.frames.values()) {
-      if (this._alpha(f) === 0) continue;
+      if (this._alpha(f) === 0 && !this._semShown(f.obj)) continue;
       const o = f.obj, ox = o3.x - o.center[0], oy = o3.y - o.center[1], oz = o3.z - o.center[2];
       // rotate into the box frame (inverse of the yaw used when building)
       const lo = [ox * f.cs + oz * f.sn, oy, -ox * f.sn + oz * f.cs];
@@ -279,9 +305,25 @@ export class Facility {
     this.robot.userData.tag.visible = on;
     if (this.cutaway === on) return;
     this.cutaway = on;
-    for (const m of this.splats) m.visible = m.userData.layer === "low" || !on;
-    for (const p of this.previews) p.visible = !p.userData.replaced && (p.userData.layer === "low" || !on);
+    this._applyLayers();
     this.setShowMode(this.showMode);
+    if (this.sem) this._semStyle();
+  }
+
+  // ---------------------------------------------------------------- scan layers: cut-away, clean scan, semantic dimming
+  _layerOn(m) { return (m.userData.layer === "low" || !this.cutaway) && !(m.userData.haze && this.cleanScan); }
+  _applyLayers() {
+    for (const m of this.splats) m.visible = this._layerOn(m);
+    for (const p of this.previews) p.visible = !p.userData.replaced && this._layerOn(p);
+  }
+  // Semantic view: the scan becomes a faint grey ghost so the coloured objects carry the picture.
+  _styleSplat(m) { m.opacity = this.semantic ? 0.14 : 1; m.recolor.setScalar(this.semantic ? 0.75 : 1); }
+  _stylePreview(p) { p.material.color.setScalar(this.semantic ? 0.22 : 1); }
+
+  /** Clean scan: hide the haze layer (faint fog, huge blobs, floaters outside the room, isolated speckle). */
+  setCleanScan(on) {
+    this.cleanScan = !!on;
+    this._applyLayers();
   }
 
   setShowMode(mode) {
@@ -343,6 +385,153 @@ export class Facility {
   pulse(t, id) {
     const m = this.fills.get(id);
     if (m?.visible) m.material.opacity = 0.06 + 0.08 * (0.5 + 0.5 * Math.sin(t * 3));
+  }
+
+  // ---------------------------------------------------------------- semantic view: every object as a coloured box
+  // ONE InstancedMesh for all objects + walls (one draw call). A tiny shader patch draws crisp screen-space edges
+  // and diagonal hatching from the unit-box position, and a per-instance (strength, hatch) attribute lets a toggle
+  // restyle all 680 boxes with a single attribute upload. Asset condition rings: one more InstancedMesh.
+  _buildSemantic() {
+    const list = this.data.objects.filter((o) => o.kind === "object" || o.kind === "structure");
+    const n = list.length;
+    // front faces only: one pass, half the overdraw (the silhouette edges still outline every box)
+    const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.FrontSide });
+    mat.onBeforeCompile = (sh) => {
+      sh.vertexShader = "attribute vec2 aStyle;\nvarying vec2 vStyle;\nvarying vec3 vBox;\n" +
+        sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\nvBox = position; vStyle = aStyle;");
+      sh.fragmentShader = "varying vec2 vStyle;\nvarying vec3 vBox;\n" + sh.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>
+        vec3 e = 0.5 - abs(vBox);
+        vec3 px = e / max(fwidth(vBox), vec3(1e-5));
+        if (e.x <= e.y && e.x <= e.z) px.x = 1e4; else if (e.y <= e.z) px.y = 1e4; else px.z = 1e4;
+        float edge = 1.0 - smoothstep(0.4, 1.4, min(px.x, min(px.y, px.z)));
+        float st = step(0.55, fract((gl_FragCoord.x + gl_FragCoord.y) / 7.0));
+        float fill = 0.17 * mix(1.0, 0.35 + 1.9 * st, vStyle.y);
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.5 + 0.5, edge * 0.45);
+        diffuseColor.a = vStyle.x * mix(fill, 0.95, edge);
+        if (diffuseColor.a < 0.004) discard;`);
+    };
+    const boxes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, n);
+    const style = new THREE.InstancedBufferAttribute(new Float32Array(n * 2), 2);
+    style.setUsage(THREE.DynamicDrawUsage);
+    boxes.geometry.setAttribute("aStyle", style);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), c = new THREE.Color();
+    const index = new Map();
+    list.forEach((o, i) => {
+      q.setFromAxisAngle(up, -o.yaw); p.set(...o.center); sc.set(...o.size.map((v) => Math.max(v, 0.03)));
+      boxes.setMatrixAt(i, m4.compose(p, q, sc));
+      boxes.setColorAt(i, c.setRGB(...hexRGB(CAT[catOf(o)].color), THREE.SRGBColorSpace));
+      index.set(o.id, i);
+    });
+    boxes.frustumCulled = false;
+    boxes.renderOrder = 2;
+    // condition rings on the floor under every workbook asset
+    const assets = list.filter((o) => o.asset);
+    const rings = new THREE.InstancedMesh(new THREE.RingGeometry(0.86, 1, 48).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }), Math.max(1, assets.length));
+    assets.forEach((o, i) => {
+      const r = Math.min(0.7, Math.max(o.size[0], o.size[2]) / 2 + 0.12);   // capped: a few frames are much larger than the machine
+      rings.setMatrixAt(i, m4.compose(p.set(o.center[0], 0.02, o.center[2]), q.identity(), sc.set(r, 1, r)));
+      rings.setColorAt(i, c.setRGB(...hexRGB(CONDITION[o.asset.condition_state] || "#c8ccd2"), THREE.SRGBColorSpace));
+    });
+    rings.count = assets.length;
+    rings.frustumCulled = false;
+    const g = new THREE.Group();
+    g.add(boxes, rings);
+    g.visible = false;
+    this.root.add(g);
+    this.sem = { group: g, boxes, rings, style, list, index };
+  }
+
+  /** Objects per semantic category (walls excluded) and the number of uncertain ones. */
+  categoryCounts() {
+    const out = Object.fromEntries(CATEGORIES.map((c) => [c.id, 0]));
+    let uncertain = 0;
+    for (const o of this.data.objects) { if (o.kind !== "object") continue; out[catOf(o)]++; if (isUncertain(o)) uncertain++; }
+    return { ...out, uncertain };
+  }
+
+  _semStrength(o) {
+    if (this.cutaway && o.center[1] - o.size[1] / 2 > this.cutY) return [0, 0];
+    const unc = isUncertain(o);
+    if (this.showUncertain && unc) return [1, 1];
+    if (!this.semantic) return [0, 0];
+    if (this.showUncertain) return [0.22, 0];
+    if (o.kind === "structure") return [0.45, 0];
+    return [catOf(o) === "unknown" ? 0.7 : 1, 0];
+  }
+  _semShown(o) { const i = this.sem?.index.get(o.id); return i !== undefined && this.sem.style.array[i * 2] > 0; }
+
+  _semStyle() {
+    const { list, style, boxes, rings, group } = this.sem, a = style.array, c = new THREE.Color();
+    list.forEach((o, i) => {
+      const [s, h] = this._semStrength(o);
+      a[i * 2] = s; a[i * 2 + 1] = h;
+      // uncertain objects read as one class (white hatch) while "Show uncertain" is on
+      boxes.setColorAt(i, c.setRGB(...hexRGB(h ? "#f2f3f5" : CAT[catOf(o)].color), THREE.SRGBColorSpace));
+    });
+    style.needsUpdate = true;
+    boxes.instanceColor.needsUpdate = true;
+    rings.visible = this.semantic;
+    group.visible = this.semantic || this.showUncertain;
+  }
+
+  /** Semantic view: dim the scan and show every recognised object as a translucent box coloured by category. */
+  setSemantic(on) {
+    this.semantic = !!on;
+    if (!this.sem) this._buildSemantic();
+    for (const m of this.splats) this._styleSplat(m);
+    for (const p of this.previews) this._stylePreview(p);
+    this._semStyle();
+  }
+
+  /** Show uncertain: hatch the objects whose label is a guess (low confidence or "other equipment"). */
+  setShowUncertain(on) {
+    this.showUncertain = !!on;
+    if (!this.sem) this._buildSemantic();
+    this._semStyle();
+  }
+
+  // ---------------------------------------------------------------- hover / selection outline (drawn on top)
+  _outlineBox(color, opacity) {
+    const geo = this._edgeGeo ||= new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1));
+    const l = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthTest: false, depthWrite: false }));
+    l.renderOrder = 20; l.visible = false; l.frustumCulled = false;
+    this.root.add(l);
+    return l;
+  }
+  _placeBox(m, o, pad = 0.03) {
+    m.position.set(o.center[0], o.center[1], o.center[2]); m.rotation.set(0, -o.yaw, 0);
+    m.scale.set(Math.max(o.size[0], 0.03) + pad, Math.max(o.size[1], 0.03) + pad, Math.max(o.size[2], 0.03) + pad);
+  }
+  /** Outline + name tag for the object under the cursor (null clears). */
+  setHover(id) {
+    if (id === this.hoverId) return;
+    this.hoverId = id;
+    this._hover ||= this._outlineBox(0xffffff, 0.7);
+    if (!this._hoverTag) {
+      const el = document.createElement("div"); el.className = "tag3d hover-tag";
+      this._hoverTag = new CSS2DObject(el); this._hoverTag.visible = false; this.root.add(this._hoverTag);
+    }
+    const f = id && this.frames.get(id);
+    this._hover.visible = this._hoverTag.visible = !!f && id !== this.outlineId;
+    if (!f) return;
+    const o = f.obj, cat = CAT[catOf(o)], unc = isUncertain(o);
+    this._placeBox(this._hover, o, 0.02);
+    this._hoverTag.position.set(o.center[0], o.center[1] + o.size[1] / 2, o.center[2]);
+    this._hoverTag.element.innerHTML = o.asset
+      ? `<span class="dot s-${o.asset.condition_state}"></span><b>${o.asset.tag}</b><small>${o.label}</small>`
+      : `<span class="sw" style="background:${cat.color}"></span>${o.label}<small>${Math.round(o.confidence * 100)}%${unc ? " · uncertain" : ""}</small>`;
+    if (f.label?.visible) this._hoverTag.visible = false;   // its own label is already up
+  }
+  /** Persistent outline for the selected object (null clears). */
+  setOutline(id) {
+    if (id === this.outlineId) return;
+    this.outlineId = id;
+    this._sel ||= this._outlineBox(0xffffff, 1);
+    const f = id && this.frames.get(id);
+    this._sel.visible = !!f;
+    if (f) this._placeBox(this._sel, f.obj, 0.05);
+    if (this._hover && id && id === this.hoverId) this._hover.visible = this._hoverTag.visible = false;
   }
 
   // ---------------------------------------------------------------- robot: compact, matte, one status light

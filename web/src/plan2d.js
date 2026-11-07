@@ -6,6 +6,7 @@
 import { api, connect } from "./api.js";
 import { $, $$, esc, nice, pad, kv, cites, toast, header, diagnosisHTML } from "./ui.js";
 import { icon } from "./icons.js";
+import { CATEGORIES, CAT, catOf } from "./semantic.js";
 
 const STATUS = { healthy: "#30d158", watch: "#ffd60a", degraded: "#ff9f0a", attention_required: "#ff453a" };
 const RANK = { attention_required: 0, degraded: 1, watch: 2, healthy: 3 };
@@ -37,7 +38,7 @@ export async function startPlan(reason) {
 <aside class="card right" id="right"></aside>
 <div class="card sheet hidden" id="sheet"></div>
 <div class="dock" id="dock"></div>
-<div class="plan-legend">${Object.entries(STATUS).map(([k, c]) => `<span><i style="background:${c}"></i>${nice(k)}</span>`).join("")}<span><i class="sq"></i>Drivable floor</span><span><i class="eq"></i>Equipment</span></div>
+<div class="plan-legend">${Object.entries(STATUS).map(([k, c]) => `<span><i style="background:${c}"></i>${nice(k)}</span>`).join("")}<span><i class="sq"></i>Drivable floor</span>${CATEGORIES.filter((c) => c.id !== "structure").map((c) => `<span><i style="border-radius:2px;background:${c.color}"></i>${c.short}</span>`).join("")}</div>
 <div class="loading" id="loading"><div class="box">Starting the floor plan<div class="bar"><i></i></div></div></div>`;
 
   $("#try3d").onclick = () => { history.replaceState(null, "", location.pathname); location.reload(); };
@@ -192,7 +193,10 @@ function draw(t) {
     if (!hot && !isNear && !o.asset && k < 40 && o.size[0] * o.size[2] < 0.01) continue;
     const [sx, sy] = W2S(o.center[0], o.center[2]);
     ctx.save(); ctx.translate(sx, sy); ctx.rotate(o.yaw || 0);
-    ctx.strokeStyle = hot ? "rgba(255,255,255,.95)" : isNear ? "rgba(10,132,255,.9)" : o.asset ? "rgba(255,255,255,.32)" : "rgba(255,255,255,.12)";
+    // colour = what it is (same palette as the 3D semantic view and the site map)
+    const col = CAT[catOf(o)].color, faint = o.center[1] - o.size[1] / 2 > 1.7 ? 0.45 : 1;   // overhead parts quieter
+    if (!hot && !isNear) { ctx.fillStyle = hexA(col, 0.16 * faint); ctx.fillRect((-o.size[0] / 2) * k, (-o.size[2] / 2) * k, o.size[0] * k, o.size[2] * k); }
+    ctx.strokeStyle = hot ? "rgba(255,255,255,.95)" : isNear ? "rgba(10,132,255,.9)" : hexA(col, (o.asset ? 0.75 : 0.5) * faint);
     ctx.lineWidth = hot ? 1.6 : 1;
     ctx.strokeRect((-o.size[0] / 2) * k, (-o.size[2] / 2) * k, o.size[0] * k, o.size[2] * k);
     ctx.restore();
@@ -236,6 +240,7 @@ function draw(t) {
   ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, 6.5); ctx.lineTo(-4, 0); ctx.lineTo(-7, -6.5); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
+function hexA(hex, a) { const v = parseInt(hex.slice(1), 16); return `rgba(${v >> 16},${(v >> 8) & 255},${v & 255},${a})`; }
 function tagLabel(ctx, x, y, text, hot, placed, force = false) {
   ctx.font = "500 11px ui-monospace, SF Mono, Menlo, monospace";
   const w = ctx.measureText(text).width + 12, r = [x - w / 2, y - 30, x + w / 2, y - 12];
