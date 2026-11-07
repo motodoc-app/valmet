@@ -48,7 +48,7 @@ const frameTime = (p, ms = 3000) => p.evaluate((ms) => new Promise((res) => {
 
 // ------------------------------------------------------------------ 1. interactions (no scan)
 async function interactions(browser) {
-  const p = await open(browser, "?scan=off");
+  const p = await open(browser, "?scan=off&noguide");
   for (const id of ["semantic", "clean", "sitemap"]) ok(`rail button ${id}`, await p.$(`#rail [data-rail="x:${id}"]`));
   const ft0 = await frameTime(p);
   const calls0 = await p.evaluate(() => window.__renderer.info.render.calls);

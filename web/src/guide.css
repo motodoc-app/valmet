@@ -24,7 +24,7 @@ body.focus .gd-strip, body.touring .gd-strip, body.support-on .gd-strip { displa
   .modes .gd-q { display: inline-grid; place-items: center; flex: none !important; min-width: 40px; color: var(--text); }
 }
 
-.gd-coach { position: absolute; z-index: 8; left: 50%; bottom: 120px; width: 420px; display: flex; flex-direction: column; overflow: auto;
+.gd-coach { position: absolute; z-index: 8; left: 50%; top: 136px; bottom: auto; width: 420px; display: flex; flex-direction: column; overflow: auto;
   background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55); padding: 14px 16px 12px; animation: in .3s var(--ease); }
 .gd-ch { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; }
 .gd-ch .gd-si { width: 32px; height: 32px; border-radius: 9px; background: var(--surface-3); color: var(--text); }
