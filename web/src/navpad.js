@@ -36,6 +36,7 @@ const I = {
 function rig() {
   const S = APP.S;
   if (!S?.fac || S.mode === "value") return null;
+  if (APP.xo?.open) return { cam: APP.xo.cam, ctl: APP.xo.ctl, fac: false };      // in-scene X-Ray panel has the keys
   if (!XMODES.includes(S.mode)) return { cam: APP.camera, ctl: APP.controls, fac: true };
   if (APP.xCam && APP.xControls) return { cam: APP.xCam, ctl: APP.xControls, fac: false };
   const c = [...seenCtl].find((x) => x.object !== APP.camera);
@@ -47,7 +48,7 @@ function takeWheel(r) {
   if (steered) return false;
   steered = true;
   const S = APP.S;
-  if (r.fac && (S.cam === "chase" || S.cam === "broadcast") && (S.robot.moving || S.robot.follow > 0)) {
+  if (r.fac && ((S.cam === "chase" || S.cam === "broadcast") && (S.robot.moving || S.robot.follow > 0) || S.cam === "pov")) {
     S.cam = "free"; S.robot.follow = 0;
     try { APP.renderDock(); } catch {}
   }
@@ -147,10 +148,29 @@ function onKeyUp(e) { const a = keyHeld.get(e.code); if (a) { keyHeld.delete(e.c
 
 // ------------------------------------------------------------------ pad UI
 let el = null, openBtn = null;
+// view buttons = the dock's camera modes (Robot = Robot POV, Eye = Free at eye level, Angled, Top); the active one is lit
+const VIEWS = [["robot", "Robot", "Robot POV: ride along on the robot's (simulated) camera"], ["eye", "Eye", "Eye level: stand in the room"],
+  ["angled", "Angled", "Watch from above at an angle, like a broadcast camera"], ["top", "Top", "Look straight down, like a floor plan"]];
+const VIEW_CAM = { robot: "pov", eye: "free", angled: "broadcast", top: "top" };
+let litView = "";
+function lightViews() {
+  if (!el) return;
+  const S = APP.S, fac = !!S?.fac && !XMODES.includes(S.mode) && !APP.xo?.open, plan = S?.mode === "plan";
+  const cur = fac && !plan ? (Object.keys(VIEW_CAM).find((k) => VIEW_CAM[k] === S.cam) || "") : "";
+  const key = `${cur}|${fac}|${plan}`;
+  if (key === litView) return;
+  litView = key;
+  for (const b of el.querySelectorAll("[data-np-view]")) {
+    const k = b.dataset.npView;
+    b.classList.toggle("on", k === cur);
+    b.setAttribute("aria-pressed", String(k === cur));
+    if (k === "robot") b.classList.toggle("hidden", !fac || plan);      // the robot camera only exists in the room views
+  }
+}
 const btn = (a, icon, label, key) => `<button type="button" class="np-btn" data-np-a="${a}" title="${label}${key ? ` (${key})` : ""}" aria-label="${label}">${icon}</button>`;
 function padHTML() {
   // keyboard-style inverted-T clusters: two rows, so the pad stays small next to the cards
-  return `<div class="np-h"><div class="np-views" role="group" aria-label="View"><small>View</small>${[["eye", "Eye", "Eye level: stand in the room"], ["angled", "Angled", "Watch from above at an angle, like a broadcast camera"], ["top", "Top", "Look straight down, like a floor plan"]].map(([k, l, t]) => `<button type="button" data-np="view:${k}" title="${t}">${l}</button>`).join("")}</div><span class="np-tools"><button type="button" class="np-link" data-np="reset" title="Reset view (Home)">${I.home}</button><button type="button" class="np-link" data-np="keys" title="Keyboard shortcuts">Keys</button><button type="button" class="np-link" data-np="hide" title="Hide the pad" aria-label="Hide the navigation pad">${I.close}</button></span></div>
+  return `<div class="np-h"><div class="np-views" role="group" aria-label="View"><small>View</small>${VIEWS.map(([k, l, t]) => `<button type="button" data-np="view:${k}" data-np-view="${k}" title="${t}">${l}</button>`).join("")}</div><span class="np-tools"><button type="button" class="np-link" data-np="reset" title="Reset view (Home)">${I.home}</button><button type="button" class="np-link" data-np="keys" title="Keyboard shortcuts">Keys</button><button type="button" class="np-link" data-np="hide" title="Hide the pad" aria-label="Hide the navigation pad">${I.close}</button></span></div>
     <div class="np-b">
       <div class="np-cl"><small>Walk</small><div class="np-grid">
         <i></i>${btn("fwd", I.up, "Walk forward", "W or ↑")}<i></i>
@@ -210,16 +230,17 @@ function build() {
  *  the room uses the spectator cameras (Angled = broadcast, Top = whole room from above). */
 function setView(kind) {
   const S = APP.S;
-  if (S.mode === "plan" && APP.planning?.view) return APP.planning.view(kind);
-  if (["xray", "learn", "practice"].includes(S.mode)) {
-    const c = APP.xControls?.target, cam = APP.xCam; if (!c || !cam) return;
+  if (S.mode === "plan" && APP.planning?.view) return kind === "robot" ? undefined : APP.planning.view(kind);
+  if (["xray", "learn", "practice"].includes(S.mode) || APP.xo?.open) {
+    const r = rig(), c = r?.ctl?.target, cam = r?.cam; if (!c || !cam || kind === "robot") return;
     const d = cam.position.distanceTo(c) || 3;
     const p = kind === "top" ? c.clone().add(new APP.THREE.Vector3(0, d, 0.01)) : kind === "eye" ? c.clone().add(new APP.THREE.Vector3(d * 0.95, 0.15, d * 0.3)) : c.clone().add(new APP.THREE.Vector3(d * 0.6, d * 0.55, d * 0.6));
-    return APP.flyTo(p, c.clone(), 0.9, cam, APP.xControls);
+    return APP.flyTo(p, c.clone(), 0.9, cam, r.ctl);
   }
-  APP.setCamera?.({ eye: "free", angled: "broadcast", top: "top" }[kind]);
+  APP.setCamera?.(VIEW_CAM[kind]);
   if (kind === "eye") APP.flyTo(APP.S.home.pos, APP.S.home.tgt, 1.0);
   APP.renderDock?.();
+  lightViews();
 }
 
 // ------------------------------------------------------------------ placement: never on top of the other panels
@@ -301,4 +322,5 @@ on("boot", () => {
   const later = () => { if (++tries > 60 || document.body.classList.contains("touring")) return; if (document.querySelector(".gd-coach") || !rig()) return setTimeout(later, 1000); hint(true); };
   if (!q.has("qa") && !q.has("capture") && !phone() && !coarse()) setTimeout(later, 2600);
 });
-on("modeChange", () => { releaseAll(); keyHeld.clear(); requestAnimationFrame(place); });
+on("modeChange", () => { releaseAll(); keyHeld.clear(); requestAnimationFrame(place); lightViews(); });
+on("frame", lightViews);      // cheap: only touches the DOM when the camera mode changes
