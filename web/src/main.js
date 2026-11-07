@@ -12,18 +12,28 @@ import { icon } from "./icons.js";
 
 import { $, $$, esc, nice, cites, pad, kv, sparkline, signalName, toast, header, diagnosisHTML, LITE } from "./ui.js";
 import { startTour } from "./tour.js";
+import { APP, emit, withExtras } from "./ext.js";
+// feature modules register their modes, rail buttons and hooks on import (see ext.js)
+import "./planning.js";
+import "./support.js";
+import "./layers.js";
+import "./quality.js";
 
 // ------------------------------------------------------------------ skeleton
+function modeTabs() {
+  const list = [["facility", "Explore"], ["xray", "X-Ray"], ["learn", "Learn"], ["practice", "Practice"], ["value", "Value"]];
+  for (const d of APP.modes.values()) { const i = list.findIndex(([id]) => id === d.after); list.splice(i < 0 ? list.length - 1 : i + 1, 0, [d.id, d.label]); }
+  return list.map(([id, l]) => `<button data-mode="${id}" class="${id === "facility" ? "on" : ""}">${l}</button>`).join("");
+}
+/** Modes that show the facility scene (Explore and registered scene modes such as Plan and Support). */
+const sceneMode = (m = S.mode) => m === "facility" || APP.modes.get(m)?.scene === "facility";
 $("#app").innerHTML = `
 <canvas class="gl"></canvas>
 <div class="vignette"></div>
 <div class="labels"></div>
 <div class="fade"></div>
 <div class="wordmark"><div class="eyebrow">Industrial X-Ray</div><div class="name" id="siteName">Equipment Room</div></div>
-<nav class="modes" aria-label="Mode">
-  <button data-mode="facility" class="on">Facility</button><button data-mode="xray">X-Ray</button>
-  <button data-mode="learn">Learn</button><button data-mode="practice">Practice</button><button data-mode="value">Value</button>
-</nav>
+<nav class="modes" aria-label="Mode">${modeTabs()}</nav>
 <div class="topright">
   <div class="ask">
     <label class="field">${icon("search")}<input id="ask" placeholder="Ask about the plant" autocomplete="off" aria-label="Ask the copilot"/><span class="kbd">/</span></label>
@@ -40,6 +50,7 @@ $("#app").innerHTML = `
 <div class="rail" id="rail">
   <button data-rail="in" title="Zoom in">${icon("plus")}</button><button data-rail="out" title="Zoom out">${icon("minus")}</button>
   <button data-rail="reset" title="Reset view">${icon("reset")}</button><hr>
+  ${APP.rail.map((b) => `<button data-rail="x:${b.id}" class="${b.sceneOnly ? "fac-only" : ""}" title="${b.title}">${icon(b.icon)}</button>`).join("")}
   <button data-rail="frames" class="fac-only" title="3D frames">${icon("frames")}</button><button data-rail="grid" class="fac-only" title="Floor map: where the robot can drive">${icon("grid")}</button><button data-rail="minimap" class="fac-only" title="Mini-map">${icon("map")}</button><hr class="fac-only">
   <button data-rail="focus" title="Focus: hide panels (F)">${icon("focus")}</button><button data-rail="full" title="Full screen">${icon("full")}</button><button data-rail="help" title="About this demo">${icon("help")}</button>
 </div>
@@ -119,6 +130,10 @@ async function boot() {
   if (!S.minimap) $("#minimap").classList.add("hidden");
   camera.position.copy(S.home.pos); controls.target.copy(S.home.tgt);
   initTraining(S, { $, esc, cites, setMode, card: (h) => ($("#right").innerHTML = h), xCam, xControls, toast, icon, focusPart });
+  Object.assign(APP, { S, THREE, scene: fac, camera, controls, renderer, canvas, labelsRoot: $(".labels"), api, flyTo, card, sheet,
+    setMode, sceneMode, selectObject, selectAsset, restart, dispatch, blockAisle, replan, renderDock, renderLeft, renderRail,
+    renderOverviewCard, renderDiagnosis, renderAssetCard, showWorkOrder, enterXRay, ask, toast, viewOffset });
+  emit("boot", APP);
   renderLeft(); renderOverviewCard(); renderDock();
   initMinimap().catch((e) => console.warn("mini-map", e));
   // The interface is usable now; the scan streams in behind it and never blocks the page.
@@ -291,9 +306,10 @@ function selectAsset(id, opts) { const o = S.data.objects.find((x) => x.asset?.a
 function selectObject(o, { fly = false } = {}) {
   if (!o) return;
   S.selected = o;
+  emit("select", o);
   S.fac.setHighlighted([...S.seen.keys()], { selected: o.id, target: S.target.id });
   renderLeft();
-  if (!S.robot.moving) renderAssetCard(o);
+  if (!S.robot.moving && (S.mode === "facility" || !APP.modes.get(S.mode)?.ownsCard)) renderAssetCard(o);
   if (fly) { const c = new THREE.Vector3(...o.center); flyTo(c.clone().add(viewOffset(c)), c); }
 }
 function viewOffset(c) {
@@ -308,6 +324,8 @@ const SHORT = { PROCESS_PUMP: "Pump", ELECTRIC_MOTOR: "Motor", CONTROL_VALVE: "V
 function renderDock() {
   const x = ["xray", "learn", "practice"].includes(S.mode);
   renderRail();
+  const md = APP.modes.get(S.mode);
+  if (md?.dock) { $("#dock").innerHTML = md.dock(); return; }
   if (x) {
     const pct = Math.round(S.xray.target * 100);
     $("#dock").innerHTML = `
@@ -356,6 +374,8 @@ $("#dock").addEventListener("input", (e) => {
   if (R.s >= R.len - 1e-3 && !R.arrived) { R.done = true; arrive(); }
 });
 $("#dock").addEventListener("click", async (e) => {
+  const md = APP.modes.get(S.mode);
+  if (md?.dock) return md.onDock?.(e);
   const cm = e.target.closest("[data-cam]");
   if (cm) { setCamera(cm.dataset.cam); return renderDock(); }
   const xc = e.target.closest("[data-xclass]"); if (xc) return openClass(xc.dataset.xclass);
@@ -376,15 +396,17 @@ $("#dock").addEventListener("click", async (e) => {
 // ------------------------------------------------------------------ rail
 const FRAMES = { all: "All 3D frames", assets: "Asset frames only", none: "No frames" };
 function renderRail() {
-  const fac = S.mode === "facility";
+  const fac = sceneMode();
   $$("#rail .fac-only").forEach((b) => b.classList.toggle("hidden", !fac));
+  for (const b of APP.rail) $(`#rail [data-rail="x:${b.id}"]`)?.classList.toggle("on", !!b.isOn?.());
   const f = $('#rail [data-rail="frames"]'); f.classList.toggle("on", S.frames !== "none"); f.title = `3D frames: ${FRAMES[S.frames]} (click to change)`;
   $('#rail [data-rail="grid"]').classList.toggle("on", S.grid);
   $('#rail [data-rail="minimap"]').classList.toggle("on", S.minimap);
 }
 $("#rail").addEventListener("click", async (e) => {
   const r = e.target.closest("[data-rail]")?.dataset.rail;
-  const x = S.mode !== "facility", cam = x ? xCam : camera, ctl = x ? xControls : controls;
+  if (r?.startsWith("x:")) { await APP.rail.find((b) => b.id === r.slice(2))?.onClick(APP); return renderRail(); }
+  const x = !sceneMode(), cam = x ? xCam : camera, ctl = x ? xControls : controls;
   if (r === "in" || r === "out") { const v = cam.position.clone().sub(ctl.target).multiplyScalar(r === "in" ? 0.8 : 1.25); flyTo(ctl.target.clone().add(v), ctl.target.clone(), 0.4, cam, ctl); }
   if (r === "reset") x ? flyTo(xHome().pos, xHome().tgt, 1, xCam, xControls) : flyTo(S.home.pos, S.home.tgt);
   if (r === "full") document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.().catch(() => {});
@@ -428,10 +450,10 @@ async function applyRoute(res, { keepSpeed = true } = {}) {
 async function dispatch(assetId, { start = null, quiet = false } = {}) {
   const o = S.data.objects.find((x) => x.asset?.asset_id === assetId);
   if (!o) return null;
-  if (S.mode !== "facility") setMode("facility");
+  if (!sceneMode()) setMode("facility");
   S.navObject = o;
   const p = S.fac.robot.position;
-  const res = await api.plan({ object_id: o.id, start: start || [p.x, p.z], blocks: S.blocks });
+  const res = await api.plan(withExtras({ object_id: o.id, start: start || [p.x, p.z], blocks: S.blocks }));
   if (!res.ok) { toast(esc(res.reason)); return null; }
   S.seenBefore = new Set(); S.seen.clear(); S.robot.arrived = false; S.cardLock = false;
   await applyRoute(res, { keepSpeed: quiet });
@@ -439,6 +461,16 @@ async function dispatch(assetId, { start = null, quiet = false } = {}) {
   S.diagPromise = api.diagnose(assetId);
   if (!quiet) toast(`Route planned: <b>${res.length_m} m</b> in ${res.compute_ms} ms. Collision-free, minimum clearance ${res.validation.min_clearance_m} m.`);
   renderDock(); renderTransitCard();
+  return res;
+}
+
+/** Re-plan the active route from where the robot is (e.g. after a planned layout change). Returns the plan result. */
+async function replan({ quiet = false } = {}) {
+  if (!S.navObject) return null;
+  const p = S.fac.robot.position;
+  const res = await api.plan(withExtras({ object_id: S.navObject.id, start: [p.x, p.z], blocks: S.blocks }));
+  if (!res.ok) { if (!quiet) toast(esc(res.reason)); return res; }
+  if (S.curve && !S.robot.done) { S.prevRoute = S.route?.waypoints || null; await applyRoute(res); }   // only an active run is re-routed
   return res;
 }
 
@@ -455,13 +487,13 @@ async function blockAisle() {
     if (s > S.robot.len - 0.6) break;
     const u = s / S.robot.len, p = prevCurve.getPointAt(u), tan = prevCurve.getTangentAt(u);
     const b = { x: +p.x.toFixed(2), z: +p.z.toFixed(2), w: 0.9, d: 0.35, yaw: Math.atan2(tan.z, tan.x) + Math.PI / 2 };
-    const res = await api.plan({ object_id: S.navObject.id, start, blocks: [...S.blocks, b] });
+    const res = await api.plan(withExtras({ object_id: S.navObject.id, start, blocks: [...S.blocks, b] }));
     if (res.ok && (!best || res.length_m > best.res.length_m)) best = { b, res };
     if (best && best.res.length_m - prevLeft > 0.8) break;                          // a clear detour: good enough
   }
   if (best) {
     S.blocks.push(best.b);
-    const res = await api.plan({ object_id: S.navObject.id, start, blocks: S.blocks });   // planner state = chosen barrier
+    const res = await api.plan(withExtras({ object_id: S.navObject.id, start, blocks: S.blocks }));   // planner state = chosen barrier
     S.fac.setBlocks(S.blocks);
     S.prevRoute = prev.waypoints;
     S.seenBefore = new Set(S.seen.keys());
@@ -645,6 +677,7 @@ function drawMinimap(dt) {
   ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(5.5, 6); ctx.lineTo(-5.5, 6); ctx.closePath(); ctx.fill();
   ctx.restore();
   // camera footprint: where the main view is looking
+  emit("minimap", ctx, X, Z, k);
   const t = controls.target; ctx.strokeStyle = "rgba(10,132,255,.9)"; ctx.lineWidth = 1.5; ctx.strokeRect(X(t.x) - 5, Z(t.z) - 5, 10, 10);
 }
 
@@ -709,7 +742,7 @@ function openClass(cls) {
   const a = S.data.objects.filter((o) => o.asset?.asset_class === cls).map((o) => o.asset)
     .sort((x, y) => (y.is_target - x.is_target) || order[x.condition_state] - order[y.condition_state] || x.health_score - y.health_score)[0];
   if (!a) return toast(`No ${esc(nice(cls).toLowerCase())} is mapped in this scan.`);
-  if (S.mode === "facility" || S.mode === "value") return enterXRay(null, a.asset_id);
+  if (!["xray", "learn", "practice"].includes(S.mode)) return enterXRay(null, a.asset_id);
   return switchDevice(a.asset_id);
 }
 async function switchDevice(assetId) {
@@ -836,11 +869,12 @@ $("#value").addEventListener("click", (e) => { if (e.target.closest("[data-mode-
 
 // ------------------------------------------------------------------ modes
 export function setMode(mode) {
-  const x = ["xray", "learn", "practice"].includes(mode);
+  const x = ["xray", "learn", "practice"].includes(mode), prev = S.mode, md = APP.modes.get(mode);
+  if (prev !== mode) { try { APP.modes.get(prev)?.exit?.(mode); } catch (e) { console.warn("mode exit", e); } }
   $("#value").classList.toggle("hidden", mode !== "value");
   $("#right").classList.toggle("hidden", mode === "value");
   $("#dock").classList.toggle("hidden", mode === "value");
-  $("#minimap").classList.toggle("hidden", mode !== "facility" || !S.minimap);
+  $("#minimap").classList.toggle("hidden", !(mode === "facility" || md?.minimap) || !S.minimap);
   if (mode === "value") renderValue();
   S.mode = mode;
   $$(".modes button").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
@@ -848,6 +882,11 @@ export function setMode(mode) {
   $(".labels").innerHTML = "";
   $("#left").classList.toggle("hidden", mode === "value");
   S.onComponentPick = null;
+  if (md) {
+    S.xray.selected = null;
+    const l = md.left?.(); if (l != null) { $("#left").classList.remove("tall"); $("#left").innerHTML = l; } else renderLeft();
+    try { md.enter?.(prev); } catch (e) { console.warn("mode enter", e); }
+  }
   if (mode === "facility") { S.xray.selected = null; renderLeft(); S.diag ? renderDiagnosis() : (S.robot.moving ? renderTransitCard() : renderOverviewCard()); }
   if (mode === "xray") { renderComponents(); renderPartCard(); }
   if (mode === "learn" || mode === "practice") {
@@ -856,8 +895,9 @@ export function setMode(mode) {
     if (!S.xClass) { card(`<div class="card-b" style="padding-top:16px"><span class="note">Loading the device model…</span></div>`); prepareXRay().then(go); } else go();
   }
   renderDock();
+  emit("modeChange", mode, prev);
 }
-$(".modes").onclick = (e) => { const m = e.target.closest("[data-mode]")?.dataset.mode; if (m) m === "xray" ? enterXRay() : setMode(m); };
+$(".modes").onclick = (e) => { const m = e.target.closest("[data-mode]")?.dataset.mode; if (m && m !== S.mode) m === "xray" ? enterXRay() : setMode(m); };
 
 // ------------------------------------------------------------------ ask
 const SUGG = ["Where is the faulty pump?", "Find the equipment with abnormal vibration", "Send a technician to inspect the faulty pump", "Show me the relevant manual", "Can I practise inspecting this equipment?"];
@@ -882,18 +922,18 @@ export async function ask(q) {
     const r = await api.command(q, S.selected?.asset?.asset_id || S.diag?.asset?.asset_id);
     pop.innerHTML = `<div class="reply"><div class="who"><span>Copilot</span><button class="link" data-pop-close>${icon("close")}</button></div>${cites(r.text)}</div>`;
     for (const a of r.actions || []) {
-      if (a.type === "select") { if (S.mode !== "facility") setMode("facility"); selectAsset(a.asset_id, { fly: !r.actions.some((x) => x.type === "navigate") }); }
+      if (a.type === "select") { if (!sceneMode()) setMode("facility"); selectAsset(a.asset_id, { fly: !r.actions.some((x) => x.type === "navigate") }); }
       if (a.type === "navigate") { S.blocks = []; S.fac.setBlocks([]); S.prevRoute = null; await dispatch(a.asset_id); }
       if (a.type === "xray") { if (S.mode === "xray" && S.xAsset?.asset_id === a.asset_id && a.focus) selectComponent(a.focus[0]); else await enterXRay(a.focus || null, a.asset_id); }
       if (a.type === "select_object") {
-        if (S.mode !== "facility") setMode("facility");
+        if (!sceneMode()) setMode("facility");
         const best = S.data.objects.find((o) => o.id === a.object_id);
         S.matches = a.matches || [];
         S.fac.setHighlighted(S.matches, { selected: best.id, target: S.target.id });
         S.selected = best; renderAssetCard(best); renderLeft();
         const c = new THREE.Vector3(...best.center); flyTo(c.clone().add(viewOffset(c)), c);
       }
-      if (a.type === "diagnose") { S.cardLock = true; if (S.mode !== "facility") setMode("facility"); S.diag = await api.diagnose(a.asset_id); S.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }
+      if (a.type === "diagnose") { S.cardLock = true; if (!sceneMode()) setMode("facility"); S.diag = await api.diagnose(a.asset_id); S.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }
       if (a.type === "practice") setMode("practice");
       if (a.type === "learn") setMode("learn");
       if (a.type === "knowledge") openLibrary(a.query || "");
@@ -934,7 +974,7 @@ document.addEventListener("keydown", (e) => {
   if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
   if (e.key === "f" || e.key === "F") setFocus(!document.body.classList.contains("focus"));
   if (e.key === "Escape") { setFocus(false); $("#sheet").classList.add("hidden"); pop.classList.add("hidden"); }
-  if (e.key === " " && S.curve && S.mode === "facility") { e.preventDefault(); togglePlay(1); }
+  if (e.key === " " && S.curve && sceneMode()) { e.preventDefault(); togglePlay(1); }
 });
 document.addEventListener("click", (e) => {
   const mn = e.target.closest("[data-min-card]"); if (mn) { mn.closest(".card").classList.toggle("min"); return; }
@@ -976,8 +1016,9 @@ canvas.addEventListener("pointerdown", (e) => (down = [e.clientX, e.clientY]));
 canvas.addEventListener("pointerup", (e) => {
   if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
   ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-  if (S.mode === "facility") {
+  if (sceneMode()) {
     ray.setFromCamera(ndc, camera);
+    if (APP.modes.get(S.mode)?.onPick?.(ray.ray, e)) return;
     const id = S.fac.pick(ray.ray);
     if (id) selectObject(S.data.objects.find((x) => x.id === id));
   } else {
@@ -998,6 +1039,7 @@ renderer.setAnimationLoop(() => {
   if (!S.fac) return;
   if (!["xray", "learn", "practice"].includes(S.mode)) {
     updateRobot(dt, t);
+    emit("frame", dt, t);
     drawMinimap(dt);
     if (!S.robot.moving) S.fac.pulse(t, S.target.id);
     controls.update();
@@ -1013,6 +1055,7 @@ renderer.setAnimationLoop(() => {
 
 const TOUR_API = { S, $, setMode, setCamera: (m) => { setCamera(m); renderDock(); }, pause: () => { S.robot.moving = false; renderDock(); }, dispatch: (id) => restart(id), blockAisle, enterXRay, openClass, flyHome: () => flyTo(S.home.pos, S.home.tgt), selectAsset, toast, renderDock,
   setFrames: (f) => { S.frames = f; S.fac.setShowMode(f); renderDock(); }, setRate: (r) => { S.robot.rate = r; renderDock(); } };
+window.__xr = APP;
 window.__app = S; window.__renderer = renderer; window.__decodeXq16 = decodeXq16;
 Object.assign(window, { __dispatch: dispatch, __enterXRay: enterXRay, __setMode: setMode, __ask: ask, __block: blockAisle, __select: selectAsset });
 boot();
