@@ -177,6 +177,8 @@ function evaluate(id, pose) {
   const hits = [], near = [];
   for (const e of P.objs) {
     if (moved.has(e.o.id)) continue;
+    // thin labels on pipes and tiny fragments are not obstacles for a pallet truck or a cabinet
+    if (e.o.label === "pipe label / tag" || Math.max(e.o.size[0], e.o.size[2]) < 0.08) continue;
     if (!(e.bottom < top - 0.02 && e.top > Math.max(bottom, OBST_MIN) && e.bottom < OBST_MAX)) continue;
     if (Math.hypot(e.fp.x - fp.x, e.fp.z - fp.z) > 4) continue;
     const d = boxDist(fp, e.fp);
@@ -793,6 +795,7 @@ function pick(id) {
   const o = objOf(id); if (!o) return;
   APP.S.selected = o;
   createProxy(id);
+  frameView(0.9, "top");                                // a floor-plan view makes free floor obvious
 }
 
 // ------------------------------------------------------------------ UI: right card (actions first, then the summary)
@@ -923,6 +926,7 @@ function dockHTML() {
     : A?.ok ? `<small>A* ${A.compute_ms} ms · clearance ${A.min_clearance_m} m · ${A.collision_free ? "collision-free" : "check"}</small>` : A ? `<small class="pl-bad">No collision-free route with this layout</small>` : "<small>&nbsp;</small>";
   return `<div class="grp"><button class="tool ${has ? "on" : ""}" data-pd="proxy">${ic("box")}${has ? "Remove proxy" : "Pick truck"}</button></div>
     <div class="grp"><button class="tool" data-pd="l15" ${has ? "" : "disabled"} title="Turn 15° left ( [ )">${ic("rotL")}15°</button><button class="tool" data-pd="r15" ${has ? "" : "disabled"} title="Turn 15° right ( ] )">${ic("rotR")}15°</button><button class="tool" data-pd="r90" ${has ? "" : "disabled"} title="Turn 90° (R)">${ic("turn")}90°</button></div>
+    <div class="grp"><div class="seg" role="group" aria-label="View">${[["top", "Top"], ["angled", "Angled"], ["eye", "Eye level"]].map(([k, l]) => `<button data-pd="view:${k}" class="${(P.view || "top") === k ? "on" : ""}" title="${{ top: "Look straight down, like a floor plan (best for moving things)", angled: "Look at the work area from above at an angle", eye: "Stand next to it at eye level" }[k]}">${l}</button>`).join("")}</div></div>
     <div class="grp"><button class="tool ${P.snap ? "on" : ""}" data-pd="snap"><span class="switch"></span>Snap 5 cm</button><button class="tool ${P.compare ? "on" : ""}" data-pd="compare"><span class="switch"></span>Routes</button></div>
     <div class="grp routeinfo"><div class="top"><span>Route to ${esc(P.target?.asset?.tag || "target")}</span><b>${B?.ok ? `${f2(B.length_m)} m` : "…"}${A?.ok ? ` → ${f2(A.length_m)} m` : ""}</b></div>${info}</div>
     <div class="grp"><button class="tool" data-pd="reset" ${P.moves.length ? "" : "disabled"}>${icon("reset")}Reset</button><button class="tool" data-pd="export" ${P.moves.length ? "" : "disabled"}>${ic("dl")}Export</button></div>`;
@@ -930,6 +934,7 @@ function dockHTML() {
 function renderDock() { if (APP.S?.mode === "plan") $("#dock").innerHTML = dockHTML(); }
 function onDock(e) {
   const d = e.target.closest("[data-pd]")?.dataset.pd; if (!d) return;
+  if (d.startsWith("view:")) return frameView(0.9, d.slice(5));
   if (d === "proxy") { if (P.active) removeProxy(P.active); else pick(APP.S.selected?.kind === "object" ? APP.S.selected.id : SUGGESTED); }
   if (d === "l15") rotate(-Math.PI / 12);
   if (d === "r15") rotate(Math.PI / 12);
@@ -1034,6 +1039,9 @@ function enter() {
   const S = APP.S;
   ensureThree();
   P.three.root.visible = true;
+  // show where the floor is free (blue = drivable) while planning; restored on exit
+  P.twinBefore = !!S.fac.twinOn;
+  if (!S.fac.twinOn) Promise.resolve(S.fac.walkGrid || APP.api.grid()).then((g) => { if (APP.S.mode === "plan") { S.fac.setTwin(true, g); APP.renderRail?.(); } }).catch(() => {});
   S.cardLock = false;                          // the right card belongs to Plan now
   P.toTop = true;
   S.fac.routeGroup.visible = false;   // the comparison replaces the Explore route here
@@ -1041,8 +1049,10 @@ function enter() {
   beforeRoute().then(() => { drawRoutes(); renderCard(); renderDock(); });
   frameView();
 }
-/** Fly the camera so the target, its service zone, the originals and the proxies are all in view. */
-function frameView(dur = 1.1) {
+/** Fly the camera so the target, its service zone, the originals and the proxies are all in view.
+ *  kind: "top" (straight down, like a floor plan — easiest for moving things), "angled", or "eye" (eye level). */
+function frameView(dur = 1.1, kind = P.view || "top") {
+  P.view = kind;
   const pts = [[P.target.center[0], P.target.center[2]], ...corners(P.zone)];
   const ids = P.moves.length ? P.moves.map((m) => m.id) : objOf(SUGGESTED) ? [SUGGESTED] : [];
   for (const id of ids) { const o = objOf(id), m = moveOf(id); pts.push([o.center[0], o.center[2]]); if (m) pts.push([m.x, m.z]); }
@@ -1050,10 +1060,17 @@ function frameView(dur = 1.1) {
   const r = Math.max(1.2, ...pts.map((p) => Math.hypot(p[0] - cx, p[1] - cz)));
   const focus = new THREE.Vector3(cx, 0, cz), off = APP.viewOffset(focus).setY(0).normalize();
   const dist = r * 2.1 + 1.2;
-  APP.flyTo(new THREE.Vector3(cx + off.x * dist * 0.62, dist * 0.85, cz + off.z * dist * 0.62), focus, dur);
+  APP.S.cam = "free";                                   // no robot camera fighting the plan view
+  APP.S.fac.setCutaway(kind !== "eye");                 // hide the ceiling and outside haze when looking down
+  if (kind === "top") APP.flyTo(new THREE.Vector3(cx, Math.max(4.4, r * 2.4 + 2.4), cz + 0.02), focus, dur);
+  else if (kind === "eye") APP.flyTo(new THREE.Vector3(cx + off.x * (r + 1.6), 1.55, cz + off.z * (r + 1.6)), new THREE.Vector3(cx, 0.5, cz), dur);
+  else APP.flyTo(new THREE.Vector3(cx + off.x * dist * 0.62, dist * 0.85, cz + off.z * dist * 0.62), focus, dur);
+  renderDock();
 }
 function exit() {
   const S = APP.S;
+  S.fac.setCutaway(S.cam === "broadcast" || S.cam === "top");
+  if (!P.twinBefore && S.fac.twinOn) { S.fac.setTwin(false); APP.renderRail?.(); }
   stopHold();
   if (P.drag) { P.drag = null; APP.controls.enabled = true; }
   APP.canvas.style.cursor = "";
@@ -1103,7 +1120,7 @@ on("boot", () => {
   }).observe($(sel), { childList: true });
   guard("#right", ".pl-disc", renderCard);
   guard("#left", ".pl-steps", renderLeft);
-  APP.planning = { getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _evaluate: (id, pose) => evaluate(id, pose) };
+  APP.planning = { view: (k) => frameView(0.9, k), getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _evaluate: (id, pose) => evaluate(id, pose) };
 });
 on("planExtras", planExtras);
 on("minimap", drawMinimap);

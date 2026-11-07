@@ -132,7 +132,7 @@ async function boot() {
   initTraining(S, { $, esc, cites, setMode, card: (h) => ($("#right").innerHTML = h), xCam, xControls, toast, icon, focusPart });
   Object.assign(APP, { S, THREE, scene: fac, camera, controls, xCam, xControls, renderer, canvas, labelsRoot: $(".labels"), api, flyTo, card, sheet,
     setMode, sceneMode, selectObject, selectAsset, restart, dispatch, blockAisle, replan, renderDock, renderLeft, renderRail,
-    renderOverviewCard, renderDiagnosis, renderAssetCard, resetAll, showWorkOrder, enterXRay, ask, toast, viewOffset });
+    renderOverviewCard, renderDiagnosis, renderAssetCard, resetAll, setCamera, showWorkOrder, enterXRay, ask, toast, viewOffset });
   emit("boot", APP);
   renderLeft(); renderOverviewCard(); renderDock();
   initMinimap().catch((e) => console.warn("mini-map", e));

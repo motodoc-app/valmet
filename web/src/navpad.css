@@ -39,3 +39,8 @@ body.focus .np, body.focus .np-open, body.focus .np-hint { display: none !import
   .np-hint { left: 10px; right: 10px; width: auto; bottom: calc(46% + 64px); }
   body:has(#right.min) .np, body:has(#right.min) .np-open { bottom: 76px; }
 }
+
+.np-views { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.np-views small { font-size: 11px; color: var(--text-2); margin-right: 2px; }
+.np-views button { flex: none; height: 24px; padding: 0 7px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--line); color: var(--text-2); font-size: 12px; }
+.np-views button:hover { color: var(--text); background: var(--surface-3); }

@@ -150,7 +150,7 @@ let el = null, openBtn = null;
 const btn = (a, icon, label, key) => `<button type="button" class="np-btn" data-np-a="${a}" title="${label}${key ? ` (${key})` : ""}" aria-label="${label}">${icon}</button>`;
 function padHTML() {
   // keyboard-style inverted-T clusters: two rows, so the pad stays small next to the cards
-  return `<div class="np-h"><span>Move the view</span><span class="np-tools"><button type="button" class="np-link" data-np="reset" title="Reset view (Home)">${I.home}<span>Reset</span></button><button type="button" class="np-link" data-np="keys" title="Keyboard shortcuts">Keys</button><button type="button" class="np-link" data-np="hide" title="Hide the pad" aria-label="Hide the navigation pad">${I.close}</button></span></div>
+  return `<div class="np-h"><div class="np-views" role="group" aria-label="View"><small>View</small>${[["eye", "Eye", "Eye level: stand in the room"], ["angled", "Angled", "Watch from above at an angle, like a broadcast camera"], ["top", "Top", "Look straight down, like a floor plan"]].map(([k, l, t]) => `<button type="button" data-np="view:${k}" title="${t}">${l}</button>`).join("")}</div><span class="np-tools"><button type="button" class="np-link" data-np="reset" title="Reset view (Home)">${I.home}</button><button type="button" class="np-link" data-np="keys" title="Keyboard shortcuts">Keys</button><button type="button" class="np-link" data-np="hide" title="Hide the pad" aria-label="Hide the navigation pad">${I.close}</button></span></div>
     <div class="np-b">
       <div class="np-cl"><small>Walk</small><div class="np-grid">
         <i></i>${btn("fwd", I.up, "Walk forward", "W or ↑")}<i></i>
@@ -196,6 +196,7 @@ function build() {
     if (k === "reset") resetView();
     if (k === "hide") setOpen(false);
     if (k === "keys") hint(true, true);
+    if (k?.startsWith("view:")) setView(k.slice(5));
     const b = e.target.closest("[data-np-a]");
     if (b && e.detail === 0) { act(b.dataset.npA, 0.3); steered = false; }    // keyboard activation
   });
@@ -203,6 +204,22 @@ function build() {
   openBtn.onclick = () => setOpen(true);
   pref = store.get("xr.navpad");
   setOpen(wantOpen(), false);
+}
+
+/** Eye / Angled / Top in every 3D mode: Plan frames its work area, the X-Ray studio uses its own camera,
+ *  the room uses the spectator cameras (Angled = broadcast, Top = whole room from above). */
+function setView(kind) {
+  const S = APP.S;
+  if (S.mode === "plan" && APP.planning?.view) return APP.planning.view(kind);
+  if (["xray", "learn", "practice"].includes(S.mode)) {
+    const c = APP.xControls?.target, cam = APP.xCam; if (!c || !cam) return;
+    const d = cam.position.distanceTo(c) || 3;
+    const p = kind === "top" ? c.clone().add(new APP.THREE.Vector3(0, d, 0.01)) : kind === "eye" ? c.clone().add(new APP.THREE.Vector3(d * 0.95, 0.15, d * 0.3)) : c.clone().add(new APP.THREE.Vector3(d * 0.6, d * 0.55, d * 0.6));
+    return APP.flyTo(p, c.clone(), 0.9, cam, APP.xControls);
+  }
+  APP.setCamera?.({ eye: "free", angled: "broadcast", top: "top" }[kind]);
+  if (kind === "eye") APP.flyTo(APP.S.home.pos, APP.S.home.tgt, 1.0);
+  APP.renderDock?.();
 }
 
 // ------------------------------------------------------------------ placement: never on top of the other panels
