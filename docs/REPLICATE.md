@@ -82,3 +82,33 @@ The layers are separable: `ply_io` + `canonical` (any splat scan), `segmentation
 names), `navigation` (any robot footprint), `metadata` + `mapping` (any asset register), `copilot` (evidence +
 citation-checked narration over any document set), and the web client, which only talks to the API in
 `backend/xray/api.py` (or its static export). Replace the layer you need; the others keep working.
+
+## 7. A person confirms the labels (Review labels)
+
+The vision model proposes a label and a confidence for every segmented candidate; a site engineer confirms them in
+the app, so every label that reaches the asset register says who checked it.
+
+1. Open the scene, press the **✓ Scene understanding** rail button (phones: Tools → Scene understanding) and choose
+   **Review labels**. The queue holds the uncertain candidates first (confidence < 0.70 or "other equipment"; 481 in
+   this room); switch to *All candidates* or sort by *Linked to an asset first* / *Largest first*.
+2. For each object the camera flies to it and outlines it in amber. Decide: **✓ Correct as is** (`Y`),
+   **✎ Rename** (`R`: free text + category from the scene taxonomy), **✗ Not an object / fragment** (`N`) or
+   **Skip** (`→`). `←` goes back, `U` undoes. Decisions are kept in this browser (localStorage) until exported.
+3. In **Summary & export** enter your name, check the tally (agreed / renamed / rejected) and the observed
+   agreement with a 95 % Wilson interval. This is *your* review, a human check, unlike the AI second-opinion audit;
+   because the queue starts with the uncertain objects, the rate describes the reviewed objects, not the whole room.
+4. Download **Review layer (.json)**: the `config/scene_annotations.json` format, one `relabel_near` entry per
+   decision (`point` = object centre, `label`, `category`, `note` = "Confirmed / Renamed / Rejected in review by
+   <name> on <date> …"; rejected objects get the label `not an object / fragment`). Optionally download the
+   **Precision study (.csv)**: the columns of `docs/label_review_sample.csv` plus `verdict, new_label, reviewer, time`.
+5. Merge and rebuild:
+
+```bash
+python scripts/merge_review.py ~/Downloads/scene_annotations.<name>-<date>.json   # keeps a .bak; same object = replaced
+python scripts/run_pipeline.py --from 2                                            # labels become 'review-corrected'
+python scripts/scene_quality.py                                                     # refresh the quality panel numbers
+```
+
+The hosted demo is a static site: it **cannot write files**. Review in the browser, download, and commit the merged
+`config/scene_annotations.json` from a checkout. `relabel_near` matches the nearest candidate within 0.3 m, so the
+layer survives pipeline re-runs as long as the segmentation keeps its object centres.
