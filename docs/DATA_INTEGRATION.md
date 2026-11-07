@@ -4,14 +4,16 @@ Status: design note, written on 2026-11-07. **Nothing in this document is built.
 
 ## 0. What the hackathon build uses
 
-* The only asset data source is the **synthetic** Valmet × Since AI builder pack (`builder_pack.xlsx`, 14 sheets).
+* The only asset data source is the **synthetic** Valmet × Since AI builder pack (`builder_pack.xlsx`, 16 sheets).
   All 30 assets have `data_classification = SYNTHETIC`, and every sheet has a `synthetic_record` column.
 * There is **no live plant data, no network connection to any plant system and no control connection**. The work-order
   endpoint returns a draft only (`"control_actions": "none (draft only)"` in `backend/xray/api.py`).
 * The workbook's `connectivity_profile` column names protocols per asset (OPC_UA 11, MQTT_EDGE 7, SIMULATED_API 7,
   FOUNDATION_FIELDBUS 3, HART 2). These are **synthetic labels**. Nothing is connected to them.
-* Valmet mentioned industrial data from power plants and a system name the team did not catch. This document does not
-  assume any particular product. Every interface below is generic and must be checked against the site's real systems.
+* Valmet mentioned industrial data from power plants and its distributed control system, **Valmet DNAe**. This document
+  stays generic: every interface below must be checked against the site's real systems. How the prototype could later
+  complement DNAe through authorised, read-only access, using only what Valmet's public pages state, is in
+  [DNAE_ALIGNMENT.md](DNAE_ALIGNMENT.md). The prototype does not connect to DNAe.
 
 This note answers the workbook's builder question **Q-07**: "Replace synthetic feeds with OPC UA/MQTT/API sources
 without redesigning the product."
@@ -180,8 +182,8 @@ favour us.
 
 ## 9. Open questions for Valmet
 
-1. Which systems hold the asset register, work orders, condition data and documents at a pilot site? (We did not
-   catch the system name mentioned.)
+1. Which systems hold the asset register, work orders, condition data and documents at a pilot site? (For Valmet DNAe
+   sites, see the questions in [DNAE_ALIGNMENT.md](DNAE_ALIGNMENT.md) §6.)
 2. Is a read-only OPC UA account or MQTT subscription through an existing DMZ possible, or only exported files at first?
 3. Which identity provider should users sign in with?
 4. Can the pilot start with **replayed** real data (exported files) before any live connection?

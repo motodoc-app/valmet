@@ -34,6 +34,8 @@ def kb_id(cls: str, component: str) -> str:
 
 def hypotheses_for(cls: str, issue: str) -> list:
     """Class-specific hypotheses (with linked components) from the library; generic fallback otherwise."""
+    if str(issue or "").upper() in ("NORMAL", "NONE", ""):
+        return [["No active fault indicated; continue routine monitoring", []]]
     h = LIBRARY["classes"].get(cls, {}).get("hypotheses", {}).get(issue)
     if h:
         return h
@@ -41,6 +43,30 @@ def hypotheses_for(cls: str, issue: str) -> list:
         if issue in other.get("hypotheses", {}):
             return [[t, []] for t, _ in other["hypotheses"][issue]]
     return [["Unspecified deviation; verify locally", []]]
+
+
+def record_checks(a: dict, tel: dict, events, wos) -> list[dict]:
+    """Places where the workbook's records disagree with each other. Reported as uncertainty, never resolved by guessing."""
+    out = []
+    last_svc = str(a.get("last_service_date") or "")[:10]
+    latest = wos.sort_values("opened_at").iloc[-1] if len(wos) else None
+    if last_svc and latest is not None and last_svc > str(latest["opened_at"])[:10]:
+        out.append({"check": "service_date_without_work_order", "source": a["asset_id"],
+                    "text": f"Asset_Master gives last service {last_svc}, but the latest work order on record is "
+                            f"{latest['work_order_id']} on {str(latest['opened_at'])[:10]}: no work order backs that date."})
+    abnormal = [s for s in tel.get("signals", []) if s["abnormal"]]
+    if a["condition_state"] != "healthy" and tel.get("signals") and not abnormal:
+        out.append({"check": "condition_without_abnormal_telemetry", "source": "Telemetry_Sample_3d",
+                    "text": f"Condition is {a['condition_state'].replace('_', ' ')}, but no signal in the 3-day telemetry "
+                            "sample crosses the anomaly threshold: the condition rests on the Current_State record and "
+                            "the events, not on a clear trend."})
+    open_high = events[(events.status == "open") & (events.severity == "high")] if "status" in events else events.iloc[0:0]
+    if a["condition_state"] == "healthy" and len(open_high):
+        ids = ", ".join(open_high.event_id.head(3))
+        out.append({"check": "healthy_with_open_high_events", "source": ids,
+                    "text": f"Condition is healthy, but {len(open_high)} high-severity event(s) are still open ({ids}): "
+                            "confirm on site which record is current."})
+    return out
 
 
 # a question about the selected asset (vs. one about the plant or the prototype): decides whether the offline answer
@@ -51,6 +77,23 @@ ASSET_Q = re.compile(r"\b(it|its|this|that|[a-z]{1,3}-\d{3})\b|check|safe|runnin
 
 def _tok(s: str) -> list[str]:
     return [w for w in re.findall(r"[a-z0-9_]+", s.lower()) if len(w) > 2]
+
+
+_QSTOP = {"what", "how", "does", "the", "this", "that", "with", "for", "are", "can", "should", "which", "when", "where",
+          "why", "who", "about", "there", "any", "you", "tell"}
+
+
+def covered(question: str, hits: list[dict]) -> bool:
+    """Weak matches (one rare word of four) are not answers: most of the question's words must be in the top source
+    (same rule as the hosted demo's document search in web/src/static-api.js)."""
+    qw = [w for w in _tok(question) if w not in _QSTOP]
+    if not qw:
+        return bool(hits)
+    if not hits:
+        return False
+    top = _tok(f"{hits[0]['title']} {hits[0]['text']}")
+    n = sum(1 for w in qw if any(x == w or x.startswith(w[:5]) for x in top))
+    return n >= 2 or n / len(qw) >= 0.5
 
 
 class Corpus:
@@ -140,6 +183,8 @@ class Copilot:
                                               "DOC-FIELD-SAFETY", "DOC-RAG-GUIDE")]
         docs = [d for d in docs if d]
         binding = self.mapping.get("bindings", {}).get(asset_id)
+        all_wos = self.pack.work_orders[self.pack.work_orders.asset_id == asset_id]
+        checks = record_checks(a, tel, ev, all_wos)
         # confidence: model confidence, reduced by data-quality issues and weak 3D identity mapping (Q-06)
         conf = float(a["model_confidence"] or 0.5)
         dq_pen = sum(0.06 if d["severity"] == "high" else 0.03 for d in dq)
@@ -171,6 +216,8 @@ class Copilot:
             "telemetry": tel,
             "events": related,
             "work_orders": wos,
+            "work_order_count": int(len(all_wos)),
+            "record_checks": checks,
             "similar_cases": cases[:5],
             "data_quality": dq,
             "documents": docs,
@@ -189,6 +236,7 @@ class Copilot:
         ids |= {w["work_order_id"] for w in ev["work_orders"]} | {c["case_id"] for c in ev["similar_cases"]}
         ids |= {d["issue_id"] for d in ev["data_quality"]} | {ev["asset"]["asset_id"], ev["asset"]["tag"]}
         ids |= {"Telemetry_Sample_3d", "DOC-3D-MAPPING", "DOC-FIELD-SAFETY", "DOC-RAG-GUIDE"}
+        ids |= {i.strip() for c in ev.get("record_checks", []) for i in str(c["source"]).split(",")}
         cls = ev["asset"]["asset_class"]
         ids |= {kb_id(cls, c["id"]) for c in LIBRARY["classes"].get(cls, {}).get("components", [])}
         return ids
@@ -243,7 +291,8 @@ class Copilot:
                 + (f" [{ev_ids}]" if ev_ids else "") + ". "
                 f"Hypothesis: {ev['hypotheses'][0]['hypothesis']} (similar historical cases"
                 + (f" [{case_ids}]" if case_ids else "") + "); alternatives are not excluded. "
-                f"Confidence {ev['confidence']['overall']:.2f} — reduced by {len(ev['data_quality'])} data-quality issue(s). "
+                f"Evidence score {ev['confidence']['overall']:.2f} (not a calibrated probability) — reduced by {len(ev['data_quality'])} data-quality issue(s). "
+                + "".join(f"Record check: {c['text']} [{c['source']}]. " for c in ev.get("record_checks", [])) +
                 f"Next safe step: {ev['next_steps'][1]['step']} [{ev['next_steps'][1]['source']}]. "
                 f"No physical work without permit and lockout/tagout [DOC-FIELD-SAFETY].")
 
@@ -260,8 +309,12 @@ class Copilot:
             "(say 'process pump', 'fouling', 'attention required'); evidence IDs go only in square brackets, exactly as "
             "given, e.g. [EVT-00037], [CASE-025], [DOC-PROCESS_PUMP-CORE], [Telemetry_Sample_3d]. Use exactly these five "
             "labelled lines, each one or two short sentences: 'Observation:', 'Evidence:', 'Hypothesis:', 'Uncertainty:', "
-            "'Next safe step:'. Give confidence as a percentage. Never give disassembly or repair instructions; recommend "
-            "verification and escalation (DOC-FIELD-SAFETY). At most 130 words.")
+            "'Next safe step:'. Give the confidence as an evidence score with two decimals (e.g. 0.52), never as a percentage or probability. The issue label comes from the workbook: say the records show it, never that you detected it. Never give disassembly or repair instructions; recommend "
+            "verification and escalation (DOC-FIELD-SAFETY). Name the asset by its tag (P-005), not its asset ID. "
+            "Cite telemetry statements with [Telemetry_Sample_3d] and "
+            "the asset's condition with its asset ID. If record_checks lists records that disagree, say so under "
+            "'Uncertainty:' and do not resolve the disagreement. A healthy asset with no fault hypothesis has no "
+            "suspected fault: do not invent one. At most 130 words.")
         user = (f"Question: {question or 'Diagnose this device for the arriving technician.'}\n\nEVIDENCE JSON:\n"
                 + json.dumps(slim, default=str)[:24000])
         try:
@@ -329,10 +382,13 @@ class Copilot:
             out.append(f"{h['title']}: {body} [{h['id']}]")
         return "\n".join(out) or "No supporting document found in the builder pack."
 
-    def offline_text(self, ev: dict | None, hits: list[dict]) -> str:
+    def offline_text(self, ev: dict | None, hits: list[dict], question: str = "") -> str:
         """No LLM: the selected asset's key evidence (if any) followed by the top documents, all cited."""
         if not ev:
-            return self.compose(hits)
+            return self.compose(hits) if covered(question, hits) else (
+                f"Nothing in the builder pack or the product documentation matches “{question}”. Try naming an asset "
+                "(“What should I check first on P-005?”), a symptom (“Which motor is overheating?”) or a feature "
+                "(“How does the robot plan routes?”).")
         a, h0, nxt = ev["asset"], ev["hypotheses"][0], ev["next_steps"][1]
         lead = (f"{a['tag']}: {a['condition_state'].replace('_', ' ')}, health {a['health_score']}, "
                 f"{str(a['issue_summary']).rstrip('.')} [{a['asset_id']}]. Leading hypothesis: {h0['hypothesis']}. "
@@ -366,7 +422,7 @@ class Copilot:
         allowed |= {"Telemetry_Sample_3d", "DOC-FIELD-SAFETY", "DOC-RAG-GUIDE", "DOC-3D-MAPPING"}
         client = self._client()
         if client is None:
-            return {"text": self.offline_text(ev if ASSET_Q.search(question) else None, hits), "sources": hits, "mode": "retrieval-only", "asset_id": asset_id}
+            return {"text": self.offline_text(ev if ASSET_Q.search(question) else None, hits, question), "sources": hits, "mode": "retrieval-only", "asset_id": asset_id}
         slim = None
         if ev:
             slim = {k: v for k, v in ev.items() if k not in ("telemetry", "documents")}
@@ -389,9 +445,12 @@ class Copilot:
             "recommend verification and escalation under site procedures and lockout/tagout [DOC-FIELD-SAFETY]; "
             "asked whether something is safe, say the tool cannot judge that and the decision belongs to site "
             "procedures and qualified personnel, then give the evidence. "
-            "Name assets by their tag (P-005, M-006) and cite fleet-table rows by their asset_id (one ID per bracket "
+            "The confidence value is an evidence score, not a probability; never present it as a percentage chance. The issue label (e.g. fouling) is recorded in the workbook: explain it, never claim you discovered it. Name assets by their tag (P-005, M-006) and cite fleet-table rows by their asset_id (one ID per bracket "
             "or comma-separated); the table's name is not an ID. Never name people, roles or teams that are not in "
             "the context. Do not offer to do more work and do not end with a question. "
+            "The evidence lists only the latest work orders; work_order_count is the total on record, so never count the "
+            "list as the whole history. If record_checks says records disagree, say so when it is relevant and do not "
+            "resolve it. "
             "Earlier turns are given for follow-up questions; resolve 'it', 'this' or 'that' from them.")
         msgs = [{"role": "system", "content": sys_prompt}]
         for h in history:
@@ -407,5 +466,5 @@ class Copilot:
                     "asset_id": asset_id}
         except Exception as e:  # noqa: BLE001
             self._trip(e)
-            return {"text": self.offline_text(ev if ASSET_Q.search(question) else None, hits), "sources": hits, "mode": f"retrieval-only ({type(e).__name__})",
+            return {"text": self.offline_text(ev if ASSET_Q.search(question) else None, hits, question), "sources": hits, "mode": f"retrieval-only ({type(e).__name__})",
                     "asset_id": asset_id}

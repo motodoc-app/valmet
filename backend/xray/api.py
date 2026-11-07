@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -18,7 +19,13 @@ from .world import World
 
 app = FastAPI(title="Industrial X-Ray AI", version="0.1.0",
               description="Semantic 3D scene understanding + autonomous field-service copilot (Valmet × Since AI 2026)")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# CORS: the app is served same-origin (uvicorn mounts web/dist; the vite dev/preview server proxies /api), so no
+# cross-origin access is needed. By default only local development origins may call the API from another port;
+# XRAY_CORS_ORIGINS="https://a.example,https://b.example" allows named origins instead (never a wildcard by default).
+_cors = [o.strip() for o in os.environ.get("XRAY_CORS_ORIGINS", "").split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=_cors,
+                   allow_origin_regex=None if _cors else r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?",
+                   allow_methods=["GET", "POST"], allow_headers=["content-type"])
 
 _t0 = time.time()
 WORLD = World()
@@ -162,7 +169,7 @@ def diagnose(asset_id: str):
 def copilot_query(req: QueryReq):
     if req.asset_id:
         _asset_or_404(req.asset_id)
-    return WORLD.copilot.answer(req.question, req.asset_id, req.component, req.history)
+    return WORLD.copilot.answer(req.question[:MAX_QUESTION], req.asset_id, req.component, req.history)
 
 
 @app.get("/api/knowledge/search")
@@ -262,14 +269,80 @@ def find_objects(phrase: str) -> list[dict]:
     return [o for sc, o in out if sc >= top - 0.6]
 
 
+MAX_QUESTION = 1000                       # characters kept from a typed question (longer input is cut, not refused)
+# an instruction to operate equipment ("open valve CV-003", "shut down M-006", "set P-005 speed to 100%"): a clause
+# that starts with a control verb and names equipment or a process value. The app is read-only decision support.
+CONTROL_VERB = (r"(open|close|start|stop|shut\s*(down|off)|switch\s+(on|off)|turn\s+(on|off)|set|adjust|increase|"
+                r"decrease|raise|lower|reset|trip|bypass|override|operate|actuate|ramp\s+(up|down)|stroke|energi[sz]e|"
+                r"de-?energi[sz]e|isolate)")
+CONTROL_OBJ = (r"\b[a-z]{1,3}-\d{3}\b|pump|motor|valve|transmitter|sensor|equipment|machine|plant|process|speed|"
+               r"setpoint|set point|flow|pressure|breaker|drive|line\b|actuator|interlock|alarm")
+APP_NOUNS = (r"x-?ray|\bview\b|library|diagnos|panel|\bcard\b|manual|\bdocs?\b|document|plan mode|support mode|lesson|"
+             r"practi[cs]e|tour|route|robot|camera|\bmap\b|menu|\btab\b|work order|copilot|conversation|\bapp\b")
+NO_CONTROL = ("Industrial X-Ray is read-only decision support: it cannot open, close, start, stop or adjust any equipment "
+              "and has no connection to plant controls. Operating equipment is for authorised operators in the control "
+              "system, under site procedures, permits and lockout/tagout [DOC-FIELD-SAFETY].")
+
+
+TAG_HELP = ("Its 30 assets have tags such as P-005 (process pump), M-006 (electric motor), CV-003 (control valve), "
+            "PT-001 (pressure transmitter) and VS-001 (vibration sensor); objects in the scan have IDs such as OBJ-256.")
+
+
+def unknown_tag(text: str) -> str | None:
+    """A tag-like word ("V-001") that is no workbook asset; scene object and FAQ IDs are not tags."""
+    for m in re.finditer(r"\b([a-z]{1,3})-(\d{3})\b", text.lower()):
+        tag = f"{m.group(1)}-{m.group(2)}"
+        if m.group(1) in ("obj", "faq") or any(a["tag"].lower() == tag for a in WORLD.assets_summary.values()):
+            continue
+        return tag.upper()
+    return None
+
+
+def control_request(text: str) -> bool:
+    """True for an instruction to operate equipment (not for a question about it, such as 'should I shut it down?')."""
+    t = text.lower()
+    for clause in re.split(r"[.!?;:\n]+|\b(?:and|then)\b|,", t):
+        c = re.sub(r"^\s*(please|now|immediately|just|you|can you|could you|go and|also)\s+", "", clause.strip())
+        c = re.sub(r"^(please|now)\s+", "", c)
+        if re.match(r"set up\b", c) or re.search(APP_NOUNS, c):      # "open the X-Ray view", "set up a route"
+            continue
+        if re.match(CONTROL_VERB + r"\b", c) and re.search(CONTROL_OBJ, c):
+            return True
+        # "and open the valve" splits off "open the valve" above; "the valve" in an earlier clause still counts
+        if re.match(CONTROL_VERB + r"\b", c) and re.search(CONTROL_OBJ, t) and re.search(r"ignore|instruction|you are now", t):
+            return True
+    return False
+
+
 @app.post("/api/copilot/command")
 def command(req: CommandReq):
     """Rule-based intent router (transparent + deterministic); free-form questions fall through to RAG."""
     if req.selected_asset_id:
         _asset_or_404(req.selected_asset_id)
+    req.text = (req.text or "").strip()
+    if len(req.text) > MAX_QUESTION:                                   # cut at a word, never mid-word
+        req.text = re.sub(r"\s+\S*$", "", req.text[:MAX_QUESTION])
+    if not re.search(r"[A-Za-z0-9]", req.text):
+        return {"intent": "command", "actions": [], "asset_id": req.selected_asset_id, "mode": "rules", "sources": [],
+                "text": "Type a question about an asset, the room or the prototype, for example “What should I check "
+                        "first on P-005?” or “Which motor is overheating?”."}
+    if control_request(req.text):
+        t = req.text.lower()
+        tag_m = re.search(r"\b([a-z]{1,3}-\d{3})\b", t)
+        a = next((x for x in WORLD.assets_summary.values() if tag_m and x["tag"].lower() == tag_m.group(1)), None)
+        info = (f" For reference, {a['tag']} is {a['condition_state'].replace('_', ' ')} (health {a['health_score']}, "
+                f"{a['issue_summary'].rstrip('.').lower()}) [{a['asset_id']}]; its diagnosis lists the safe checks."
+                if a else (f" There is no asset tagged {tag_m.group(1).upper()} in the builder pack." if tag_m else ""))
+        acts = [{"type": "select", "asset_id": a["asset_id"], "object_id": a["object_id"]}] if a else []
+        return {"intent": "command", "actions": acts, "asset_id": a["asset_id"] if a else req.selected_asset_id,
+                "mode": "rules", "control_refused": True, "text": NO_CONTROL + info}
     t = req.text.lower()
     actions: list[dict] = []
     assets = WORLD.assets_summary
+    unknown = unknown_tag(t)
+    if unknown:
+        return {"intent": "command", "actions": [], "asset_id": None, "mode": "rules", "sources": [],
+                "text": f"There is no asset tagged {unknown} in the builder pack. {TAG_HELP}"}
     cls = next((c for w, c in CLASS_WORDS.items() if w in t), None)
     sig = next((s for w, s in SIGNAL_WORDS.items() if w in t), None)
     asset_id = req.selected_asset_id

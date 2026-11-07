@@ -60,6 +60,7 @@ export function toks(s) {
   return out;
 }
 export const TAG_RE = /\b([a-z]{1,3}-\d{3})\b/i;
+const CLASS_PREFIX = { pump: "P", motor: "M", valve: "CV", transmitter: "PT", sensor: "VS" };
 
 /** Index the FAQ once: token sets per entry (question + paraphrases) and IDF weights. */
 export function indexFaq(faq) {
@@ -86,6 +87,12 @@ function cosine(a, b, idf) {
  */
 export function matchFaq(idx, q, { tag = null, contextTag = null } = {}, threshold = 0.5) {
   if (!idx?.entries?.length) return null;
+  // "why is the pump losing flow?" with a vibration sensor selected is not about the selection
+  const cw = !tag && contextTag && String(q).match(/\b(pump|motor|valve|transmitter|sensor)s?\b/i);
+  if (cw && contextTag.split("-")[0].toUpperCase() !== CLASS_PREFIX[cw[1].toLowerCase()]) contextTag = null;
+  // a tag that is no workbook asset ("what's wrong with V-001?") never borrows the selection
+  const qTag = String(q).match(TAG_RE)?.[1];
+  if (!tag && qTag && !/^(obj|faq)-/i.test(qTag)) contextTag = null;
   const intent = detectIntent(q);
   const assetTag = tag || contextTag;
   // 1. an asset question with a recognised intent → that asset's entry ("is it safe to keep running?" with P-005 selected)
@@ -123,3 +130,30 @@ export function compose(hits, n = 3) {
   }
   return out.join("\n");
 }
+
+// ------------------------------------------------------------------ guards shared by both modes (same rules as
+// control_request / unknown_tag in backend/xray/api.py)
+const CONTROL_VERB = /^(open|close|start|stop|shut\s*(down|off)|switch\s+(on|off)|turn\s+(on|off)|set|adjust|increase|decrease|raise|lower|reset|trip|bypass|override|operate|actuate|ramp\s+(up|down)|stroke|energi[sz]e|de-?energi[sz]e|isolate)\b/;
+const CONTROL_OBJ = /\b[a-z]{1,3}-\d{3}\b|pump|motor|valve|transmitter|sensor|equipment|machine|plant|process|speed|setpoint|set point|flow|pressure|breaker|drive|line\b|actuator|interlock|alarm/;
+const APP_NOUNS = /x-?ray|\bview\b|library|diagnos|panel|\bcard\b|manual|\bdocs?\b|document|plan mode|support mode|lesson|practi[cs]e|tour|route|robot|camera|\bmap\b|menu|\btab\b|work order|copilot|conversation|\bapp\b/;
+/** An instruction to operate equipment ("open valve CV-003", "shut down M-006"), not a question about it. */
+export function controlRequest(q) {
+  const t = String(q).toLowerCase();
+  for (const clause of t.split(/[.!?;:\n]+|\b(?:and|then)\b|,/)) {
+    const c = clause.trim().replace(/^(please|now|immediately|just|you|can you|could you|go and|also)\s+/, "").replace(/^(please|now)\s+/, "");
+    if (/^set up\b/.test(c) || APP_NOUNS.test(c)) continue;
+    if (CONTROL_VERB.test(c) && (CONTROL_OBJ.test(c) || (CONTROL_OBJ.test(t) && /ignore|instruction|you are now/.test(t)))) return true;
+  }
+  return false;
+}
+export const NO_CONTROL = "Industrial X-Ray is read-only decision support: it cannot open, close, start, stop or adjust any equipment and has no connection to plant controls. Operating equipment is for authorised operators in the control system, under site procedures, permits and lockout/tagout [DOC-FIELD-SAFETY].";
+/** First tag-like word ("V-001") that is not a workbook asset tag; scene object (OBJ-256) and FAQ IDs are not tags. */
+export function unknownTag(q, knownTags) {
+  for (const m of String(q).toLowerCase().matchAll(/\b([a-z]{1,3})-(\d{3})\b/g)) {
+    const tag = `${m[1]}-${m[2]}`.toUpperCase();
+    if (m[1] === "obj" || m[1] === "faq" || knownTags.has(tag)) continue;
+    return tag;
+  }
+  return null;
+}
+export const TAG_HELP = "Its 30 assets have tags such as P-005 (process pump), M-006 (electric motor), CV-003 (control valve), PT-001 (pressure transmitter) and VS-001 (vibration sensor); objects in the scan have IDs such as OBJ-256.";
