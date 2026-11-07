@@ -24,12 +24,52 @@ No 3D graphics on the machine? It opens the 2D floor plan by itself; finding, di
 in the demo.
 **Rewind:** *Reverse* plays the run backwards; the route slider scrubs to any moment.
 **If something goes wrong:** add `#plan` to the URL for the floor plan; it needs no GPU. Backup copy of the earlier demo:
-see the README.
+https://claude.ai/artifact/PKt4BtBkZvpTE3V9RyBDZe (live demo: https://claude.ai/artifact/FbUbNXsimhQWK9Zw9Vpebs).
 
 **What is real and what is not:** the room, the object candidates, names and routes come from the supplied scan; object
 names are a vision model's guesses with a confidence. All asset data is synthetic. Diagnoses in the hosted demo were
 generated in advance. The robot camera is simulated from the scan. Planning is approximate. Remote support is an
 asynchronous hand-off. X-Ray models are illustrative. No control of plant equipment. No savings are measured.
+
+## Full walkthrough (28 steps) with the exact control names
+Control names below are copied from the code (`web/src/main.js`, `xray-overlay.js`, `planning.js`, `training.js`,
+`support.js`). All 28 steps were clicked through on the production build on 7 Nov 2026 (`?scan=off`, headless
+Chromium, commit `e694afc`): every step passed, no page errors. Tabs along the top, left to right: **Explore ·
+X-Ray · Plan · Learn · Practice · Support · Value**. The camera buttons are in the bottom bar (the dock).
+
+| # | Step | Do exactly this | What you should see |
+|---|---|---|---|
+| 1 | Open the app | Open the live-demo link (or `npm run dev` → http://localhost:5173) | Loading screen, then the room |
+| 2 | Load the facility | Wait for the scan | Right: **Pre-visit briefing · Service P-005** card; left: **Assets by priority** (30) |
+| 3 | Explore the room | Drag to orbit, scroll to zoom, or use the navigation pad / `W A S D`, `Q E`; right-hand tool rail: *Semantic view*, *Site map*, *Scene understanding* | Room from any angle; rail tooltips explain each tool |
+| 4 | Top view | Dock → **Top** | Straight down on the whole room |
+| 5 | Angled view (formerly "Broadcast") | Dock → **Angled** | Above at an angle, like a broadcast camera |
+| 6 | Robot POV | Dock → **Robot POV** | Robot's-eye view; HUD "Simulated robot camera — rendered from the 3D scan, not a live feed" |
+| 7 | Search P-005 | Press **/** (or click *Ask about the plant*), type *Where is P-005?*, Enter | P-005 selected; asset card on the right |
+| 8 | Plan a robot route | Asset card → **Send robot here** | Route drawn; dock shows "8.4 m · A* … ms · clearance 0.206 m · 0 collisions" |
+| 9 | Start navigation | (starts by itself) — dock **Pause** / **Play** toggles it; **Speed** cycles 1–4× | Robot drives; *En route* card |
+| 10 | Robot moves | Watch, or switch to **Chase** / **Robot POV** mid-route | *Assets read along the way* fills with status and health |
+| 11 | Insert an obstacle | Dock → **Block aisle** (enabled while a route is active and the robot has not arrived) | A block appears ahead of the robot |
+| 12 | Reroute | (automatic) | New route from the robot's position (≈ 8.4 → 8.65 m), still 0 collisions |
+| 13 | Arrive | Wait for the end of the route | Prompt **You've arrived at P-005** with **Inspect equipment** and **See diagnosis**; the diagnosis card opens on the right |
+| 14 | Equipment card | Left list → **P-005** (or click the pump) | Asset card: **Robot is here** · **Explore internals (X-Ray)** (primary) · **What's wrong?** · **Plan access** |
+| 15 | AI diagnosis | Asset card → **What's wrong?** (or **See diagnosis** on the prompt) | Likely fouling, **52 %** confidence with breakdown, grey source tags; tabs Overview / Evidence / Sources |
+| 16 | In-scene X-Ray | Arrival prompt → **Inspect equipment** (or asset card → **Explore internals (X-Ray)**) | Panel over the room: "X-Ray · P-005 · Process pump", badge "Illustrative teaching model — not reconstructed from the scan", suspected parts red |
+| 17 | Explode | Panel slider **Explode** (or **Assemble** to put it back) | Parts separate |
+| 18 | Inspect components | Click a part in the model or in the panel's list; **See-through**, **Labels**, **Show only this part** | Part highlighted; its function and linked faults on the right of the panel |
+| 19 | Close without losing position | Panel **×** (or `Esc`) | Same camera, camera mode, robot position and selection as before (measured: camera moved 0.000 m) |
+| 20 | Maintenance planning | Tab **Plan** (or asset card → **Plan access**) | Card "Make room to service P-005": Pick → Move → Check |
+| 21 | Move a virtual proxy | **Pick the pallet truck**, then drag it on the floor (or the card's arrow buttons / arrow keys; turn with the wheel, `R`, `Q` / `E` or the dock's turn buttons); **Done – check the result** | Proxy follows; the scanned truck moves with it (approximate cut-out) |
+| 22 | Collision / clearance feedback | Drop it on another object to see a collision; **Suggest a good spot for me** for a clean result | While overlapping, the proxy turns red and the *Clearance* tile reads "0 m · collision"; then "It fits. No collisions, the P-005 service zone is clear …", clearance, route 8.40 m → 7.98 m |
+| 23 | Reset the layout | **Reset all** (undo with **Undo** / `Ctrl+Z`) | Scanned layout back; no moves |
+| 24 | Open a lesson | Tab **Learn** → lesson **01** "Why does fouling lower flow but raise current?" | Lesson text with the relevant parts highlighted |
+| 25 | Practice exercise | Tab **Practice** → tick the 3 *Before you start* boxes → **Start exercise** → answer, **Continue** | "Task 1 of 6" …; completion summary with score and takeaways |
+| 26 | Remote support | Tab **Support** → **Pin a note** → click the pump → **Save pin** → **Share with expert** (optional **Load example expert reply**) | Banner "Asynchronous hand-off · no live session · no plant controls"; link / package to send |
+| 27 | Work-order draft | Explore → P-005 → **What's wrong?** → **Draft work order** (also in Plan and in the expert's reply) | Sheet "Work order draft … Draft · needs planner approval · no control actions" |
+| 28 | Business value | Tab **Value** | "What could this be worth?" — every number is a hypothetical input you can change |
+
+Close with rail → **About this demo** (what each capability is and is not). **Reset the whole demo** on the
+briefing card puts everything back for the next run.
 
 ## Presenter script (≈ 2 min, organisers' format)
 | Time | Part | Do | Say (summary) |
@@ -41,6 +81,9 @@ asynchronous hand-off. X-Ray models are illustrative. No control of plant equipm
 | 0:55–1:10 | | *You've arrived at P-005* → **Inspect equipment** → explode, suspect parts red → **×** | "Look inside without leaving the room: an illustrative teaching model. Close it and we're exactly where we were." |
 | 1:10–1:35 | | **Plan access** → grab the pallet truck → drop it clear | "The truck blocks the service area. Move it: collisions, clearance and the route update — the route gets shorter. Approximate, not an engineering check." |
 | 1:35–2:00 | Business impact | Value page → closing title | "Technicians arrive prepared. Data is synthetic and savings are not yet measured; a pilot measures time to find equipment and to prepare a visit." |
+
+Timing: the robot cruises at 0.6 m/s, so the 8.4 m route takes about 15 s at 1×; press **Speed** for 2× or 4× to fit
+the 0:42–0:55 slot.
 
 Mention the **Support** hand-off in one line if time allows ("send the whole context to an expert as a link —
 an asynchronous hand-off, not a live session").

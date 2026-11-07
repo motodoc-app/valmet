@@ -1,5 +1,10 @@
 # Scan integrity report — Industrial Boiler Room.ply (original challenge file)
 
+> **Historical report.** This file describes the originally distributed *Industrial Boiler Room.ply*. The project no
+> longer uses it: the pipeline runs on *Equipment Room.ply* from Valmet's Google Drive (1,676,481 splats, all valid,
+> SHA-256 `83d8c7d9…2955`; see `data/processed/integrity_report.md` and the README). The section "Consequence for
+> the demo" below describes the earlier partial-scan build, not the current one.
+
 * SHA-256: `117195366421b07aa6738415e94609d96cd41993a0c5b8e8b730849f6b7f1b03`
 * File size: 355,449,599 bytes (header 1503 B, 59 float properties = 236 B/record)
 * Declared splats: 1,506,136; size matches header: **True**

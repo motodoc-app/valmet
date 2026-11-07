@@ -11,7 +11,7 @@ Everything below is shown in the working prototype (in the hosted demo the diagn
 
 ---
 
-## Slides (7)
+## Slides (7 content slides; the published deck has 8 with the cover)
 
 **1 · The problem: the first visit is the expensive one**
 A technician is sent to service a pump at a plant they have never seen. Today they arrive with a work order, a PDF
@@ -31,7 +31,7 @@ with an oriented 3D box, a name and a confidence. We report what that number mea
 | Corrected in the team's visual review (not field-verified) | 7 |
 | Linked to a (synthetic) workbook asset | 30 |
 
-An AI second-opinion check of a 60-object random sample agreed with 18 % of specific labels (95 % CI 11–30 %; half
+An AI second-opinion check of a 60-object stratified random sample agreed with 18 % of specific labels (95 % CI 11–30 %; half
 could not be judged from sparse renders). **We do not claim 676 recognised objects.** A human check sheet is ready
 (`docs/label_review_sample.csv`); a pilot would report precision and recall per category.
 *Visual: the Scene-understanding panel, then the colour-coded semantic view and the site map.*

@@ -40,7 +40,9 @@
   `proximity_preview` provide the same query server-side.
 
 ## 4. Metadata mapping (`metadata.py`, `mapping.py`)
-* All 14 workbook sheets are loaded. The faulty target is the asset with the highest
+* The workbook has 16 sheets; `metadata.py` loads the 10 data sheets (`Asset_Master`, `Current_State`,
+  `Telemetry_Sample_3d`, `Alarms_Events`, `Maintenance_History`, `Historical_Service_Cases`, `Knowledge_Docs`,
+  `RAG_Corpus_Index`, `Data_Quality`, `Scene_Anchors`). The faulty target is the asset with the highest
   `criticality × (100 − health) × model_confidence` → **P-005** (FOULING, A-critical, health 44).
 * Class-aware one-to-one binding (e.g. PROCESS_PUMP ← pump-motor unit / circulation pump), then documented fallbacks.
   The target must be reachable. Each binding stores `method` and `mapping_confidence`.
@@ -62,8 +64,9 @@
   failure trips a class-level circuit breaker (`_trip`) that skips the LLM for 5 minutes, so later fallbacks are
   instant. The web client (`api.js`) then shows the narrative pre-generated at export time, labelled "Pre-generated …
   (live AI unavailable)", or the closest pre-generated FAQ answer; the copilot badge reads *Live AI unavailable*.
-* **Knowledge Center**: BM25 over 99 documents (8 knowledge docs, 30 asset cards, 50 service cases, 11 illustrative
-  component notes). Answers cite IDs.
+* **Knowledge Center**: BM25 (`Corpus` in `copilot.py`) over 153 documents: 8 knowledge docs, 30 asset cards, 50
+  service cases, 49 illustrative component training notes and 16 product-documentation notes
+  (`knowledge/app_docs.json`). Answers cite IDs.
 * **Command router**: transparent rules for "faulty / abnormal <signal> / send / x-ray / practise / manual". Anything
   else falls through to retrieval-augmented question answering.
 
@@ -93,7 +96,10 @@ three.js 0.180 with **Spark 2.4** (Gaussian-splat renderer that composites with 
 and plain JS modules: `boot.js` (entry: checks WebGL 2 before any 3D code is loaded), `facility.js` (splats, frames,
 robot, route, blocks, floor map), `xray.js` (data-driven exploded models for every equipment type, with explode,
 see-through, isolate and labels), `training.js` (Learn and Practice), `tour.js` (guided tour), `ui.js` (formatting
-and the diagnosis card shared by both views), `xray-overlay.js` (in-scene X-Ray panel and arrival prompt) and
+and the diagnosis card shared by both views), `xray-overlay.js` (in-scene X-Ray panel and arrival prompt),
+`copilot-ui.js` (conversation panel), `navpad.js` (on-screen navigation pad and keys), `guide.js` (coach cards),
+`mobile.js` (phone layout and Tools sheet), `twin.js` (condition pins and the Twin overlay), `look.js` (backdrop, floor
+plate, adaptive resolution, auto cut-away) and
 `main.js` (state, cards, dock, playback, camera modes, ask bar, transitions).
 
 **Camera modes.** Robot POV, Chase, Angled, Top and Free only move the viewing camera; they never touch the route or
@@ -160,11 +166,19 @@ and hooks (`boot`, `frame`, `select`, `minimap`, `planExtras`, `modeChange`). Ev
 `GET /api/assets`, `/api/assets/{id}`, `/telemetry`, `/events`, `/documents`, `GET /api/scene/anchors`,
 `POST /api/copilot/query`, `POST /api/work-orders/draft` (draft only), plus `GET /api/scene`, `GET /api/nav/grid`,
 `POST /api/nav/plan`, `GET /api/proximity`, `GET /api/diagnose/{id}`, `POST /api/copilot/command`,
-`GET /api/knowledge/search`, `GET /api/xray/model`. Interactive docs are at `/docs`.
+`GET /api/knowledge/search`, `GET /api/knowledge/doc/{id}`, `GET /api/xray/model`, `GET /api/health`. Interactive
+docs are at `/docs`. The server needs the workbook (`data/raw/builder_pack.xlsx`); the PLY is only needed by the
+pipeline steps 1–3.
 
 ## 9. Libraries
-numpy, scipy (ndimage, cKDTree), scikit-learn (DBSCAN), pandas/openpyxl, FastAPI/uvicorn, Pillow, OpenAI SDK
-(optional); three.js, @sparkjsdev/spark, Vite. Playwright is used only for headless QA screenshots.
+numpy, scipy (ndimage, cKDTree), scikit-learn (DBSCAN), pandas/openpyxl, FastAPI/uvicorn (pydantic), Pillow, OpenAI
+SDK (optional); three.js 0.180, @sparkjsdev/spark 2.4, Vite 6. Playwright is used only for the headless test suites
+and screenshots. Licences are listed in the README (*Licence and attribution*).
+
+**Tests.** `pytest` (19 pipeline guarantees: integrity, framing, one-to-one mapping, collision-free routes and
+reroutes, layout plans, citation checking, grounded diagnoses, a complete device library, scene search, quality
+tiers, copilot chat and FAQ grounding) and 9 headless-Chromium suites in `web/tests/` with 424 checks in total;
+counts per suite are in the README.
 
 ## 10. Path to production (Builder Q-07/Q-09)
 Swap `metadata.py` for OPC UA / MQTT / CMMS adapters without changing the API. Scene objects and anchors are plain

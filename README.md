@@ -15,19 +15,26 @@ Explore (scan, semantic view, site map) → Understand (cited diagnosis) → Pla
 clearance, route) → Practise (X-Ray, Learn, Practice) → Support (pins + hand-off link to an expert) → Value
 ```
 
+**Links.** Live demo: https://claude.ai/artifact/FbUbNXsimhQWK9Zw9Vpebs · backup of an earlier build:
+https://claude.ai/artifact/PKt4BtBkZvpTE3V9RyBDZe · pitch deck: https://claude.ai/artifact/S8rpiiuncbmJm7mEiPsFc2 ·
+code: `motodoc-app/valmet`, branch `ccr-3b4e61d7-jdmlgf`. Requirement-by-requirement check:
+[`docs/COMPLIANCE.md`](docs/COMPLIANCE.md); what is left to submit: [`docs/SUBMISSION_CHECKLIST.md`](docs/SUBMISSION_CHECKLIST.md).
+
 ### In plain words
 Someone walked through a real equipment room with a 3D scanner. This software splits that scan into hundreds of
-object candidates and guesses what each one is (with a confidence), links the pumps, motors and valves to the plant's
-maintenance records, and lets a technician prepare a visit from a laptop: where the machine is, what is probably
+object candidates and guesses what each one is (with a confidence), links the pumps, motors and valves to the challenge's
+synthetic maintenance records, and lets a technician prepare a visit from a laptop: where the machine is, what is probably
 wrong, how to get to it, what is in the way, what to do, and who to ask. Press **Tour** in the app for a guided
 walk-through: each step has a plain explanation and one line for engineers.
+
+Valmet's evaluation criteria, from the challenge brief:
 
 | Criterion (weight) | What the demo shows |
 |---|---|
 | Semantic extraction & 3D frames (30 %) | **676 segmented object candidates** with oriented 3D frames, plus floor, ceiling and 4 walls as planes, from the full 1.68 M-splat scan. A vision-language model names each candidate with a confidence. We report honest tiers — 416 with a specific type, 195 at confidence ≥ 0.70, 7 review corrections, 30 linked to records — plus an AI second-opinion audit and a human check sheet ([`docs/SCENE_QUALITY.md`](docs/SCENE_QUALITY.md)). Semantic colour view and an overhead site map. |
 | Obstacle-aware navigation & proximity (25 %) | Multi-level height-field, clearance-aware A*, smoothing and an independent validation pass (0 collisions, clearance ≥ the 0.20 m robot radius). **Block aisle** re-routes live; **Plan mode** moves a virtual proxy and re-plans with the changed layout; every asset within 1.2 m of the route is read out, exactly, forwards and in reverse. |
 | Grounded AI diagnostics (20 %) | An evidence engine combines telemetry z-scores against the asset's own baseline and its peers, alarms, work orders, similar cases and data-quality issues. The LLM narration may cite **only** IDs from that evidence; anything else is removed. Confidence is shown with its breakdown (0.52 for P-005). |
-| Backend architecture (15 %) | Modular Python pipeline and a FastAPI service following the workbook's `API_Contract`; a serverless export runs the same app as a static site; feature modules plug in through `web/src/ext.js`; 11 pytest guarantees and headless-browser suites. |
+| Backend architecture (15 %) | Modular Python pipeline and a FastAPI service following the workbook's `API_Contract`; a serverless export runs the same app as a static site; feature modules plug in through `web/src/ext.js`; 19 pytest checks and 9 headless-browser suites (424 checks). |
 | Demo clarity & innovation (10 %) | A pre-visit workflow Valmet described: explore, understand, plan, practise, get support. Interactive planning and a remote hand-off; a 2D floor plan keeps finding, routing and the diagnosis working without WebGL; phone layout; runs from a fresh checkout. |
 
 Everything that is synthetic, approximate, precomputed or illustrative is labelled in the app (About sheet) and in
@@ -64,11 +71,20 @@ workbook has a complete entry and that every faulty asset's diagnosis points at 
 
 ## Run it
 
+**Quickest (no Python, no organiser files):** the hosted/static mode runs from a fresh checkout.
+```bash
+cd web && npm ci && npm run dev                      # http://localhost:5173 — static mode when no API answers
+```
+
+**With the Python server (live API, optional live AI):** needs Python 3.10+, Node 18+ and the organisers' workbook at
+`data/raw/builder_pack.xlsx` (not committed, see *Data notes*). Two terminals, both from the repository root:
 ```bash
 pip install -r requirements.txt
-cd backend && uvicorn xray.api:app --port 8000      # API + docs at http://localhost:8000/docs
-cd web && npm ci && npm run dev                      # http://localhost:5173 (uses the live API)
+cd backend && uvicorn xray.api:app --port 8000       # terminal 1 — API + docs at http://localhost:8000/docs
+cd web && npm ci && npm run dev                      # terminal 2 — http://localhost:5173, proxies /api to :8000
 ```
+Another API port: `XRAY_API=http://127.0.0.1:8100 npm run dev` (read by `web/vite.config.js`). Single process: after
+`cd web && npm run build`, the API also serves the built app at http://localhost:8000.
 
 A fresh checkout renders the scan with no extra step: `npm run dev` and `npm run build` first generate the streaming
 scan chunks (`web/public/static/scan-*.wasm` + `scan.json`) from the committed `web/public/data/scene.splat`
@@ -96,19 +112,35 @@ Phones get a bottom-sheet layout and a lighter scan.
   pre-generated narrative, labelled "Pre-generated … (live AI unavailable)", and the copilot badge reads *Live AI
   unavailable*. Note: the OpenAI account used during development currently has no credits (429 insufficient_quota),
   so live AI on localhost needs your own key with credits.
-* **Hosted / static mode:** `python scripts/export_static.py && cd web && npm run build` produces `web/dist`, a static
-  site with no server. Routes and reroutes are planned in the browser by a JS port of `navigation.py`, and the
+* **Hosted / static mode:** `python scripts/export_static.py && cd web && npm run build` (the export needs the
+  workbook) produces `web/dist`, a static site with no server. Routes and reroutes are planned in the browser by a JS port of `navigation.py`, and the
   diagnoses are the backend's own output, generated at export time. `python scripts/export_faq.py` adds the copilot FAQ
   (`static/faq.json`: 9 questions for every asset plus 50 general ones, 320 answers, generated by the backend copilot
   with citation checks); the hosted copilot answers from it and labels every answer with how it was made
   ("Pre-generated answer to a similar question").
-* **Tests:** `pytest -q` (pipeline guarantees) and `cd web && npm run build && node tests/e2e.mjs` (headless
-  Chromium: the full 3D journey, every X-Ray device type, copilot commands, the floor plan with WebGL disabled, GPU
-  context loss, missing scan chunks and a phone viewport; needs a global `playwright`). Point it at a running dev
-  server with `BASE=http://localhost:5173/` to test server mode.
+* **Tests:** `python -m pytest -q tests` (19 pipeline guarantees; needs `data/raw/builder_pack.xlsx`) and, after
+  `cd web && npm run build`, the headless-Chromium suites (need a global `playwright`:
+  `npm i -g playwright && npx playwright install chromium`). Each starts its own `vite preview` on a random port;
+  `BASE=http://localhost:5173/` points one at a running dev server instead (server mode). `vite preview` proxies `/api`
+  to port 8000 like the dev server, so leave 8000 free for the static-mode results above.
+
+  | Suite (`web/tests/`) | Checks | Covers |
+  |---|---:|---|
+  | `node tests/e2e.mjs` | 78 | 3D journey, every X-Ray device type, copilot commands, floor plan without WebGL, GPU context loss, missing scan chunks, phones, Tour |
+  | `node tests/e2e-pov-xray.mjs` | 54 | Robot POV and camera switching, in-scene X-Ray, arrival prompt |
+  | `node tests/e2e-planning.mjs` | 58 | Plan mode: pick, drag, turn, collisions, clearance, service zone, routes, undo / redo, export |
+  | `node tests/e2e-review.mjs` | 45 | Review labels, export, `merge_review.py` |
+  | `node tests/e2e-ux.mjs` | 65 | Navigation pad, keys, coach cards, phone layout |
+  | `node tests/e2e-support.mjs` | 45 | Remote-support hand-off, technician and expert round trip |
+  | `node tests/e2e-copilot.mjs` | 31 | Copilot panel, answers, citations, chips |
+  | `node tests/e2e-render.mjs` | 26 | Full-fidelity scan, fallbacks, intro, phones |
+  | `SCAN=0 node tests/e2e-layers.mjs` | 22 | Semantic view, clean scan, site map |
+
+  Counts are from commit `e694afc`, where all of them passed.
 
 ### Rebuild from the raw scan, or run it on another site
-Put `equipment_room.ply` and `builder_pack.xlsx` in `data/raw/` (see `data/raw/README.md`), then:
+Put the organisers' files in `data/raw/` (not committed): the scan *Equipment Room.ply* as `equipment_room.ply` and
+*Valmet_SinceAI_2026_Synthetic_Industrial_Metaverse_Builder_Pack.xlsx* as `builder_pack.xlsx`. Then:
 ```bash
 python scripts/run_pipeline.py                       # validate → objects → VLM labels → export → web build
 python scripts/run_pipeline.py --no-vlm --no-llm     # fully offline
@@ -158,7 +190,7 @@ reconstruct equipment interiors from the splat scan.
 * **Scan.** `Equipment Room.ply` (the file shared on Google Drive, id `1MrwNjHxFqk5IfHpJQ24KlTn5nAAn40rd`; verified identical on 7 Nov 2026: 395,651,019 bytes, SHA-256 `83d8c7d99316c08c9719cfc2c5a6b9d1903b89847780e2458adc662c79f32955`): 1,676,481 splats, all valid (`data/processed/integrity_report.md`). The originally
   distributed `Industrial Boiler Room.ply` was corrupt from record 502,483 onward, identically in the PLY, RAR and
   ZIP copies. That report is kept in `docs/integrity_original_boiler_room.md`.
-* **Labels.** Geometry proposes clusters and the vision model names them; 258 objects remain "other equipment"
+* **Labels.** Geometry proposes clusters and the vision model names them; 260 objects remain "other equipment"
   rather than being guessed. The review layer (`config/scene_annotations.json`) records 7 corrections, each tagged
   `review-corrected` with a note: the pump set fragments were merged, and a pallet truck, a pressure washer, a
   chair, a cluttered corner (previously linked to P-002), a shelf and a small table that the model had called pumps
@@ -170,6 +202,30 @@ reconstruct equipment interiors from the splat scan.
 * **The X-Ray models** are procedural teaching models. It is not from the scan, not an OEM drawing and not a Valmet
   product. Learn and Practice content is conceptual, sits behind explicit safety gates and has no connection to any
   control system. All asset data is synthetic.
+* **Workbook.** `builder_pack.xlsx` has 16 sheets; `backend/xray/metadata.py` reads the 10 data sheets (asset master,
+  current state, 3-day telemetry sample, alarms, maintenance history, service cases, knowledge docs, RAG index, data
+  quality, scene anchors), the API follows its `API_Contract` sheet, and its `Builder_Questions` are answered in
+  [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md). The full 14-day telemetry CSV it mentions was not supplied.
+
+## Licence and attribution
+* **No licence has been chosen for this repository yet**, so its own code is not open-source licensed until the
+  authors add one.
+* **Organiser data.** The scan (*Equipment Room.ply*, and the earlier *Industrial Boiler Room.ply*) and the synthetic
+  workbook were supplied by Valmet and Since AI for the hackathon and remain theirs. The raw files are not committed,
+  but files **derived** from them are, so the demo runs from a fresh checkout: `web/public/data/scene.splat`,
+  `web/public/static/hq/*.wasm` (the rendered scan), `data/processed/`, and the JSON exports in
+  `web/public/static/`. Check with the organisers before making the repository public.
+* **Third-party libraries** (used, not modified): three.js (MIT), Spark `@sparkjsdev/spark` (MIT), Vite (MIT);
+  NumPy, SciPy, scikit-learn, pandas, Uvicorn, Starlette (BSD), FastAPI, Pydantic, openpyxl (MIT), Pillow (MIT-CMU),
+  OpenAI Python SDK (Apache-2.0); Playwright (Apache-2.0) for tests only.
+* **AI services.** Object labels, diagnosis narration and the 320 FAQ answers were generated with an OpenAI model
+  (`gpt-5.4-mini`, set in `config/project.json`); `docs/video/narration.mp3` is an AI-generated voice (OpenAI
+  text-to-speech). External works cited in [`docs/RESEARCH_NOTES.md`](docs/RESEARCH_NOTES.md) are referenced, not
+  included.
 
 Docs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (technical note) · [`docs/PITCH.md`](docs/PITCH.md) (slides and video script) ·
-[`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md) (one-page presenter guide) · [`docs/REPLICATE.md`](docs/REPLICATE.md) (another site or challenge).
+[`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md) (presenter guide and 28-step walkthrough) · [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md)
+(requirement-by-requirement check) · [`docs/SUBMISSION_CHECKLIST.md`](docs/SUBMISSION_CHECKLIST.md) ·
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) · [`docs/SCENE_QUALITY.md`](docs/SCENE_QUALITY.md) ·
+[`docs/RENDERING.md`](docs/RENDERING.md) · [`docs/DATA_INTEGRATION.md`](docs/DATA_INTEGRATION.md) ·
+[`docs/RESEARCH_NOTES.md`](docs/RESEARCH_NOTES.md) · [`docs/REPLICATE.md`](docs/REPLICATE.md) (another site or challenge).

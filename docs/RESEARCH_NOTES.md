@@ -17,7 +17,7 @@ participant shared on Discord**. They are not requirements from Valmet. Each cla
 | Scale | Treated as approximately metric (ceiling about 2.05 units, a standard door). **Not surveyed** | `integrity_report.md` |
 | Object layer | 676 objects plus 4 walls: oriented boxes (`center`, `size`, `yaw`), label, label source, confidence | `data/processed/scene_objects.json` |
 | Object points | Voxelised geometry points: 111,560 for objects, 61,287 for structure. The per-object assignment is not saved in this file | `data/processed/object_points.npz`, `scripts/step2_semantics.py` |
-| Asset data | Synthetic 14-sheet workbook. All 30 assets have `data_classification = SYNTHETIC` | `builder_pack.xlsx` |
+| Asset data | Synthetic 16-sheet workbook. All 30 assets have `data_classification = SYNTHETIC` | `builder_pack.xlsx` |
 | GPU in our build container | No CUDA GPU (`nvidia-smi` not present). Team laptops not checked | this session |
 
 Consequence: we have a **trained Gaussian-splat scene only**. Any method that needs the original photos, the camera
@@ -206,6 +206,16 @@ splatting (Khronos) and OpenUSD particle fields (NVIDIA). We have not evaluated 
 * Any time, cost or accuracy figure for manual or automated scan-to-BIM.
 
 ## Sources used
+
+Re-checked on 2026-11-07 (final QA): the five arXiv IDs resolve to the titles named above (2308.04079 "3D
+Gaussian Splatting for Real-Time Radiance Field Rendering"; 2312.00732 "Gaussian Grouping: Segment and Edit Anything in
+3D Scenes"; 2312.00860 "Segment Any 3D Gaussians"; 2312.03203 "Feature 3DGS: …"; 2503.11498 "Open-source automatic
+pipeline for efficient conversion of large-scale point clouds to IFC format", journal reference *Automation in
+Construction* vol. 177, 2025, article 106303). The three YouTube IDs return the titles and channels quoted above
+from oEmbed. COLMAP, the 3DGS project page and ifcopenshell.org load (the IfcOpenShell home page lists IFC2X3, IFC4
+and IFC4X3). scantobimservice.com, clutch.co and iso.org still answer 403 (bot protection). The GitHub page of
+gs-object-extraction could not be re-fetched from the QA container (its proxy only allows this project's
+repository); the facts above come from the earlier clone at commit `02ece47`.
 
 * https://github.com/07LEE/gs-object-extraction (README and code, commit `02ece47`)
 * https://scantobimservice.com/point-cloud-to-bim-services/ (HTTP 403); https://clutch.co/profile/scan-bim-service (search result only)
