@@ -524,7 +524,7 @@ function onKey(e) {
   if (e.key === "r" || e.key === "R") { e.preventDefault(); return rotate((e.shiftKey ? -1 : 1) * Math.PI / 2); }
   if (e.key === "[") return rotate(-Math.PI / 12);
   if (e.key === "]") return rotate(Math.PI / 12);
-  if (e.key === "Delete" || e.key === "Backspace") return removeProxy(P.active);
+  if (e.key === "Delete") return removeProxy(P.active);
 }
 
 // ------------------------------------------------------------------ summary + export
@@ -679,7 +679,7 @@ const verdict = (ev, z, after) => {
   if (ev.status === "bad") return `<div class="pl-verdict bad">${icon("close")}<span><b>Collision</b> with ${ev.hits.length ? esc(ev.hits.slice(0, 2).map((h) => h.proxy ? `proxy ${h.id}` : `${h.id} (${h.label})`).join(", ")) : "scanned geometry"}${ev.hits.length > 2 ? ` +${ev.hits.length - 2}` : ""}. Move it to free floor.</span></div>`;
   const zt = z.clear ? `${esc(P.target.asset?.tag)} service zone clear` : `Service zone still obstructed by ${esc(z.obstructions.map((o) => o.name).join(", "))}`;
   const rt = after && !after.ok ? " · <b>no robot route</b>" : "";
-  return `<div class="pl-verdict ${ev.status === "tight" || !z.clear || rt ? "tight" : "ok"}">${icon(ev.status === "ok" && z.clear && !rt ? "check" : "help")}<span><b>${ev.status === "tight" ? "Fits, tight clearance" : "Fits"}</b> · ${zt}${rt}</span></div>`;
+  return `<div class="pl-verdict ${ev.status === "tight" || !z.clear || rt ? "tight" : "ok"}">${icon(ev.status === "ok" && z.clear && !rt ? "check" : "help")}<span><b>${ev.status === "tight" ? "Fits, tight clearance" : "Fits"}</b> · no collisions · ${zt}${rt}</span></div>`;
 };
 function routeRow(label, r, cls = "") {
   if (!r) return `<div class="pl-rt ${cls}"><span>${label}</span><span class="note">${P.routeBusy ? "planning…" : "—"}</span></div>`;
@@ -877,7 +877,8 @@ function enter() {
   const S = APP.S;
   ensureThree();
   P.three.root.visible = true;
-  P.routeHidden = S.fac.routeGroup.visible; S.fac.routeGroup.visible = false;   // the comparison replaces the Explore route here
+  S.cardLock = false;                          // the right card belongs to Plan now
+  S.fac.routeGroup.visible = false;   // the comparison replaces the Explore route here
   refresh(); drawRoutes(); renderAll();
   beforeRoute().then(() => { drawRoutes(); renderCard(); renderDock(); });
   frameView();
@@ -933,6 +934,14 @@ on("boot", () => {
   addEventListener("pointerup", onPointerUp);
   addEventListener("pointercancel", onPointerUp);
   addEventListener("keydown", onKey);
+  // main.js refreshes the default cards from the robot loop (transit card, arrival) without a mode check:
+  // in Plan mode put the planning cards back, unless the user asked for another card (S.cardLock).
+  const guard = (sel, mine, render) => new MutationObserver(() => {
+    if (!P.ready || APP.S?.mode !== "plan" || APP.S.cardLock || $(sel).querySelector(mine)) return;
+    queueMicrotask(() => { if (APP.S.mode === "plan" && !$(sel).querySelector(mine)) render(); });
+  }).observe($(sel), { childList: true });
+  guard("#right", ".pl-disc", renderCard);
+  guard("#left", ".pl-steps", renderLeft);
   APP.planning = { getState, setState, reset: () => reset({ quiet: true }), demo, summary, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _evaluate: (id, pose) => evaluate(id, pose) };
 });
 on("planExtras", planExtras);
