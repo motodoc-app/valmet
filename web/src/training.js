@@ -143,7 +143,7 @@ export function initTraining(S, ui) {
       <div class="section"><div class="label">Attempts</div>${P.log.map((l) => `<div class="kv"><span>Task ${l.task} · ${esc(l.what)}</span><span style="color:${l.ok ? "var(--ok)" : "var(--bad)"}">${l.ok ? "Correct" : "Wrong"}</span></div>`).join("")}</div>
       <div class="section"><div class="label">Takeaways</div>
         ${takeaways(P.sc).map((x, i) => `<div class="step"><span class="k">${i + 1}</span><span>${esc(x)}</span></div>`).join("")}
-        <div class="step"><span class="k">${takeaways(P.sc).length + 1}</span><span>Check sensor mounting and signal quality before trusting a trend <span class="cite" data-doc="DOC-VIBRATION_SENSOR-CORE">DOC-VIBRATION_SENSOR-CORE</span>.</span></div>
+        <div class="step"><span class="k">${takeaways(P.sc).length + 1}</span><span>${S.xClass === "VIBRATION_SENSOR" || S.xClass === "PRESSURE_TRANSMITTER" ? "Check sensor mounting and signal quality before trusting a trend" : "Confirm the asset's identity and its measurements on site before acting on a trend"} <span class="cite" data-doc="DOC-${S.xClass}-CORE">DOC-${S.xClass}-CORE</span>.</span></div>
         <div class="step"><span class="k">${takeaways(P.sc).length + 2}</span><span>Real work needs authorisation, isolation and approved procedures <span class="cite" data-doc="DOC-FIELD-SAFETY">DOC-FIELD-SAFETY</span>.</span></div></div>
       <div class="section row" style="flex-wrap:nowrap"><button class="btn" id="pAgain" style="flex:1">Try again</button><button class="btn primary" id="pBack" style="flex:1">Back to facility</button></div></div>`);
     document.getElementById("pAgain").onclick = () => { P = null; practice(); };
