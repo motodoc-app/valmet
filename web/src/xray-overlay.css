@@ -1,13 +1,14 @@
 /* In-scene X-Ray panel, arrival prompt and the Robot POV HUD (xray-overlay.js, main.js). */
 
+.xo { --xo-bg: #141619; }
 /* ---------- X-Ray panel over the facility: the 3D model is drawn by WebGL into .xo-view's rectangle,
    so the view itself stays transparent and only the chrome around it is painted. */
-.xo { position: absolute; z-index: 6; top: 108px; right: 64px; bottom: 108px; width: min(60vw, 980px); min-width: 560px;
+.xo { position: absolute; z-index: 6; top: 108px; right: 64px; bottom: 124px; width: min(60vw, 980px); min-width: 560px;
   display: grid; grid-template-rows: auto 1fr auto; border-radius: 14px; box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 0 1px var(--line-2);
   animation: xo-in .28s var(--ease); overflow: hidden; }
 .xo.hidden { display: none; }
 @keyframes xo-in { from { opacity: 0; transform: translateY(8px) scale(.985); } }
-.xo-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 12px 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.xo-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 12px 10px 16px; background: var(--xo-bg); border-bottom: 1px solid var(--line); }
 .xo-eyebrow { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
 .xo-eyebrow b { color: var(--text); font: 500 12px var(--mono); }
 .xo-name { font-size: 17px; font-weight: 500; letter-spacing: -.01em; margin-top: 2px; }
@@ -28,7 +29,7 @@
 .xo-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
 .xo-legend i.sus { background: var(--bad); } .xo-legend i.alt { background: var(--warn); } .xo-legend i.sel { background: var(--accent); }
 .xo-hint { position: absolute; right: 10px; bottom: 10px; padding: 4px 9px; border-radius: 999px; background: rgba(10, 11, 13, .55); font-size: 11px; color: var(--text-2); pointer-events: none; }
-.xo-side { background: var(--surface); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.xo-side { background: var(--xo-bg); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .xo-list { position: relative; flex: 0 1 auto; max-height: 44%; overflow: auto; padding: 8px 8px 6px; border-bottom: 1px solid var(--line); }
 .xo-lh { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); padding: 2px 8px 6px; }
 .xo-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border-radius: 7px; text-align: left; color: var(--text-2); font-size: 12.5px; }
@@ -54,7 +55,7 @@
 .xo-sig.hot b { color: var(--bad); }
 .xo-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
 .xo-acts .btn { height: 32px; padding: 0 10px; font-size: 12px; flex: 1 1 auto; }
-.xo-f { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface); border-top: 1px solid var(--line); }
+.xo-f { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--xo-bg); border-top: 1px solid var(--line); }
 .xo-slider { flex: 1 1 auto; min-width: 140px; padding: 0 8px; }
 .xo-slider .top { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
 .xo-btns { display: flex; gap: 2px; flex: none; }
@@ -75,6 +76,8 @@ body.xo-open #right { visibility: hidden; }
   .xo-full span { display: none; }
   .xo-full { width: 34px; padding: 0; }
   .xo-hint { display: none; }
+  .xo-name { font-size: 15px; }
+  .xo-badge { font-size: 10.5px; }
   .xo-f { flex-wrap: wrap; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
   .xo-slider { flex-basis: 100%; }
   .xo-btns { width: 100%; justify-content: space-between; }

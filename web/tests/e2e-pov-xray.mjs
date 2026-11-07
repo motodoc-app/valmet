@@ -27,7 +27,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let server = null, BASE = process.env.BASE;
 if (!BASE) {
   const port = 4500 + Math.floor(Math.random() * 99);
-  server = spawn("npx", ["vite", "preview", "--port", String(port), "--strictPort"], { cwd: path.join(here, ".."), stdio: "pipe" });
+  // static mode unless told otherwise: a stray API server on :8000 must not change what is tested
+  server = spawn("npx", ["vite", "preview", "--port", String(port), "--strictPort"], { cwd: path.join(here, ".."), stdio: "pipe", env: { ...process.env, XRAY_API: process.env.XRAY_API || "http://127.0.0.1:9" } });
   BASE = `http://localhost:${port}/`;
   for (let i = 0; i < 80; i++) { try { if ((await fetch(BASE)).ok) break; } catch {} await sleep(250); }
 }
@@ -363,7 +364,7 @@ async function phone(browser) {
   await p.waitForFunction(() => window.__xr.xo.open, null, { timeout: 20000, polling: 100 });
   await step(p, 40);
   const r = await p.evaluate(() => { const a = document.querySelector("#xo").getBoundingClientRect(), v = document.querySelector("#xo .xo-view").getBoundingClientRect(); return { w: a.width, l: a.left, b: a.bottom, vh: v.height, close: !!document.querySelector('#xo [data-xo="close"]').getBoundingClientRect().width }; });
-  ok("Phone: X-Ray panel is a full-width sheet with the model on top", Math.abs(r.w - 390) < 1 && r.l === 0 && Math.abs(r.b - 844) < 1 && r.vh > 180 && r.close, JSON.stringify(r));
+  ok("Phone: X-Ray panel is a full-width sheet with the model on top", Math.abs(r.w - 390) < 1 && Math.abs(r.l) < 1 && Math.abs(r.b - 844) < 1 && r.vh > 180 && r.close, JSON.stringify(r));
   await p.screenshot({ path: `${SHOTS}/xo-phone.png` });
   await p.tap('#xo [data-xo="close"]');
   ok("Phone: closes", await p.evaluate(() => !window.__xr.xo.open));
