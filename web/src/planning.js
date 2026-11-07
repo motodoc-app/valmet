@@ -29,7 +29,7 @@ const SNAP = 0.05;                      // metres
 const CLEAR_PAD = 0.08;                 // old footprint padding: the scan points of the moved object itself
 const TIGHT = 0.3;                      // below this clearance (m) the proxy is shown amber
 const OBST_MIN = 0.12, OBST_MAX = 1.25; // same height band the navigation grid uses (config.py)
-const ZONE_DEPTH = 1.0, ZONE_EXTRA = 0.4;  // assumed illustrative service zone: 1.0 m deep × pump width + 0.4 m
+const ZONE_DEPTH = 1.0, ZONE_EXTRA = 0.8;  // assumed illustrative service zone: 1.0 m deep × pump width + 0.8 m (0.4 m side access each side)
 const LIFT = 0.06;                      // picked-up objects float this high (m) while held: purely visual
 const DROP_S = 0.26;                    // settle animation on release (s)
 const MOUNTED_Y = 0.6;                  // objects whose box starts higher than this are wall / pipe mounted

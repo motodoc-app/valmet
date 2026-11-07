@@ -674,16 +674,19 @@ function followCamera(dt) {
 async function arrive() {
   S.robot.arrived = true;
   const o = S.navObject, c = new THREE.Vector3(...o.center), r = S.fac.robot.position.clone();
+  // the user opened another asset's diagnosis while the robot drove: arriving must not replace it (prompt only)
+  const userCard = S.cardLock && S.diag?.asset?.asset_id && S.diag.asset.asset_id !== o.asset?.asset_id;
   const dir = c.clone().sub(r).setY(0).normalize();
   const side = new THREE.Vector3(-dir.z, 0, dir.x);
   if (S.cam === "chase" || S.cam === "free") flyTo(r.clone().addScaledVector(dir, -0.9).addScaledVector(side, 1.0).setY(1.7), c.clone().setY(Math.max(0.35, c.y)));
-  S.selected = o;
-  S.fac.setHighlighted([], { selected: o.id, target: o.id });
+  if (!userCard) { S.selected = o; S.fac.setHighlighted([], { selected: o.id, target: o.id }); }
   const owned = APP.modes.get(S.mode)?.ownsCard;          // Plan / Support keep their own cards
   renderDock(); if (!owned) renderLeft();
   // in-scene prompt (navigate → arrive → inspect → understand), except in modes that own their card (Plan, Support)
   if (owned || !APP.arrival?.show(o)) toast(`Arrived at <b>${o.asset.tag}</b>. Diagnosis ready.`);
-  S.diag = await S.diagPromise; S.tab = "overview";
+  const d = await S.diagPromise;
+  if (userCard && S.cardLock) return;
+  S.diag = d; S.tab = "overview";
   if (owned || APP.modes.get(S.mode)?.ownsCard) return;
   $("#right").classList.remove("min");
   renderDiagnosis();
@@ -1277,6 +1280,30 @@ else renderer.setAnimationLoop(() => {
   if (QA) { const now = performance.now(); if (now - lastQA < 2500) return; lastQA = now; }
   frame(QA ? 0.05 : Math.min(clock.getDelta(), 0.05), clock.elapsedTime);
 });
+// Render on demand: while nothing in the 3D view changes (camera and robot still, no pointer / key / wheel input for
+// IDLE_MS) the scan is redrawn only every IDLE_EVERY ms instead of every display frame. The logic still runs every frame;
+// only the GPU work is skipped, which keeps typing, scrolling and the side panels smooth on laptop GPUs.
+const IDLE_MS = 2500, IDLE_EVERY = 125, _sig = new THREE.Matrix4();
+let lastInput = 0, lastChange = 0, lastDraw = 0, _rsig = "";
+// only interaction with the 3D view wakes it: pointer / wheel / touch on the canvas, keys outside text fields
+// (typing in a search box or scrolling a side panel never forces full-rate 3D rendering)
+for (const ev of ["pointerdown", "pointermove", "wheel", "touchstart", "touchmove"]) renderer.domElement.addEventListener(ev, () => { lastInput = performance.now(); }, { passive: true });
+addEventListener("keydown", (e) => { if (!e.target.closest?.("input, textarea, select, [contenteditable]")) lastInput = performance.now(); }, { passive: true, capture: true });
+addEventListener("pointerup", () => { lastInput = performance.now(); }, { passive: true, capture: true });   // clicks on buttons that change the view
+APP.wake = () => { lastChange = performance.now(); };
+function sceneChanged() {
+  _sig.copy(camera.matrixWorld);
+  const r = S.fac.robot, sig = _sig.elements.map((v) => v.toFixed(4)).join() + `|${r.position.x.toFixed(3)},${r.position.z.toFixed(3)},${r.rotation.y.toFixed(3)}`;
+  if (sig !== _rsig) { _rsig = sig; return true; }
+  return false;
+}
+function shouldDraw() {
+  const now = performance.now();
+  if (CAPTURE || sceneChanged() || S.robot.moving || APP.xo?.open || document.hidden) lastChange = now;
+  APP.idle = now - Math.max(lastInput, lastChange) > IDLE_MS;
+  if (!APP.idle || now - lastDraw >= IDLE_EVERY) { lastDraw = now; return true; }
+  return false;
+}
 function frame(dt, t) {
   updateTween(dt);
   if (!S.fac) return;
@@ -1290,8 +1317,10 @@ function frame(dt, t) {
     drawMinimap(dt);
     if (!S.robot.moving) S.fac.pulse(t, S.target.id);
     controls.update();
-    renderer.render(fac, camera);
-    labels.render(fac, camera);
+    if (shouldDraw()) {
+      renderer.render(fac, camera);
+      labels.render(fac, camera);
+    }
     if (APP.xo?.open) APP.xo.render(dt, t);       // in-scene X-Ray panel: drawn only while it is open
   } else {
     povRobotVisibility(false); povHud(dt, false);

@@ -74,7 +74,7 @@ on("frame", () => {
     else if (!high && LOOK.autoCut) { S.fac.setCutaway(false); LOOK.autoCut = false; }
   } else LOOK.autoCut = false;
   // ---- adaptive pixel ratio
-  if (!LOOK.adapt || document.hidden) { last = 0; return; }
+  if (!LOOK.adapt || document.hidden || A.idle) { last = 0; return; }   // idle: frames are skipped on purpose (main.js)
   const now = performance.now();
   if (last) { const dt = now - last; if (dt < 250) { acc += dt; n++; } }   // ignore stalls (tab switch, alerts)
   last = now;

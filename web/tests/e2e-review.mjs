@@ -134,7 +134,8 @@ try {
   const jf = await download(p, '#review [data-rv="json"]');
   const J = JSON.parse(readFileSync(jf, "utf8"));
   const A = JSON.parse(readFileSync(path.join(repo, "config", "scene_annotations.json"), "utf8"));
-  ok("JSON: same top-level keys as config/scene_annotations.json", JSON.stringify(Object.keys(J).sort()) === JSON.stringify(Object.keys(A).sort()), Object.keys(J).join(","));
+  // the export is a review layer: its keys are the config's review sections (the config may also carry settings such as demo_start)
+  ok("JSON: review sections match config/scene_annotations.json", ["_doc", "merge_regions", "relabel_near"].every((k) => k in J && k in A) && Object.keys(J).every((k) => k in A), Object.keys(J).join(","));
   const keysA = JSON.stringify(Object.keys(A.relabel_near[0]).sort());
   ok("JSON: relabel_near entries have exactly point/label/category/note", J.relabel_near.length === 4 && J.relabel_near.every((r) => JSON.stringify(Object.keys(r).sort()) === keysA
     && r.point.length === 3 && r.point.every(Number.isFinite) && r.label && r.category));
