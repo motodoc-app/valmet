@@ -49,7 +49,8 @@ function floorTexture(grid, x0, z0, w, d) {
   if (grid) {
     const m = document.createElement("canvas"); m.width = grid.W; m.height = grid.H;
     const mg = m.getContext("2d"), img = mg.createImageData(grid.W, grid.H);
-    for (let i = 0; i < grid.W * grid.H; i++) if (grid.walkableMask[i]) img.data.set([94, 200, 255, 70], i * 4);
+    // a light tint: the real floor of the scan must still read through it (at 70/255 it washed the floor blue-grey)
+    for (let i = 0; i < grid.W * grid.H; i++) if (grid.walkableMask[i]) img.data.set([94, 200, 255, 38], i * 4);
     mg.putImageData(img, 0, 0);
     g.imageSmoothingEnabled = true;
     g.drawImage(m, (grid.x0 - x0) * px, (grid.z0 - z0) * px, grid.W * grid.res * px, grid.H * grid.res * px);

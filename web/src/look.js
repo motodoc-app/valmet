@@ -7,8 +7,8 @@
 //   · adaptive resolution (desktop only): pixel ratio between 1 and min(devicePixelRatio, 2), stepped by 0.25 from the
 //     measured frame time (down when > 24 ms on average, up when < 14 ms for 3 s). Phones (LITE) stay at 1;
 //     ?capture (frame-by-frame recording) and ?dpr=<n> (fixed) are left alone.
-//   · auto cut-away: orbiting the free / chase camera above the ceiling hides the ceiling, haze and the wall skins
-//     (the same layers the Broadcast / Top cameras hide); coming back down restores them.
+//   · auto cut-away: orbiting the free / chase camera above the ceiling fades out the ceiling and hides the haze (the
+//     same cut-away the Angled / Top cameras use, Facility.setCutaway); coming back down restores them.
 import * as THREE from "three";
 import { APP, on } from "./ext.js";
 import { LITE } from "./ui.js";
@@ -35,6 +35,8 @@ function plateTexture(w, d, margin) {
   g.fillStyle = "rgba(50,55,63,1)";
   g.beginPath(); g.roundRect(m * 0.55, m * 0.55, W - m * 1.1, H - m * 1.1, m * 0.6); g.fill();
   g.filter = `blur(${Math.round(m * 0.25)}px)`;
+  // under the room footprint it stays dark on purpose: a gap in the scanned floor is missing scan data and must read
+  // as such (the cut-away chip says so), not be painted over in a floor-like colour
   g.fillStyle = "rgba(14,16,19,0.85)";
   g.beginPath(); g.roundRect(m, m, W - 2 * m, H - 2 * m, m * 0.2); g.fill();
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
@@ -68,7 +70,7 @@ on("frame", () => {
   // ---- auto cut-away for the free / chase camera above the ceiling (spectator and Plan cameras manage their own)
   if ((S.cam === "free" || S.cam === "chase") && S.mode !== "plan") {
     const high = A.camera.position.y > (S.data.ceiling_y || 2.05) + 0.25;
-    if (high) { if (!S.fac.cutaway) S.fac.setCutaway(true); LOOK.autoCut = true; }
+    if (high) { if (!S.fac.cutAsked) S.fac.setCutaway(true); LOOK.autoCut = true; }
     else if (!high && LOOK.autoCut) { S.fac.setCutaway(false); LOOK.autoCut = false; }
   } else LOOK.autoCut = false;
   // ---- adaptive pixel ratio

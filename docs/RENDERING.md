@@ -48,8 +48,9 @@ chunk fails to download/decode, or the splat engine is unavailable → the class
 
 **Cleaner presentation.**
 * `scanfilter.js` gains a third class, "outside": splats > 6 cm beyond a fitted wall plane (the wall skin and what lies
-  behind it). It is hidden only in cut-away views (Broadcast/Top/overview), together with the haze; at eye level the
-  walls stay (Clean scan still hides only the haze). Same classifier at build time (SPZ) and at load time (classic).
+  behind it). It was hidden in cut-away views (Broadcast/Top/overview), together with the haze; at eye level the
+  walls stay (Clean scan still hides only the haze). *Superseded in Round 3 (§7): hiding it removed the walls; they
+  now always stay.* Same classifier at build time (SPZ) and at load time (classic).
 * `homeView`: eye height 1.65 m at the short wall nearest the robot, looking down the long axis of the room.
 * Asset condition pins (`twin.js`): a small constant-size pin above each asset that is not healthy (13 of 30), colour =
   condition; asset frames are now faint (0.45 alpha). Pins step aside in the semantic view and when the asset's own
@@ -113,3 +114,56 @@ Same method: identical poses in `?capture` mode, left = before (round-1 branch a
 | Spark quality options | Not changed. | Round 1 measured blur / pre-blur at ≤ 1.3 / 255 mean difference; `focalAdjustment` > 1 would sharpen splats beyond what this model was trained for (not faithful). Spark defaults are the reference for this model. |
 | Colour / exposure | Not changed (faithful to the capture). | Eye-level frames use the full range without clipping: luminance p1 / p50 / p99 = 30 / 127 / 223, 0.03 % of pixels ≥ 250. The warm cast (R > G > B) is the room's tungsten light as captured; "correcting" it would fabricate a look. |
 | Clean scan at eye level | Not made default. | The haze filter's eye-level effect is barely visible (round-1 images) and it is one click away; in high / angled views it is now always on (cut-away). |
+
+## 7. Round 3 (final QA): the "cut-outs" in Top and Angled
+
+Same method: `?capture`, 1440×900, pixel ratio 1, full-fidelity scan (18 SPZ chunks, 1,669,970 splats), identical
+camera poses before / after (`docs/rendering/r3-*.jpg`, left = before, right = after).
+
+**Root cause (measured, mechanisms toggled one at a time at the Top and Angled poses).** The cut-away hid whole scan
+layers. (1) It dropped the "outside" layer: splats more than 6 cm behind a fitted wall plane. Real walls are not flat
+(pipes, cabinets, plaster), so about half of every wall's splats lie 6–30 cm behind its plane (per wall: 31–49 k
+splats within ±6 cm, 22–64 k at 6–30 cm). Hiding them took the walls out of the room: Angled showed the room as an
+island in a black void, Top had ragged, wedge-shaped edges (the +z plane is tilted 5.5°). Showing that layer alone
+brings the back wall, its windows and cabinets back. (2) Everything above exactly 1.7 m was sliced off (whole
+chunks), so tall equipment and walls ended in a hard cut. Not causes: the haze filter (≈ 0.2 % of the opacity in
+the open floor area; showing it only adds a whitish fog), near/far planes (0.03 / 120 m), Spark sorting (shots are
+taken after the sorter is idle), the LOD tier (desktop loads all 18 chunks), the floor plate (it only shows through
+real gaps).
+
+**What is genuinely missing in the scan (not fixed, not painted over).** The ceiling and overhead duct band (1.8–2.1 m)
+were captured from below: seen from above they are a blurry sheet that hides the room (see the "Show full scan"
+image). The open middle of the floor is thinly reconstructed (dark speckle between splats from high up). The tops of
+tall objects and wall tops are smeared from directly above. These gaps stay dark; the cut-away chip says
+"dark gaps = no scan data".
+
+**Changes.**
+
+| Change | Where | Evidence |
+|---|---|---|
+| Soft ceiling cut instead of layer slicing: one Spark `SplatEdit` (horizontal plane SDF, opacity × 0, soft edge) fades out everything between 1.55 and 1.85 m; walls ("outside" layer) and the upper layer stay; haze stays hidden. Render-time only, applied in world space after the mesh transform, so it works for SPZ and classic splats. The point-cloud fallback (no splat engine) keeps the 1.7 m layer cut. | `facility.js` (`_applyCut`, `_layerOn`, `cutY`) | `r3-top.jpg`, `r3-angled.jpg`, `r3-plan.jpg`; `e2e-render`: "soft ceiling cut … walls and tall equipment kept" |
+| Cut-away chip in every overhead view (Top, Angled, overview, Plan Top/Angled): says what is hidden and that dark gaps are missing data; one tap "Show full scan" / "Cut-away". The choice survives camera switches (Top → Angled → Chase → Top) until undone. | `layers.js`, `layers.css`, `Facility.setCutUser` | `r3-top-cut-vs-full.jpg`; `e2e-render`: three "Cut-away chip" checks |
+| Chase camera is pulled inside the fitted walls (margin 0.3 m). Before, it stood behind a wall in 541 of 1,028 route frames (5 routes), up to 1.5 m, looking at the back of the wall. After: 0 frames. | `main.js` `keepInRoom` | `r3-chase-near-wall.jpg`; `e2e-pov-xray`: "Chase: never behind a wall" |
+| Angled camera keeps its 45° broadcast pose but swings up (same distance, up to 78°) when the robot comes close to the wall it looks across, so the kept wall never hides the robot: frames with the robot behind that wall 165 → 23 of 1,028 (the rest is the camera's damped follow lag). | `main.js` `broadcastOffset(p)` | `r3-angled-arrival.jpg`; `e2e-pov-xray`: "Angled: the near wall hides the robot in < 5 %" |
+| Twin drivable-floor tint 70 → 38 / 255: the scanned floor reads through it in Plan. | `twin.js` | `r3-plan.jpg` |
+
+Camera audit (`?scan=off`, logic only): every mode switched mid-route (POV → Chase → Angled → Top → Free → POV →
+Angled → Chase) leaves the route object, progress (monotonic) and motion untouched; no NaN; dock and navpad light the
+active mode; POV stays ≥ 0.79 m inside the walls except when the robot hugs a wall (≤ 0.17 m into the fitted plane,
+inside the wall's own splat thickness).
+
+Cost: overhead views now draw 1,552,575 splats (everything except the haze) instead of 965,663, i.e. the same set as
+eye level, so the overhead frame cost is bounded by the eye-level cost that already ran; splats faded to zero opacity
+are not drawn. Measured in software GL (shared 4-core box, 1440×900, ratio 1; one frame + screenshot, so only the
+ratio means anything): Top 24.5 → 35–38 s, Angled 20.9 → 29–35 s, against 59–116 s for the eye-level home view that
+draws all 1,669,970 splats. On a GPU, overhead views therefore cost at most what eye level already costs. Draw calls
+unchanged (Top 26, Angled 20, Plan 19); adaptive pixel ratio unchanged (desktop 1–2, phones 1); UI usable 0.4–1.3 s
+after navigation, all 18 chunks decoded 3–12 s after (local preview, heavily loaded machine).
+
+**Data check.** `data/raw/equipment_room.ply` re-hashed: SHA-256 `83d8c7d9…2f955`, 395,651,019 bytes, header
+"Generated by EGS", 1,676,481 splats, 59 float properties (x y z, scale_0..2, rot_1..3 + rot_0, f_dc_0..2, opacity,
+f_rest_0..44). Decoding all 18 SPZ chunks (SPZ v3, SH degree 3, 12 fractional bits) gives 1,669,970 splats = the
+PLY minus its 6,511 splats with opacity < 1/255. A sample of 7,192 splats matched to the PLY by position: position
+error ≤ 0.1 mm, opacity ≤ 0.002, log-scale ≤ 0.033 (SPZ's 1/32 step), rotation |q·q'| = 1.0000, SH rest ≤ 0.066 (SPZ's
+4–5-bit SH quantisation), DC colour median 0.010; 0.9 % of DC channels lie outside SPZ's representable range and are
+clipped (vs 27 % for the classic `.splat` export).

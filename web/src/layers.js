@@ -147,6 +147,54 @@ function downloadPNG() {
   }, "image/png");
 }
 
+// ------------------------------------------------------------------ cut-away chip (overhead views)
+// Whenever a high camera asks for the cut-away, say what is hidden and offer the full scan in one tap. The choice is
+// Facility.cutUser, so it survives camera switches (Top → Angled → Chase → Top keeps the full scan) until the user
+// turns the cut-away back on here.
+function cutChip() {
+  const f = fac(), A = APP;
+  const show = !!f && f.cutAsked && A.sceneMode?.() && !A.xo?.open && !document.body.classList.contains("focus");
+  const soft = f?._softCut?.();
+  const key = show ? `${f.cutaway}|${soft}|${f.cutTop}|${f.cutSoft}` : "";
+  if (!L.cut) {
+    if (!show) return;
+    L.cut = document.createElement("div"); L.cut.className = "cut-chip hidden"; L.cut.id = "cutChip"; L.cut.setAttribute("role", "status");
+    L.cut.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-cut]"); if (!b) return;
+      fac().setCutUser(b.dataset.cut === "full" ? false : null);
+      cutChip();
+    });
+    document.querySelector("#app").appendChild(L.cut);
+  }
+  L.cut.classList.toggle("hidden", !show);
+  if (!show || key === L.cutKey) { if (show) placeCut(); return; }
+  L.cutKey = key;
+  const lo = soft ? (f.cutTop - f.cutSoft / 2).toFixed(2) : f.layerY.toFixed(1);
+  const what = soft ? `ceiling and overhead ducts faded out from ${lo} m` : `everything above ${lo} m hidden`;
+  L.cut.innerHTML = f.cutaway
+    ? `<span class="cc-dot"></span><span><b>Cut-away</b> ${what}<span class="cc-why"> so you can see inside</span>. Dark gaps = no scan data.</span><button type="button" data-cut="full" title="Show the whole scan, ceiling included (stays on when you switch views)">Show full scan</button>`
+    : `<span class="cc-dot off"></span><span><b>Full scan</b> ceiling shown<span class="cc-why"> (it hides the room from above)</span>.</span><button type="button" data-cut="auto" title="Fade out the ceiling again in overhead views">Cut-away</button>`;
+  L.cut.title = f.cutaway ? "The 3D scan itself is unchanged; this only changes what is drawn from this camera." : "";
+  placeCut();
+}
+function placeCut() {
+  if (!L.cut || L.cut.classList.contains("hidden")) return;
+  const vis = (el) => el && getComputedStyle(el).display !== "none" && !el.classList.contains("hidden") && el.getBoundingClientRect().height > 0;
+  const d = document.querySelector("#dock"), lc = document.querySelector("#left"), rc = document.querySelector("#right");
+  if (innerWidth <= 820) {           // phones: under the header and the mode tabs, never over them
+    const m = document.querySelector(".modes"), top = Math.max(64, vis(m) ? m.getBoundingClientRect().bottom + 8 : 64);
+    Object.assign(L.cut.style, { top: `${Math.round(top)}px`, bottom: "auto", left: "50%", maxWidth: `${innerWidth - 24}px` });
+    return;
+  }
+  // just above the dock (and above the semantic legend when it is up), centred between the cards: clear of the
+  // guide strip and the toasts at the top
+  let bottom = vis(d) ? innerHeight - d.getBoundingClientRect().top + 10 : 24;
+  if (vis(L.legend)) bottom = innerHeight - L.legend.getBoundingClientRect().top + 6;
+  const x0 = vis(lc) ? lc.getBoundingClientRect().right + 12 : 12, x1 = vis(rc) ? rc.getBoundingClientRect().left - 12 : innerWidth - 12;
+  Object.assign(L.cut.style, { top: "auto", bottom: `${Math.round(bottom)}px`, left: `${Math.round((x0 + x1) / 2)}px`, maxWidth: `${Math.round(Math.max(240, x1 - x0))}px` });
+}
+addEventListener("resize", placeCut);
+
 // ------------------------------------------------------------------ hover + selection outline
 on("boot", (A) => {
   const b = document.querySelector('#rail [data-rail="x:sitemap"]'); if (b) b.innerHTML = PLAN_ICON;
@@ -164,6 +212,8 @@ on("boot", (A) => {
 on("frame", () => {
   const f = fac(), A = APP; if (!f) return;
   if (++L.tick % 30 === 0 && L.legend && !L.legend.classList.contains("hidden")) placeLegend();   // the dock changes height
+  if (L.tick % 30 === 15) placeCut();
+  if (L.tick % 6 === 0 || f.cutAsked !== L.cutAsked || f.cutaway !== L.cutOn) { L.cutAsked = f.cutAsked; L.cutOn = f.cutaway; cutChip(); }
   const sel = A.S.selected?.id ?? null;
   if (sel !== f.outlineId) f.setOutline(sel);
   if (!L.hoverDirty) return;
@@ -174,9 +224,9 @@ on("frame", () => {
   f.setHover(id);
   A.canvas.style.cursor = id ? "pointer" : "";
 });
-window.__layers = { L, siteMapCanvas, setSemantic, setUncertain, openSiteMap };   // tests
+window.__layers = { L, siteMapCanvas, setSemantic, setUncertain, openSiteMap, cutChip };   // tests
 on("modeChange", (mode) => {
   const f = fac(); if (!f) return;
   if (!APP.sceneMode?.(mode)) { f.setHover(null); f.setOutline(null); }
-  renderLegend();
+  renderLegend(); cutChip();
 });

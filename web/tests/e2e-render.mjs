@@ -57,16 +57,41 @@ try {
     return S.fac.pick(ray);
   });
   ok("HQ: object picking (analytic boxes) still finds objects", !!pick, pick);
-  // cut-away / clean scan are visibility flips on the per-layer chunks
+  // cut-away: the haze layer is hidden, walls and everything below the soft cut stay; the ceiling and overhead ducts
+  // are faded out by one render-time SplatEdit (plane SDF), so nothing is sliced at a layer boundary
   const flips = await p.evaluate(() => {
-    const f = window.__app.fac; f.setCutaway(true);
-    const hiOff = f.splats.filter((m) => m.userData.layer === "high" || m.userData.outside || m.userData.haze).every((m) => !m.visible);
-    const lowOn = f.splats.filter((m) => m.userData.layer === "low" && !m.userData.outside && !m.userData.haze).every((m) => m.visible);
-    f.setCutaway(false); f.setCleanScan(true);
-    const hzOff = f.splats.filter((m) => m.userData.haze).every((m) => !m.visible) && f.splats.filter((m) => m.userData.outside).every((m) => m.visible);   // walls stay at eye level
-    f.setCleanScan(false); const allOn = f.splats.every((m) => m.visible); return hiOff && lowOn && hzOff && allOn && f.splats.some((m) => m.userData.outside);
+    const f = window.__app.fac, S = window.__xr.scene; f.setCutaway(true);
+    const edit = S.getObjectByName("cutaway-ceiling"), sdf = edit?.children[0];
+    const sdfOk = !!edit && edit.softEdge > 0 && sdf?.type === "plane" && sdf.opacity === 0 && Math.abs(sdf.position.y - f.cutTop) < 1e-9;
+    // the plane's local +z must point down (inside = above the cut)
+    const down = sdf && new window.__xr.THREE.Vector3(0, 0, 1).applyQuaternion(sdf.getWorldQuaternion(new window.__xr.THREE.Quaternion())).y < -0.99;
+    const hzOff = f.splats.filter((m) => m.userData.haze).every((m) => !m.visible);
+    const restOn = f.splats.filter((m) => !m.userData.haze).every((m) => m.visible);   // walls + high layer kept
+    const cutY = f.cutY === f.cutTop;
+    f.setCutaway(false); const editGone = !S.getObjectByName("cutaway-ceiling");
+    f.setCleanScan(true);
+    const cleanOk = f.splats.filter((m) => m.userData.haze).every((m) => !m.visible) && f.splats.filter((m) => m.userData.outside).every((m) => m.visible);   // walls stay at eye level
+    f.setCleanScan(false); const allOn = f.splats.every((m) => m.visible);
+    return { sdfOk, down, hzOff, restOn, cutY, editGone, cleanOk, allOn, outside: f.splats.some((m) => m.userData.outside) };
   });
-  ok("HQ: cut-away hides ceiling, haze and outside-the-walls; clean scan hides haze only", flips);
+  ok("HQ: cut-away = soft ceiling cut (SplatEdit plane) + haze hidden, walls and tall equipment kept; clean scan hides haze only", Object.values(flips).every(Boolean), JSON.stringify(flips));
+  // cut-away chip: labelled whenever an overhead camera cuts; "Show full scan" survives camera switches until undone
+  const chip = await p.evaluate(() => {
+    const X = window.__xr, S = window.__app, f = S.fac, st = () => { window.__step(1 / 30); const c = document.querySelector("#cutChip"); return { cut: f.cutaway, shown: !!c && !c.classList.contains("hidden"), text: c?.textContent || "" }; };
+    const r = {};
+    X.setCamera("top"); r.top = st();
+    document.querySelector('#cutChip [data-cut="full"]').click(); r.full = st();
+    X.setCamera("broadcast"); r.angled = st();
+    X.setCamera("chase"); r.chase = st();
+    X.setCamera("top"); r.top2 = st();
+    document.querySelector('#cutChip [data-cut="auto"]').click(); r.back = st();
+    X.setCamera("chase"); r.chase2 = st();
+    X.cancelTween();                 // setCamera("chase") flies home; the next check places the camera itself
+    return r;
+  });
+  ok("Cut-away chip: labelled in Top (what is hidden, no-data note)", chip.top.cut && chip.top.shown && /Cut-away/.test(chip.top.text) && /faded out from 1\.55 m/.test(chip.top.text) && /no scan data/.test(chip.top.text), chip.top.text);
+  ok("Cut-away chip: 'Show full scan' turns it off and survives Top → Angled → Chase → Top", !chip.full.cut && chip.full.shown && /Full scan/.test(chip.full.text) && !chip.angled.cut && !chip.chase.shown && !chip.top2.cut && chip.top2.shown, JSON.stringify({ full: chip.full.cut, angled: chip.angled.cut, top2: chip.top2.cut }));
+  ok("Cut-away chip: 'Cut-away' restores it; eye-level views have no chip", chip.back.cut && !chip.chase2.cut && !chip.chase2.shown);
   // markers + twin overlay
   const tw = await p.evaluate(async () => {
     const f = window.__app.fac, pins = f.markers.children.filter((c) => c.isSprite).length;
@@ -99,6 +124,14 @@ try {
   ok("Classic: loads on request", await done(p));
   s = await info(p);
   ok("Classic: ?render=classic uses the xq16 chunks", s.path === "classic" && s.hq === 0 && /streamed chunks/.test(s.src), s.src);
+  const ccut = await p.evaluate(() => {
+    const f = window.__app.fac; f.setCutaway(true);
+    const r = { edit: !!window.__xr.scene.getObjectByName("cutaway-ceiling"), highOn: f.splats.filter((m) => m.userData.layer === "high" && !m.userData.haze).every((m) => m.visible),
+      // a point-cloud preview (no splat engine) cannot take the soft cut: it still hides the layer above layerY, never the walls
+      pointsHigh: f._layerOn({ userData: { layer: "high" } }), pointsLowWall: f._layerOn({ userData: { layer: "low", outside: true } }) };
+    f.setCutaway(false); window.__step(1 / 30); return r;
+  });
+  ok("Classic: soft cut-away on the classic splats; point fallback hides only the high layer", ccut.edit && ccut.highOn && !ccut.pointsHigh && ccut.pointsLowWall && p.errors.length === 0, JSON.stringify(ccut));
   await p.context().close();
 
   // 3. SPZ chunk broken → automatic fallback to the classic chunks

@@ -1,6 +1,6 @@
 // The scanned plant room: splats, semantic 3D frames, route, robot and walkway blocks.
 import * as THREE from "three";
-import { SplatMesh } from "@sparkjsdev/spark";
+import { SplatMesh, SplatEdit, SplatEditSdf, SplatEditSdfType, SplatEditRgbaBlendMode } from "@sparkjsdev/spark";
 import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { hazeMask, wallClip } from "./scanfilter.js";
 import { CATEGORIES, CAT, CONDITION, catOf, isUncertain, hexRGB } from "./semantic.js";
@@ -104,8 +104,16 @@ export class Facility {
     this.showMode = "all";
     this.splats = [];
     this.previews = [];
-    this.cutY = 1.7;          // metres above the floor
-    this.cutaway = false;
+    // Cut-away for high cameras (Top / Angled / overview). Gaussian splats: a soft horizontal cut (Spark SplatEdit,
+    // render-time only) that fades out the ceiling and the overhead duct band between cutTop ± cutSoft/2, so walls and
+    // tall equipment stay whole up to there instead of being sliced. The point-cloud fallback (no splat engine) can
+    // only hide whole layers, so it cuts at layerY, the height the scan chunks are split at (build-hq-scan CUT_Y).
+    this.layerY = 1.7;        // metres above the floor
+    this.cutTop = 1.7;        // middle of the soft cut (splats)
+    this.cutSoft = 0.3;       // fade band (m): fully shown below cutTop − cutSoft/2, gone above cutTop + cutSoft/2
+    this.cutaway = false;     // the cut-away as drawn
+    this.cutAsked = false;    // what the camera asks for (high cameras: Top, Angled, overview, Plan Top/Angled)
+    this.cutUser = null;      // null = follow the camera; false = the user chose "Show full scan" (survives camera switches)
     this.cleanScan = false;   // hide haze splats (scanfilter.js)
     this.semantic = false;    // category-coloured boxes over a dimmed scan
     this.showUncertain = false;
@@ -186,7 +194,7 @@ export class Facility {
       m.userData.layer = c.layer; m.userData.haze = !!c.haze; m.userData.outside = !!c.outside; m.userData.hq = true;
       m.visible = false;
       this._styleSplat(m);
-      this.root.add(m); this.splats.push(m);
+      this.root.add(m); this.splats.push(m); this._applyCut();
       await Promise.race([m.initialized, new Promise((_, rej) => setTimeout(() => rej(new Error("splat engine timeout")), timeoutMs))]);
       m.visible = this._layerOn(m);
       this.scanStats.splats += c.count; if (c.haze) this.scanStats.haze += c.count;
@@ -241,7 +249,7 @@ export class Facility {
       // split each chunk at the cut-away height: the upper part (ceiling, overhead pipes) can be hidden so
       // high spectator cameras look straight into the room, like an architectural floor-plan cut
       // ...and partition out the haze (clean-scan filter) the same way
-      const { parts, total: nAll, haze: nHaze } = splitScan(all, this.cutY, { ...this.data.bounds, walls: wallClip(this.data.planes, this.data.bounds) });
+      const { parts, total: nAll, haze: nHaze } = splitScan(all, this.layerY, { ...this.data.bounds, walls: wallClip(this.data.planes, this.data.bounds) });
       this.scanStats.splats += nAll; this.scanStats.haze += nHaze;
       for (const { layer, haze, outside, bytes: splat } of parts) {
         if (!splat.length) continue;
@@ -257,7 +265,7 @@ export class Facility {
           m.visible = this._layerOn(m);
           this._styleSplat(m);
           this.root.add(m);
-          this.splats.push(m);
+          this.splats.push(m); this._applyCut();
           await Promise.race([m.initialized, new Promise((_, rej) => setTimeout(() => rej(new Error("splat engine timeout")), timeoutMs))]);
           preview.userData.replaced = true;   // splats are up: drop the preview for this part
           preview.visible = false;
@@ -376,23 +384,63 @@ export class Facility {
     return best?.id ?? null;
   }
 
-  /** Hide everything above the cut height (ceiling, overhead pipes and their frames) for high cameras. */
+  /** Height above which things count as cut away (frames, picking, Plan): the middle of the soft cut with Gaussian
+   *  splats, the layer split for the point-cloud fallback. */
+  get cutY() { return this._softCut() ? this.cutTop : this.layerY; }
+  /** True when the scan is drawn as Gaussian splats, which take the soft render-time cut. */
+  _softCut() { return this.splats.length > 0 && this.splatMode !== "points"; }
+
+  /** A high camera asks for the cut-away (ceiling and overhead ducts faded out, their frames hidden). The user's
+   *  "Show full scan" choice (setCutUser) wins over it until the user switches the cut-away back on. */
   setCutaway(on) {
+    on = !!on;
     this.robot.userData.tag.visible = on;
+    this.cutAsked = on;
+    this._setCut(on && this.cutUser !== false);
+  }
+  /** The user's override from the cut-away chip: false = always the full scan, null = follow the camera again. */
+  setCutUser(v) {
+    this.cutUser = v === false ? false : null;
+    this._setCut(this.cutAsked && this.cutUser !== false);
+  }
+  _setCut(on) {
     if (this.cutaway === on) return;
     this.cutaway = on;
+    this._applyCut();
     this._applyLayers();
     this.setShowMode(this.showMode);
     if (this.sem) this._semStyle();
   }
 
+  // The soft cut: one global SplatEdit with a horizontal plane SDF that multiplies the opacity of every editable splat
+  // above cutTop by 0 (linear fade over cutSoft). It is in the scene only while the cut-away is on. Spark applies it
+  // in world space after the mesh transform, so it works for the SPZ meshes (scan frame + canonical matrix) and the
+  // classic .splat meshes alike. The Plan cut-out copies are not editable, so moved equipment is never cut.
+  _applyCut() {
+    const want = this.cutaway && this._softCut();
+    if (want && !this._cut) {
+      const edit = new SplatEdit({ name: "cutaway-ceiling", rgbaBlendMode: SplatEditRgbaBlendMode.MULTIPLY, softEdge: this.cutSoft });
+      const sdf = new SplatEditSdf({ type: SplatEditSdfType.PLANE, opacity: 0, color: new THREE.Color(1, 1, 1) });
+      sdf.rotation.x = Math.PI / 2;   // the plane's local +z points down: "inside" (distance < 0) is above the cut
+      edit.add(sdf);
+      this._cut = { edit, sdf };
+    }
+    if (!this._cut) return;
+    this._cut.sdf.position.y = this.cutTop;
+    this._cut.edit.softEdge = this.cutSoft;
+    if (want && !this._cut.edit.parent) this.root.add(this._cut.edit);
+    if (!want && this._cut.edit.parent) this._cut.edit.removeFromParent();
+  }
+
   // ---------------------------------------------------------------- scan layers: cut-away, clean scan, semantic dimming
-  // haze is hidden by the clean-scan filter and always in the semantic view (there the scan is only context)
-  // high cameras (cut-away) also drop the haze: from above, the floaters outside the walls are what reads as "unfinished"
-  // wall skins and what lies behind them ("outside") only go in cut-away views, where they would ring the room
+  // haze is hidden by the clean-scan filter and always in the semantic view (there the scan is only context);
+  // high cameras (cut-away) also drop the haze: from above, the floaters outside the room are what reads as "unfinished".
+  // The walls ("outside" = beyond a fitted wall plane: about half of every wall's splats lie 6–30 cm behind the plane,
+  // because real walls are not flat) always stay: hiding them left the room without walls, with ragged holes along
+  // the edges, in Top and Angled. The "high" layer (above layerY) is only hidden where there is no soft cut (points).
   _layerOn(m) {
-    const u = m.userData;
-    return (u.layer === "low" || !this.cutaway) && !(u.haze && (this.cleanScan || this.semantic || this.cutaway)) && !(u.outside && this.cutaway);
+    const u = m.userData, soft = m instanceof SplatMesh;
+    return (u.layer === "low" || !this.cutaway || soft) && !(u.haze && (this.cleanScan || this.semantic || this.cutaway));
   }
   _applyLayers() {
     for (const m of this.splats) m.visible = this._layerOn(m);

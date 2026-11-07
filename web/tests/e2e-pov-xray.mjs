@@ -354,6 +354,43 @@ async function arrival(browser) {
   await p.context().close();
 }
 
+// ------------------------------------------------------------------ 4b. following cameras vs the walls (whole routes)
+// The cut-away keeps the walls, so a camera standing behind a wall (or looking through one) would show the back of the
+// wall instead of the robot. Chase is pulled inside the room; Angled swings up near the wall it watches across.
+async function walls(browser) {
+  const p = await open(browser);
+  const targets = await p.evaluate(() => { const S = window.__app, ids = [S.target.asset.asset_id];
+    for (const o of S.data.objects) if (o.asset && ids.length < 4 && !ids.includes(o.asset.asset_id) && ["ELECTRIC_MOTOR", "CENTRIFUGAL_PUMP"].includes(o.asset.asset_class)) ids.push(o.asset.asset_id);
+    return ids; });
+  await p.context().close();
+  const agg = { chase: { n: 0, behind: 0, minClear: 9 }, broadcast: { n: 0, occluded: 0 } };
+  for (const cam of ["chase", "broadcast"]) for (const id of targets) {
+    const q = await open(browser);
+    const r = await q.evaluate(async ([cam, id]) => {
+      const A = window.__xr, S = window.__app, b = S.data.bounds, c0 = [0, 1, 2].map((a) => (b.min[a] + b.max[a]) / 2);
+      const W = S.data.planes.filter((w) => w.label === "wall").map((w) => ({ n: w.normal, d: w.offset, s: Math.sign(w.normal[0] * c0[0] + w.normal[1] * c0[1] + w.normal[2] * c0[2] + w.offset) }));
+      const f = (w, v) => (w.n[0] * v.x + w.n[1] * v.y + w.n[2] * v.z + w.d) * w.s;
+      const R = A.renderer.render; A.renderer.render = () => {};
+      A.setCamera(cam); for (let i = 0; i < 40; i++) window.__step(1 / 30);
+      await window.__dispatch(id);
+      let n = 0, behind = 0, occluded = 0, minClear = 9;
+      for (let k = 0; k < 4000 && !S.robot.arrived; k++) {
+        window.__step(1 / 30); n++;
+        const cp = A.camera.position, rp = S.fac.robot.position.clone().setY(0.5);
+        const cl = Math.min(...W.map((w) => f(w, cp))); minClear = Math.min(minClear, cl); if (cl < 0 && cp.y < 2.3) behind++;
+        if (W.some((w) => { const a = f(w, cp), c = f(w, rp); if (a >= 0 || c < 0) return false; const t = a / (a - c); return cp.y + (rp.y - cp.y) * t < 1.6; })) occluded++;
+      }
+      A.renderer.render = R;
+      return { n, behind, occluded, minClear, arrived: S.robot.arrived };
+    }, [cam, id]);
+    const g = agg[cam]; g.n += r.n;
+    if (cam === "chase") { g.behind += r.behind; g.minClear = Math.min(g.minClear, +r.minClear.toFixed(2)); } else g.occluded += r.occluded;
+    await q.context().close();
+  }
+  ok(`Chase: never behind a wall on ${targets.length} whole routes`, agg.chase.n > 300 && agg.chase.behind === 0, JSON.stringify(agg.chase));
+  ok(`Angled: the near wall hides the robot in < 5 % of frames on ${targets.length} routes`, agg.broadcast.n > 300 && agg.broadcast.occluded < 0.05 * agg.broadcast.n, JSON.stringify(agg.broadcast));
+}
+
 // ------------------------------------------------------------------ 5. phone
 async function phone(browser) {
   const p = await open(browser, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
@@ -375,7 +412,7 @@ async function phone(browser) {
 const browser = await chromium.launch({ args: GL });
 const only = process.env.ONLY?.split(",");
 try {
-  for (const [n, f] of Object.entries({ pov, switching, overlay, arrival, phone })) {
+  for (const [n, f] of Object.entries({ pov, switching, overlay, arrival, walls, phone })) {
     if (only && !only.includes(n)) continue;
     try { await f(browser); } catch (e) { ok(`${n}: ran without exceptions`, false, e.message.split("\n")[0]); }
   }

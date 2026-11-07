@@ -19,4 +19,14 @@
 .sitemap-info { min-height: 18px; margin-top: 8px; font-size: 12px; color: var(--text-2); }
 .sitemap-info b { color: var(--text); font-weight: 500; }
 .sitemap-info code { font: 500 11px var(--mono); }
-@media (max-width: 820px) { .sem-legend { display: none; } }
+/* cut-away chip: what an overhead camera hides, and the one-tap full scan */
+.cut-chip { position: absolute; z-index: 5; bottom: 96px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px;
+  padding: 4px 4px 4px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: 11.5px;
+  color: var(--text-2); box-shadow: 0 12px 30px rgba(0, 0, 0, .3); width: max-content; animation: in .25s var(--ease); }
+.cut-chip b { color: var(--text); font-weight: 600; margin-right: 3px; }
+.cut-chip .cc-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent, #0a84ff); flex: none; }
+.cut-chip .cc-dot.off { background: var(--text-3); }
+.cut-chip button { flex: none; padding: 4px 9px; border-radius: 7px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); font-size: 11.5px; cursor: pointer; }
+.cut-chip button:hover { background: var(--surface-3); }
+body.touring .cut-chip { display: none; }
+@media (max-width: 820px) { .sem-legend { display: none; } .cut-chip { font-size: 11px; top: 64px; bottom: auto; } .cut-chip > span:nth-child(2) { white-space: normal; } .cut-chip .cc-why { display: none; } }
