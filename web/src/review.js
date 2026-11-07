@@ -136,7 +136,18 @@ function focus3D(o) {
   } catch (e) { console.warn("review outline", e); }
   const T = A.THREE, c = new T.Vector3(...o.center), off = A.viewOffset ? A.viewOffset(c) : new T.Vector3(1.9, 1.15, 0);
   const k = Math.min(2.6, Math.max(0.6, Math.max(...o.size) / 1.1));     // stand back for big frames, step in for tags
-  A.flyTo(c.clone().add(new T.Vector3(off.x * k, Math.max(0.45, off.y * k * 0.85), off.z * k)), c, 0.9);
+  // phones: the bottom sheet covers the lower half, so step back (narrow portrait view) and frame the object in the band above it
+  const pr = $p()?.getBoundingClientRect(), H = innerHeight, sheet = pr && pr.width > innerWidth * 0.9 && pr.top > H * 0.3;
+  const kk = sheet ? k * 1.5 : k;
+  const pos = c.clone().add(new T.Vector3(off.x * kk, Math.max(0.45, off.y * kk * 0.85), off.z * kk)), tgt = c.clone();
+  if (sheet) {
+    const top = Math.min(H * 0.3, document.getElementById("dock")?.getBoundingClientRect().bottom || 100);   // top bar + dock
+    const px = H / 2 - (top + pr.top) / 2;
+    const fwd = c.clone().sub(pos).normalize(), up = new T.Vector3().crossVectors(new T.Vector3().crossVectors(fwd, new T.Vector3(0, 1, 0)).normalize(), fwd);
+    const s = (px / (H / 2)) * pos.distanceTo(c) * Math.tan(((A.camera?.fov || 50) * Math.PI) / 360);
+    pos.addScaledVector(up, -s); tgt.addScaledVector(up, -s);
+  }
+  A.flyTo(pos, tgt, 0.9);
 }
 function clear3D() {
   const S = APP.S, f = S?.fac; if (!f) return;
@@ -298,7 +309,7 @@ export function exportCSV() {
     d.verdict === "agree" ? "agree" : "disagree", d.verdict === "agree" ? "" : d.new_label,
     d.verdict === "reject" ? "not an object / fragment" : d.comment || "", V[d.verdict], d.verdict === "agree" ? "" : d.new_label,
     d.reviewer || R.reviewer.trim(), d.time]);
-  return [head, ...rows].map((r) => r.map(cell).join(",")).join("\n") + "\n";
+  return [head, ...rows].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";   // CRLF like the Python csv writer
 }
 function download(name, text, type) {
   const a = document.createElement("a");
