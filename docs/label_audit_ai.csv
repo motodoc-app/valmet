@@ -1,0 +1,71 @@
+id,label,ai_verdict,reason
+OBJ-006,heat exchanger,cant_tell,Frame spans cluttered red/white items behind a green chair; no vessel or exchanger shape visible
+OBJ-014,insulated pipe (vertical),agree,Frames part of a vertical insulated column/pipe
+OBJ-019,expansion vessel,disagree,Frame encloses a step ladder / step stool; no vessel visible
+OBJ-032,electrical cabinet,cant_tell,Whitish flat item with orange pattern behind a hose; could be a poster or board
+OBJ-033,pump-motor unit,disagree,Clearly a small table or bench with wooden legs
+OBJ-051,control valve,cant_tell,Yellow disc could be a handwheel but the frame spans about 1 m of pipe and wall
+OBJ-053,circulation pump,disagree,Looks like a curved insulated pipe section near the floor; no pump body visible
+OBJ-057,electrical cabinet,cant_tell,Flat 5 cm white rectangle on a door or wall; cabinet door or notice
+OBJ-068,insulated pipe (vertical),agree,White vertical insulated pipe segment
+OBJ-070,pipe elbow / fitting,cant_tell,Section of an overhead pipe run; joint not distinguishable
+OBJ-084,electrical cabinet,agree,White wall-mounted box about 25x40x12 cm consistent with a small enclosure
+OBJ-088,pipe label / tag,disagree,1.5 m thin vertical element: a rod or thin pipe not a tag
+OBJ-098,pipe label / tag,disagree,1.2 m horizontal element under the ceiling: pipe or beam segment not a tag
+OBJ-117,insulated pipe (horizontal),agree,Thin horizontal pipe under the ceiling
+OBJ-118,flow meter,cant_tell,Small teal/blue item on a pipe; type not identifiable at this resolution
+OBJ-123,pipe label / tag,disagree,1.1 m thin vertical element: conduit or thin pipe not a tag
+OBJ-124,centrifugal pump,cant_tell,Small (19 cm) red item on a pipe; could be an inline circulator or a handwheel
+OBJ-125,pipe label / tag,disagree,1.2 m vertical strip along a red column: pipe/column section not a tag
+OBJ-131,pipe label / tag,cant_tell,Underside of a large overhead pipe; no tag distinguishable
+OBJ-143,pump-motor unit,cant_tell,Same red item region as OBJ-124; too small to judge pump vs fitting
+OBJ-162,control panel,cant_tell,16 cm box with a dark face; small electrical box but control panel vs junction box unclear
+OBJ-163,insulated pipe (horizontal),agree,Horizontal insulated pipe section
+OBJ-165,electric motor,disagree,Frame sits on a white insulated pipe surface; no motor visible
+OBJ-184,insulated pipe (horizontal),agree,Horizontal pipe at low height
+OBJ-187,valve actuator,cant_tell,Orange item on a vertical pipe; actuator plausible but not identifiable
+OBJ-201,pump-motor unit,disagree,30x12x7 cm flat fragment; no pump or motor visible and too small for a pump set
+OBJ-207,insulated pipe (horizontal),agree,Thin horizontal pipe under the ceiling
+OBJ-221,insulated pipe (vertical),agree,Short piece of a white vertical pipe (fragment)
+OBJ-238,electric motor,disagree,Thin dark vertical object next to a ladder; not a motor
+OBJ-240,flow meter,cant_tell,White wall/box region; no device distinguishable
+OBJ-244,cable tray,cant_tell,Flat tray-shaped item at low height; could be a shelf or board
+OBJ-246,valve actuator,cant_tell,Dark item above an orange device on a vertical pipe; plausible but not identifiable
+OBJ-271,temperature sensor,disagree,Frame contains plain insulated pipe surface
+OBJ-282,pipe elbow / fitting,cant_tell,Small region near the floor by a hose; too sparse
+OBJ-284,pipe elbow / fitting,cant_tell,Straight section of an overhead pipe; coupling not distinguishable
+OBJ-303,temperature sensor,disagree,Frame is on a step-ladder leg
+OBJ-313,control valve,cant_tell,Small yellow item on a wall or door; sticker or handwheel
+OBJ-340,pressure transmitter,disagree,Thin vertical stick or handle next to a bale; not an instrument
+OBJ-342,pipe label / tag,cant_tell,Thin 36 cm horizontal bar near the floor; bar or small pipe; no tag visible
+OBJ-344,junction box,agree,Small box on the wall near the ceiling consistent with a junction box
+OBJ-354,pipe label / tag,cant_tell,Very sparse white strip (52 splats)
+OBJ-357,pipe label / tag,cant_tell,Small object on the underside of an overhead pipe; tag plausible but not visible
+OBJ-371,control valve,disagree,Region by a hose and a chair leg near the floor; no valve
+OBJ-380,control valve,disagree,Region on a chair / hose near the floor; no valve
+OBJ-385,insulated pipe (horizontal),agree,Thin horizontal pipe under the overhead run
+OBJ-401,pipe label / tag,cant_tell,Top of a white beam or pipe at the ceiling; no tag visible
+OBJ-431,control panel,cant_tell,9 cm item on a white wall; maybe a switch; not a panel-sized object
+OBJ-461,pipe label / tag,disagree,Frame is on the surface of the red vessel beside a yellow strap
+OBJ-462,pipe elbow / fitting,cant_tell,Small region below the large overhead pipe; nothing distinct
+OBJ-477,wall-mounted board,cant_tell,Small item near the ceiling with a yellow spot
+OBJ-483,pipe label / tag,cant_tell,Red horizontal strip near the floor; part of a red object
+OBJ-486,pipe elbow / fitting,cant_tell,Dark region at the foot of a purple pipe; too sparse
+OBJ-548,pipe label / tag,cant_tell,On top of an overhead pipe or beam; too sparse (25 splats)
+OBJ-581,insulated pipe (horizontal),agree,Fragment of a horizontal overhead pipe
+OBJ-596,temperature sensor,disagree,Frames a thin hanging cable or hose
+OBJ-601,pipe elbow / fitting,cant_tell,Dark region below the ceiling; too sparse (24 splats)
+OBJ-614,manual valve,cant_tell,Small item on a vertical pipe; valve plausible but not identifiable
+OBJ-622,junction box,cant_tell,Sparse dark region between white pipes (37 splats)
+OBJ-635,pressure gauge,cant_tell,Small region on a white vertical pipe; gauge face not visible
+OBJ-658,control valve,cant_tell,Very sparse (19 splats) region by a cable
+OBJ-042,other equipment,agree,Cluttered region with yellow items; nothing specific identifiable
+OBJ-060,other equipment,agree,Region between white pipes near the floor; nothing specific
+OBJ-348,other equipment,agree,Region below orange devices with a dark hose; nothing specific
+OBJ-395,other equipment,agree,Very sparse region (43 splats)
+OBJ-405,other equipment,agree,Small region on a vertical pipe above a green band; nothing specific
+OBJ-434,other equipment,agree,Bar of a white stand or table
+OBJ-489,other equipment,agree,Thin upright on a white stand; nothing specific
+OBJ-503,other equipment,agree,Small region among white hoses; nothing specific
+OBJ-518,other equipment,agree,Small item at the top of a white vertical pipe
+OBJ-633,other equipment,agree,Very sparse region under the large overhead pipe (28 splats)

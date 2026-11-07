@@ -1,0 +1,44 @@
+/* Scene-understanding panel (quality.js). Scoped under .q-body; reuses the tokens from style.css. */
+.q-body code { font: 500 11px var(--mono); color: var(--text-2); }
+.q-funnel { display: flex; flex-direction: column; gap: 6px; }
+.q-tier { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface-2); transition: border-color .2s var(--ease), background .2s var(--ease); }
+.q-tier:hover { border-color: var(--line-2); }
+.q-tier.on { border-color: rgba(10, 132, 255, .55); background: rgba(10, 132, 255, .08); }
+.q-tier-top { display: flex; align-items: baseline; gap: 10px; }
+.q-tier-n { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; min-width: 40px; color: var(--text); }
+.q-tier-name { flex: 1; font-size: 12.5px; color: var(--text); }
+.q-tier-pc { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.q-tier .pill.on { color: var(--accent); border-color: rgba(10, 132, 255, .55); }
+.q-bar { display: block; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.q-bar i { display: block; height: 100%; background: var(--text-2); border-radius: 2px; }
+.q-tier.on .q-bar i { background: var(--accent); }
+.q-rule { font-size: 11px; color: var(--text-3); line-height: 1.45; }
+.q-hist { display: flex; align-items: flex-end; gap: 4px; height: 96px; padding-top: 4px; }
+.q-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 4px; }
+.q-col > span { font-size: 10px; color: var(--text-3); text-align: center; font-variant-numeric: tabular-nums; }
+.q-stack { display: flex; flex-direction: column-reverse; border-radius: 3px 3px 0 0; overflow: hidden; min-height: 1px; }
+.q-stack i, .q-legend i { display: block; }
+.q-stack .s, .q-legend .s { background: var(--text-2); }
+.q-stack .o, .q-legend .o { background: rgba(255, 255, 255, .16); }
+.q-col.hi .q-stack .s { background: var(--accent); }
+.q-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 11px; color: var(--text-3); }
+.q-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.q-legend i { width: 9px; height: 9px; border-radius: 2px; }
+.q-legend .q-thr { color: var(--accent); }
+.q-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.q-table th { text-align: right; font-weight: 400; color: var(--text-3); font-size: 11px; padding: 6px 0 6px 10px; border-bottom: 1px solid var(--line); }
+.q-table td { text-align: right; padding: 7px 0 7px 10px; border-bottom: 1px solid var(--line); color: var(--text-2); }
+.q-table th:first-child, .q-table td:first-child { text-align: left; padding-left: 0; color: var(--text); }
+.q-table th:first-child { color: var(--text-3); }
+.q-table td.q-src { font-size: 11px; color: var(--text-3); }
+.q-more { margin-top: 8px; }
+.q-more summary { cursor: pointer; font-size: 11.5px; color: var(--text-3); padding: 4px 0; }
+.q-more summary:hover { color: var(--text-2); }
+.q-ci { color: var(--text-3); font-size: 11px; }
+.q-warn { border-left: 2px solid var(--warn); padding-left: 10px; margin: 0 0 6px; }
+.q-warn b { color: var(--text-2); font-weight: 500; }
+@media (max-width: 560px) {
+  .q-table .q-src { display: none; }
+  .q-hist { height: 72px; }
+}
