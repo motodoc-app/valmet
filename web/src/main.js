@@ -205,22 +205,23 @@ function renderComponents() {
 function card(html) { $("#right").innerHTML = html; $("#right").scrollTop = 0; }
 
 function renderOverviewCard() {
-  const t = S.target.asset;
-  card(`${header("Simulated fault", t.tag, '<span class="tag syn">Synthetic</span>')}
-    <div class="sub">${nice(t.asset_class)} · ${esc(t.area_name)}</div>
-    <p class="p" style="margin-top:12px">${esc(t.issue_summary)}. It has the highest maintenance priority in the builder pack, so the inspection robot is sent to it.</p>
-    ${kv("Condition", `<span class="status s-${t.condition_state}">${nice(t.condition_state)}</span>`)}${kv("Health", t.health_score)}${kv("Criticality", esc(t.criticality))}
-    ${kv("Mapped to", `${S.target.label} · ${Math.round(t.mapping_confidence * 100)}%`)}
-    <div class="section stack"><button class="btn primary block" data-act="dispatch">${icon("play")}Send inspection robot</button>
-      <button class="btn block" data-act="locate">${icon("target")}Show in scan</button></div>
-    <div class="section"><div class="label">How it works</div>
-      <div class="step"><span class="k">1</span><span>The scan is split into ${S.data.stats.n_objects} objects, each framed and named with a confidence.</span></div>
-      <div class="step"><span class="k">2</span><span>Workbook assets are matched to compatible objects.</span></div>
-      <div class="step"><span class="k">3</span><span>The robot plans a collision-free route on the drivable floor and reads every asset within ${NEAR()} m.</span></div>
-      <div class="step"><span class="k">4</span><span>On arrival, the copilot explains the fault with cited evidence.</span></div></div>
+  const t = S.target.asset, has = (m) => APP.modes.has(m);
+  const step = (n, title, text, act, label) => `<div class="journey-step"><span class="k">${n}</span><div><b>${title}</b><small>${text}</small></div>${act ? `<button class="btn" ${act}>${label}</button>` : ""}</div>`;
+  card(`${header("Pre-visit briefing", `Service ${t.tag}`, '<span class="tag syn">Synthetic data</span>')}
+    <div class="sub">${nice(t.asset_class)} · ${esc(t.area_name)} · <span class="status s-${t.condition_state}">${nice(t.condition_state)}</span> · health ${t.health_score}</div>
+    <p class="p" style="margin-top:12px">${esc(t.issue_summary)}. Prepare the visit here before you travel: find the pump, understand the evidence, plan access, rehearse, and get expert input.</p>
+    <div class="journey">
+      ${step(1, "Explore", "Find the pump and its surroundings in the real scan.", 'data-act="locate"', "Show")}
+      ${step(2, "Understand", "Read the cited diagnosis; see the suspect parts.", 'data-act="diagnose-target"', "Open")}
+      ${has("plan") ? step(3, "Plan", "Clear the service area in a safe layout simulation.", 'data-goto="plan"', "Plan") : ""}
+      ${step(has("plan") ? 4 : 3, "Practice", "Rehearse the inspection on the teaching model.", 'data-goto="practice"', "Practise")}
+      ${has("support") ? step(has("plan") ? 5 : 4, "Support", "Hand the context to a remote specialist.", 'data-goto="support"', "Share") : ""}
+    </div>
+    <div class="section stack"><button class="btn primary block" data-act="dispatch">${icon("play")}Send the inspection robot to check the route</button></div>
+    <div class="section">${kv("Criticality", esc(t.criticality))}${kv("Linked scene object", `${esc(S.target.label)} · ${Math.round(t.mapping_confidence * 100)}% (procedural link)`)}</div>
     <div class="section"><div class="label">See inside any device</div>
       <div class="row">${Object.entries(S.kb.classes).map(([cls, c]) => `<button class="chip" data-xclass="${cls}">${esc(SHORT[cls] || c.label)}</button>`).join("")}</div>
-      <p class="note" style="margin-top:8px">Opens the exploded X-Ray model for the highest-priority device of that type. You can also click any asset and choose “Explain and show components”.</p></div>
+      <p class="note" style="margin-top:8px">Illustrative teaching models, not parts reconstructed from the scan.</p></div>
   </div>`);
 }
 
@@ -283,6 +284,8 @@ function renderDiagnosis() {
 
 $("#right").addEventListener("click", async (e) => {
   const t = e.target;
+  const go = t.closest("[data-goto]")?.dataset.goto;
+  if (go) return go === "xray" ? enterXRay() : setMode(go);
   const tab = t.closest("[data-tab]"); if (tab) { S.tab = tab.dataset.tab; return renderDiagnosis(); }
   const xt = t.closest("[data-xtab]"); if (xt) { S.xTab = xt.dataset.xtab; return renderPartCard(); }
   const pq = t.closest("[data-partq]"); if (pq) { $("#partQ").value = pq.dataset.partq; return askPart(); }
@@ -291,6 +294,7 @@ $("#right").addEventListener("click", async (e) => {
   const act = t.closest("[data-act]")?.dataset.act;
   if (act === "dispatch") dispatch(S.target.asset.asset_id);
   if (act === "locate") selectObject(S.target, { fly: true });
+  if (act === "diagnose-target") { S.cardLock = true; S.diag = await api.diagnose(S.target.asset.asset_id); S.tab = "overview"; renderDiagnosis(); }
   if (act === "dispatch-sel") dispatch(S.selected.asset.asset_id);
   if (act === "diagnose-sel") { S.cardLock = true; S.diag = await api.diagnose(S.selected.asset.asset_id); S.tab = "overview"; renderDiagnosis(); }
   if (act === "xray") enterXRay(null, S.diag?.asset?.asset_id);
@@ -993,18 +997,24 @@ async function showWorkOrder(id) {
 }
 function showAbout() {
   const i = S.data.integrity, n = S.data.navigation;
-  sheet("About this demo", `<div class="h1" style="font-size:17px">Industrial X-Ray</div><p class="p">Valmet × Since AI 2026 challenge entry: semantic 3D scene understanding and an autonomous field-service copilot.</p>
-    ${kv("Scan", `${i.declared_vertex_count.toLocaleString()} splats · ${Math.round(i.contiguous_valid_fraction * 100)}% valid`)}${kv("Objects framed", S.data.stats.n_objects)}${kv("Assets mapped", S.data.n_bound_assets)}
-    ${kv("Drivable floor", `${n.walkable_area_m2} m²`)}${kv("Robot radius", `${n.robot_radius_m} m`)}${kv("Backend", api.isStatic ? "Static export (hosted)" : "Live Python API")}
-    <div class="section"><div class="label">What is real and what is illustrative</div>
-      <div class="step"><span class="k">1</span><span>The room, object frames, labels and routes come from the supplied scan.</span></div>
-      <div class="step"><span class="k">2</span><span>Asset data is synthetic and mapped to objects with stated confidence.</span></div>
-      <div class="step"><span class="k">3</span><span>The X-Ray models are procedural teaching models built from the equipment library, not captured by the scan and not OEM drawings.</span></div></div>
-    <div class="section"><div class="label">In plain words</div>
-      <p class="p">A robot-eye view of a real equipment room. The software found every machine in the scan, matched them to the maintenance records, sends a virtual inspection robot along a safe path to the faulty pump, and explains what is probably wrong, showing where each fact came from. X-Ray opens the machine so a new technician can learn its parts.</p></div>
+  const row = (what, is, isNot) => `<div class="truth"><b>${what}</b><span>${is}</span><small>${isNot}</small></div>`;
+  sheet("About this prototype", `<div class="h1" style="font-size:17px">Industrial X-Ray · pre-visit copilot</div>
+    <p class="p">Explore the site. Understand the equipment. Plan the maintenance. Practise the task. Get expert support — before stepping onto the factory floor. Valmet × Since AI 2026 challenge entry.</p>
+    ${kv("Scan", `${i.declared_vertex_count.toLocaleString()} splats · ${Math.round(i.contiguous_valid_fraction * 100)}% valid`)}${kv("Segmented object candidates", S.data.stats.n_objects)}${kv("Workbook assets linked", S.data.n_bound_assets)}
+    ${kv("Drivable floor", `${n.walkable_area_m2} m²`)}${kv("Robot radius", `${n.robot_radius_m} m`)}${kv("Backend", api.isStatic ? "Static export (hosted): diagnoses pre-generated" : "Live Python API")}
+    <div class="section"><div class="label">What this is — and what it is not</div>
+      ${row("Objects", `${S.data.stats.n_objects} segmented candidates, each with a label and confidence.`, "Not 676 verified physical objects; see Scene understanding on the rail.")}
+      ${row("Asset links", "Procedural matching to compatible objects, with a stated confidence.", "Not confirmed on site.")}
+      ${row("Asset data", "Synthetic workbook from the challenge (telemetry, alarms, work orders, cases).", "Not live plant data.")}
+      ${row("Diagnosis", api.isStatic ? "Generated by the LLM in advance, every citation checked." : "Generated live by the LLM, every citation checked.", api.isStatic ? "Free questions use document search here, not live AI." : "Decision support only.")}
+      ${row("X-Ray models", "Procedural teaching models per equipment type.", "Not manufacturer drawings, not reconstructed from the scan.")}
+      ${row("Planning", "Approximate collision and clearance checks on boxes and the floor grid.", "Not a certified engineering clearance.")}
+      ${row("Remote support", "Asynchronous hand-off: the context travels in a link or package.", "No live multi-user session in this prototype.")}
+      ${row("Control", "Read-only: highlights, notes, plans and draft work orders.", "No connection to actuators, PLCs or plant controls.")}
+      ${row("Value", "Calculator with editable, hypothetical inputs.", "No measured savings.")}</div>
     <div class="section"><div class="label">For engineers</div>
-      <p class="p">PLY integrity check → canonical Y-up frame → RANSAC structure planes + recursive DBSCAN + gravity-aligned OBBs → vision-model labels with confidence and a human review layer → class-aware asset mapping → 2.5D heightfield, clearance-aware A* with line-of-sight smoothing and validation → evidence engine (telemetry z-scores, events, work orders, cases) → LLM narration whose citations are checked against the evidence, with uncited claims removed. The same code runs as a FastAPI service or, for the hosted demo, as a static export with a JS port of the planner.</p></div>
-    <div class="section"><div class="label">Keys</div>${kv("Ask", '<span class="kbd">/</span>')}${kv("Play / pause the robot", '<span class="kbd">Space</span>')}${kv("Focus (hide panels)", '<span class="kbd">F</span>')}${kv("Orbit · pan · zoom", "Drag · right-drag · scroll")}</div>
+      <p class="p">PLY integrity check → canonical Y-up frame → RANSAC structure planes + recursive DBSCAN + gravity-aligned OBBs → vision-model labels with confidence and a human review layer → class-aware asset mapping → 2.5D heightfield, clearance-aware A* with line-of-sight smoothing and validation → evidence engine (telemetry z-scores, events, work orders, cases) → LLM narration whose citations are checked against the evidence. The same code runs as a FastAPI service or as a static export with a JS port of the planner.</p></div>
+    <div class="section"><div class="label">Keys</div>${kv("Ask", '<span class="kbd">/</span>')}${kv("Play / pause the robot", '<span class="kbd">Space</span>')}${kv("Focus (hide panels)", '<span class="kbd">F</span>')}${kv("Close panels", '<span class="kbd">Esc</span>')}${kv("Orbit · pan · zoom", "Drag · right-drag · scroll")}</div>
     <div class="section"><a class="link" href="#plan" onclick="setTimeout(()=>location.reload(),0)">Open the 2D floor plan view (works without 3D graphics) ${icon("arrow")}</a></div>`);
 }
 
@@ -1053,7 +1063,7 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-const TOUR_API = { S, $, setMode, setCamera: (m) => { setCamera(m); renderDock(); }, pause: () => { S.robot.moving = false; renderDock(); }, dispatch: (id) => restart(id), blockAisle, enterXRay, openClass, flyHome: () => flyTo(S.home.pos, S.home.tgt), selectAsset, toast, renderDock,
+const TOUR_API = { S, $, X: APP, ask, diagnose: async (id) => { S.cardLock = true; S.diag = await api.diagnose(id); S.tab = "overview"; $("#right").classList.remove("min"); renderDiagnosis(); }, setMode, setCamera: (m) => { setCamera(m); renderDock(); }, pause: () => { S.robot.moving = false; renderDock(); }, dispatch: (id) => restart(id), blockAisle, enterXRay, openClass, flyHome: () => flyTo(S.home.pos, S.home.tgt), selectAsset, toast, renderDock,
   setFrames: (f) => { S.frames = f; S.fac.setShowMode(f); renderDock(); }, setRate: (r) => { S.robot.rate = r; renderDock(); } };
 window.__xr = APP;
 window.__app = S; window.__renderer = renderer; window.__decodeXq16 = decodeXq16;

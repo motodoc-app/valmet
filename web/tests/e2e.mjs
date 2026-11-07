@@ -283,8 +283,26 @@ async function topbar() {
   await browser.close();
 }
 
+// ------------------------------------------------------------------ 8. guided tour runs end to end
+async function tour() {
+  const browser = await chromium.launch({ args: GL });
+  const p = await page(browser);
+  await p.goto(BASE + "?scan=off");
+  await waitFor(p, () => window.__app?.fac && !document.querySelector("#loading"));
+  await p.click("#tourBtn");
+  const n = +(await p.textContent(".tour .h span")).match(/of (\d+)/)[1];
+  for (let i = 1; i < n; i++) { await sleep(i === 5 || i === 6 ? 6000 : 2500); await p.click(".tour [data-tour-n]"); }
+  await sleep(2500);
+  ok("Tour: reaches the last step", /Why it matters/.test(await p.textContent(".tour")), `${n} steps`);
+  await p.screenshot({ path: `${SHOTS}/tour-last.png` });
+  await p.click(".tour [data-tour-n]");
+  ok("Tour: closes", !(await p.$(".tour")));
+  ok("Tour: no page errors", p.errors.length === 0, p.errors.slice(0, 3).join(" | "));
+  await browser.close();
+}
+
 const only = process.argv.slice(2);
-const suites = { threeD, copilot, noWebGL, contextLoss, chunkFallback, phone, topbar };
+const suites = { threeD, copilot, noWebGL, contextLoss, chunkFallback, phone, topbar, tour };
 try {
   for (const [k, f] of Object.entries(suites)) if (!only.length || only.includes(k)) { console.log(`\n— ${k}`); try { await f(); } catch (e) { ok(`${k}: crashed`, false, e.message.split("\n").slice(0, 12).join(" / ")); } }
 } finally { server?.kill(); }
