@@ -339,11 +339,12 @@ async function library(browser) {
   // training note from the X-Ray part card + back to the library
   await p.evaluate(() => window.__xr.S && document.querySelector("#libBtn").click());
   await p.waitForFunction(() => document.querySelectorAll("#libRes .doc").length > 0);
-  await p.click('#sheet [data-libkind="training_kb"]'); await sleep(300);
+  await p.click('#sheet [data-libkind="training_kb"]');
+  await p.waitForFunction(() => /Training note/.test(document.querySelector("#libRes .doc")?.textContent || ""), null, { timeout: 15000 }).catch(() => {});   // the filtered list refreshes asynchronously
   await p.click("#libRes .doc");
   await p.waitForFunction(() => /training note/.test(document.querySelector("#sheet").textContent), null, { timeout: 10000 }).catch(() => {});
   const tn = await p.evaluate(() => document.querySelector("#sheet").innerText);
-  ok("Library: training note labelled as not an OEM manual", /not an OEM manual/.test(tn));
+  ok("Library: training note labelled as not an OEM manual", /not an OEM manual/.test(tn), tn.slice(0, 300).replace(/\n/g, " | "));
   await p.click("#sheet [data-lib-back]");
   ok("Library: back from a document returns to the library", await p.waitForFunction(() => document.querySelector("#libQ") && document.querySelectorAll("#libRes .doc").length > 0, null, { timeout: 10000 }).then(() => true, () => false));
   // citations in the diagnosis open the cited document
