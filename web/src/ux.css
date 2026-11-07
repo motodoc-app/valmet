@@ -1,0 +1,63 @@
+/* Readability and touch comfort, layered over style.css (loaded after it; style.css itself stays untouched).
+   - muted text is brighter (contrast ≥ 4.5:1 on the card surface), body text ≥ 13px, meta text ≥ 12px
+   - buttons ≥ 36px on desktop, ≥ 44px on touch screens
+   - toasts sit below the purpose strip and never stretch into a panel */
+:root { --text-2: #b8bdc5; --text-3: #959ba4; }
+html, body { font-size: 14px; line-height: 1.5; }
+
+.p, .narr { font-size: 14px; line-height: 1.6; }
+.sub { font-size: 13.5px; }
+.note, .link { font-size: 12.5px; line-height: 1.5; }
+.kv { font-size: 13.5px; }
+.step, .gate, .hyp, .ev, .truth, .roi-in, .plain, .fb { font-size: 13.5px; }
+.section > .label, .card-h .t, .eyebrow-row, .nblock .label { font-size: 12.5px; }
+.card-f { font-size: 12px; }
+.list-row { font-size: 13.5px; }
+.list-row .nm small, .sig small, .hyp small, .doc p, .journey-step small, .routeinfo small, .truth small, .roi-total small { font-size: 12.5px; }
+.list-row .n, .health, .cite { font-size: 12px; }
+.pill, .tag { font-size: 12px; }
+.tool { font-size: 12.5px; min-height: 48px; }
+.seg button { font-size: 12.5px; min-height: 30px; }
+.chip { font-size: 12.5px; min-height: 32px; }
+.tabs button { font-size: 13.5px; }
+.minimap .mm-h, .scan-status, .toast { font-size: 13px; }
+.tag3d, .ptag, .pl-tag { font-size: 12px; }
+.journey-step b { font-size: 14px; }
+.journey-step .btn { height: 36px; padding: 0 14px; font-size: 13px; }
+.btn { min-height: 38px; font-size: 13.5px; }
+.rail button { width: 36px; height: 36px; }
+.rail { gap: 3px; }
+.modes button { font-size: 14px; }
+.iconbtn { height: 38px; min-width: 38px; }
+.ask .field { height: 38px; }
+.pl-steps .pl-step, .pl-keys, .pl-rt { font-size: 13px; }
+.pl-tile small, .pl-pos small { font-size: 12px; }
+.pl-tile span { font-size: 12px; }
+
+/* toasts: below the purpose strip, compact (never a full-height panel) */
+.toast { top: 100px; bottom: auto; height: auto; max-height: 40vh; overflow: auto; width: max-content; max-width: min(640px, calc(100% - 24px)); line-height: 1.5; }
+body.support-on .toast { top: 136px; }
+body.touring .toast { top: auto; bottom: 120px; }
+
+@media (pointer: coarse) {
+  .btn, .chip, .seg button, .tabs button, .iconbtn, .link.btn { min-height: 44px; }
+  .tool { min-height: 52px; min-width: 60px; }
+  .journey-step .btn { height: 44px; }
+  .list-row { min-height: 48px; }
+  .card-tools .link { min-width: 40px; min-height: 40px; justify-content: center; }
+}
+
+/* ---------- phones (≤ 820 px) ---------- */
+@media (max-width: 820px) {
+  html, body { font-size: 14px; }
+  /* tab bar: one clean row that scrolls sideways (no wrapping, no clipped labels) */
+  .modes { scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 18px), transparent); }
+  .modes button { flex: 1 0 auto !important; white-space: nowrap; min-height: 40px; padding: 6px 12px !important; scroll-snap-align: start; }
+  .btn { height: 44px; }
+  .toast { top: auto; bottom: calc(46% + 12px); }
+  body.support-on .toast { top: auto; bottom: calc(46% + 12px); }
+  /* Plan and Support put every action in the bottom sheet on phones: the clipped dock is not needed */
+  body.ux-mode-plan .dock, body.ux-mode-support .dock { display: none; }
+  .card.right { max-height: 52%; }
+  .card.right .card-b { padding-bottom: 24px; }
+}
