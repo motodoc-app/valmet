@@ -23,10 +23,21 @@ addRailButton({ id: "clean", icon: "spark", sceneOnly: true, title: "Clean scan:
       ? (st.splats ? `Clean scan: <b>${pct(st.haze, st.splats)}%</b> of the splats hidden (haze, floaters, specks).` : "Clean scan on. It applies as the scan loads.")
       : "Full scan shown.", 2600);
   } });
+addRailButton({ id: "twin", icon: "cube", sceneOnly: true, title: "Digital twin: drivable floor, room outline and asset outlines over the scan",
+  isOn: () => !!fac()?.twinOn,
+  onClick: async () => {
+    const f = fac(), on = !f.twinOn;
+    if (on && !f.twin) L.grid ||= await APP.api.grid().catch(() => null);
+    f.setTwin(on, L.grid || f.walkGrid);
+    APP.renderRail?.();
+    if (on) toast("Digital twin: <b>blue floor</b> = where the robot can drive, 0.5 m grid, room outline from the fitted walls, asset outlines in condition colour (hover any object for its outline).", 4200);
+  } });
 addRailButton({ id: "sitemap", icon: "map", sceneOnly: true, title: "Site map: overhead floor plan by object type", isOn: () => !!L.mapOpen, onClick: () => openSiteMap() });
 
 // a distinct icon for the site map (icons.js has no floor-plan glyph; main.js renders the rail before boot)
 const PLAN_ICON = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3z"/><path d="M3 11h7v9M14 4v6h7M10 15h4"/></svg>';
+// the Twin toggle: a floor grid in perspective with a box on it (the "frames" rail button already uses the cube glyph)
+const TWIN_ICON = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 17 12 21.5l9.5-4.5L12 12.5z"/><path d="M7.2 14.8l9.5 4.5M16.8 14.8l-9.5 4.5"/><path d="M9 6.5 12 5l3 1.5v4L12 12l-3-1.5z"/></svg>';
 
 function setSemantic(on) {
   const f = fac(); f.setSemantic(on);
@@ -36,7 +47,7 @@ function setSemantic(on) {
 function setUncertain(on) {
   const f = fac(); f.setShowUncertain(on);
   renderLegend();
-  if (on) { const n = f.categoryCounts().uncertain; toast(`<b>${n}</b> objects have an uncertain label (below ${Math.round(UNCERTAIN_BELOW * 100)}% or only "other equipment"). Hatched in white.`, 4200); }
+  if (on) { const n = f.categoryCounts().uncertain; toast(`<b>${n}</b> candidates have an uncertain label (below ${Math.round(UNCERTAIN_BELOW * 100)}% or only "other equipment"). Hatched in white.`, 4200); }
 }
 
 // ------------------------------------------------------------------ semantic legend (above the dock)
@@ -138,6 +149,7 @@ function downloadPNG() {
 // ------------------------------------------------------------------ hover + selection outline
 on("boot", (A) => {
   const b = document.querySelector('#rail [data-rail="x:sitemap"]'); if (b) b.innerHTML = PLAN_ICON;
+  const tw = document.querySelector('#rail [data-rail="x:twin"]'); if (tw) tw.innerHTML = TWIN_ICON;
   A.canvas.addEventListener("pointermove", (e) => {
     if (e.pointerType !== "mouse" || e.buttons) { if (L.hoverNdc) { L.hoverNdc = null; L.hoverDirty = true; } return; }
     (L.hoverNdc ||= { x: 0, y: 0 }).x = (e.clientX / innerWidth) * 2 - 1; L.hoverNdc.y = -(e.clientY / innerHeight) * 2 + 1;

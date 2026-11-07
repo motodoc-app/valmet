@@ -225,7 +225,7 @@ async function contextLoss() {
 async function chunkFallback() {
   const browser = await chromium.launch({ args: GL });
   const p = await page(browser);
-  await p.route(/static\/scan(\.json|-\d+\.wasm)/, (r) => r.fulfill({ status: 404, body: "missing" }));
+  await p.route(/static\/(hq\/)?scan(\.json|-hq\.json|-\d+\.wasm)/, (r) => r.fulfill({ status: 404, body: "missing" }));   // classic + full-fidelity chunks
   let full = false;
   p.on("request", (r) => { if (/data\/scene\.splat/.test(r.url())) full = true; });
   await p.goto(BASE + "?qa=1");
