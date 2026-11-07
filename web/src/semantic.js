@@ -27,7 +27,7 @@ export const FAMILY = {
   "electrical cabinet": "electrical", "control panel": "electrical", "junction box": "electrical", "cable tray": "electrical",
   "heat exchanger": "vessel", "expansion vessel": "vessel", "storage tank": "vessel",
   "trolley / cart": "structure", "wall-mounted board": "structure", "shelving / rack": "structure",
-  "other equipment": "unknown",
+  "other equipment": "unknown", "not an object / fragment": "unknown",   // rejected in the in-app label review
 };
 export function catOf(o) {
   if (o.kind === "structure") return "structure";

@@ -29,7 +29,7 @@ SAMPLE_CSV = ROOT / "docs" / "label_review_sample.csv"
 AI_AUDIT_CSV = ROOT / "docs" / "label_audit_ai.csv"
 CROP_DIR = "data/processed/crops"          # crops are git-ignored; path is relative to the repo root
 
-GENERIC_LABELS = {"other equipment", "unknown", "", None}
+GENERIC_LABELS = {"other equipment", "unknown", "not an object / fragment", "", None}   # the last: rejected in a human review (review.js)
 CONF_T = 0.70            # "confidently identified" threshold (see THRESHOLD_WHY)
 THRESHOLD_WHY = ("0.70 is the same gate the 3D view already uses to decide which object labels are worth showing "
                  "(facility.js). The VLM's confidence is self-reported and uncalibrated, so the threshold is a "
