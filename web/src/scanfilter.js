@@ -2,7 +2,8 @@
 // A splat counts as haze when it is
 //   · outside the room box (floaters beyond the walls, under the floor or above the ceiling),
 //   · [class 2, "outside"] beyond a fitted wall plane (bounds.walls, see wallClip): the wall skin and what lies behind
-//     it. From a high camera it reads as a blurry rim, so it is hidden there; at eye level it is the wall, so it stays.
+//     it. It is kept as its own layer but always shown: real walls are not flat, so about half of every wall's splats
+//     lie 6–30 cm behind its plane, and hiding them (as the high cameras once did) took the walls out of the room.
 //   · a very large, fat blob above the floor (blurry fog that smears colour over the room from a distance),
 //   · a faint AND large fat blob (semi-transparent fog), or
 //   · isolated and small (almost alone in its 10 cm voxel: speckle floating in the aisles).

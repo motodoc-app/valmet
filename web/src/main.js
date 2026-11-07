@@ -647,11 +647,12 @@ function followCamera(dt) {
     camYaw += d * damp(2.2, dt);
     const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
     _v.set(p.x - fx * 2.6 + fz * 0.7, 1.9, p.z - fz * 2.6 - fx * 0.7);
+    keepInRoom(_v, p);                 // [qa1] near a wall the chase camera used to sit behind it, looking at its back
     camera.position.lerp(_v, damp(3, dt));
     controls.target.lerp(_t.set(p.x + fx * 1.0, 0.5, p.z + fz * 1.0), damp(4, dt));
   } else if (S.cam === "broadcast") {
     // TV-style: a high camera on a fixed side of the room that pans with the robot, never rotating with it
-    const b = broadcastOffset();
+    const b = broadcastOffset(p);
     camera.position.lerp(_v.set(p.x + b.x, b.y, p.z + b.z), damp(1.6, dt));
     controls.target.lerp(_t.set(p.x, 0.2, p.z), damp(2.4, dt));
   }
@@ -662,7 +663,7 @@ async function arrive() {
   const o = S.navObject, c = new THREE.Vector3(...o.center), r = S.fac.robot.position.clone();
   const dir = c.clone().sub(r).setY(0).normalize();
   const side = new THREE.Vector3(-dir.z, 0, dir.x);
-  if (S.cam === "chase" || S.cam === "free") flyTo(r.clone().addScaledVector(dir, -0.9).addScaledVector(side, 1.0).setY(1.7), c.clone().setY(Math.max(0.35, c.y)));
+  if (S.cam === "chase" || S.cam === "free") flyTo(keepInRoom(r.clone().addScaledVector(dir, -0.9).addScaledVector(side, 1.0).setY(1.7), r), c.clone().setY(Math.max(0.35, c.y)));
   S.selected = o;
   S.fac.setHighlighted([], { selected: o.id, target: o.id });
   const owned = APP.modes.get(S.mode)?.ownsCard;          // Plan / Support keep their own cards
@@ -680,11 +681,43 @@ const roomBox = () => {
   const b = S.data.bounds;
   return { x0: b.min[0], x1: b.max[0], z0: b.min[2], z1: b.max[2], cx: (b.min[0] + b.max[0]) / 2, cz: (b.min[2] + b.max[2]) / 2 };
 };
-function broadcastOffset() {
+// [qa1] fitted wall planes, signed so that the room side is positive (scene.json planes: n·p + offset = 0)
+let WALLS = null;
+const walls = () => WALLS || (WALLS = (() => {
+  const b = S.data.bounds, c = [0, 1, 2].map((a) => (b.min[a] + b.max[a]) / 2);
+  return S.data.planes.filter((q) => q.label === "wall").map((q) => {
+    const sg = Math.sign(q.normal[0] * c[0] + q.normal[1] * c[1] + q.normal[2] * c[2] + q.offset) || 1;
+    return { n: q.normal.map((v) => v * sg), d: q.offset * sg };
+  });
+})());
+const wallDist = (w, v) => w.n[0] * v.x + w.n[1] * v.y + w.n[2] * v.z + w.d;
+/** Pull a camera position `v` back towards `from` (horizontally) until it is `margin` inside every wall plane,
+ *  lift it a little (never into the ceiling) as it comes in, so it looks at the robot, not at the back of a wall. */
+function keepInRoom(v, from, margin = 0.3) {
+  let t = 1;
+  for (const w of walls()) {
+    const a = wallDist(w, _k.set(from.x, v.y, from.z)), c = wallDist(w, v);
+    if (c < margin && a > margin) t = Math.min(t, (a - margin) / (a - c));
+  }
+  if (t < 1) { const y = v.y; v.set(from.x + (v.x - from.x) * t, Math.min(2.1, y + (1 - t) * 0.2), from.z + (v.z - from.z) * t); }
+  return v;
+}
+const _k = new THREE.Vector3();
+function broadcastOffset(p = S.fac.robot.position) {
   // stand on the long side of the room, high and pulled back, like the main camera at a football match
   const r = roomBox(), wide = r.x1 - r.x0 >= r.z1 - r.z0;
-  // ~45° down from just outside the long wall; the cut-away keeps the near wall from blocking the view
-  return wide ? new THREE.Vector3(0, 5.0, (r.z1 - r.z0) * 0.5 + 1.0) : new THREE.Vector3((r.x1 - r.x0) * 0.5 + 1.0, 5.0, 0);
+  // ~45° down from just outside the long wall. [qa1] The cut-away keeps the walls (it only fades the ceiling and the
+  // ducts out above ~1.6 m), so when the robot comes close to the near wall the camera swings up (steeper, same
+  // distance) until its line of sight clears the wall top: the robot is never hidden behind the wall it drives along.
+  const D = wide ? (r.z1 - r.z0) * 0.5 + 1.0 : (r.x1 - r.x0) * 0.5 + 1.0, H = 4.8, L = Math.hypot(D, H);
+  const dir = wide ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+  // distance from the robot to the near wall (the wall plane facing the camera side)
+  let d = Infinity;
+  for (const w of walls()) if (w.n[0] * dir.x + w.n[2] * dir.z < -0.9) d = Math.min(d, wallDist(w, p));
+  const top = 1.75 - 0.2;                               // wall height that still blocks (soft cut) over the look-at height
+  const need = Math.atan2(top, Math.max(0.05, d) - 0.15), th = Math.min(1.36, Math.max(Math.atan2(H, D), need));
+  const off = dir.multiplyScalar(L * Math.cos(th));
+  return off.setY(0.2 + L * Math.sin(th));
 }
 function topView() {
   const r = roomBox(), fov = (camera.fov * Math.PI) / 180;
@@ -708,7 +741,7 @@ export function setCamera(mode) {
     return;
   }
   if (mode === "top") { const v = topView(); flyTo(v.pos, v.tgt, 1.2); }
-  if (mode === "broadcast") { const p = S.fac.robot.position, b = broadcastOffset(); flyTo(new THREE.Vector3(p.x + b.x, b.y, p.z + b.z), new THREE.Vector3(p.x, 0.2, p.z), 1.2); }
+  if (mode === "broadcast") { const p = S.fac.robot.position, b = broadcastOffset(p); flyTo(new THREE.Vector3(p.x + b.x, b.y, p.z + b.z), new THREE.Vector3(p.x, 0.2, p.z), 1.2); }
   if (mode === "chase") {
     // paused or arrived on a route: settle in behind the robot; idle at the dock: the eye-level home view
     if (S.robot.moving) return;
