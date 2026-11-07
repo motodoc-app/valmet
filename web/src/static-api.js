@@ -2,9 +2,9 @@
 // scripts/export_static.py. Routes are planned live with a JS port of backend/xray/navigation.py.
 import { indexFaq, matchFaq, compose, detectIntent, TAG_RE } from "./faq-match.js";
 const base = "./static/";
-const get = async (p) => (await fetch(base + p)).json();
+const get = async (p) => { const r = await fetch(base + p); if (!r.ok) throw new Error(r.status === 404 ? "unknown asset or missing record" : `HTTP ${r.status}`); return r.json(); };
 let cache = {};
-const once = (k, f) => (cache[k] ??= f());
+const once = (k, f) => (cache[k] ??= f().catch((e) => { delete cache[k]; throw e; }));   // failures are not cached
 
 // ------------------------------------------------------------------ navigation (port of navigation.py)
 function bits(b64, n) {
@@ -178,6 +178,8 @@ const faqIdx = () => once("faq", async () => {
 const QUESTION = /^(what|what's|why|how|is|are|should|can|could|does|do|did|has|have|which|when|who|tell|list|give|any)\b|\?\s*$/;
 const FEATURE_WORDS = /robot|route|path|\bplan\b|support|\bapp\b|copilot|label|scan|\bdata\b|pilot|\bmode\b|\bai\b/;   // questions about the prototype, not the selected asset
 const COMMAND_WORDS = /send|go to|navigate|dispatch|\broute\b|drive|walk|\bwhere\b|locate|\bfind\b|show me|x-?ray|explode|inside|internal|practi[cs]e|exercise|rehears|learn|tutorial|teach|manual|document|\bdocs?\b|knowledge|procedure|explain|what does|what is this|how does/;
+const SIGNAL_NAMES = { bearing_temp_c: "bearing temperature", vibration_mm_s: "vibration", motor_current_a: "motor current", stiction_index: "valve stiction",
+  position_actual_pct: "valve position", process_pressure_bar: "process pressure", process_flow_pct: "process flow" };
 const SIGNAL_WORDS = { vibration: "vibration_mm_s", temperature: "bearing_temp_c", temp: "bearing_temp_c", current: "motor_current_a", pressure: "process_pressure_bar", flow: "process_flow_pct", stiction: "stiction_index", position: "position_actual_pct", overheat: "bearing_temp_c" };
 const ANOMALY = /abnormal|high|unusual|anomal|elevated|highest|find|overheat|hot\b|worst|most/, XRAY_WORDS = /x-?ray|explode|inside|internal|component|parts/;
 const COND_RANK = { attention_required: 0, degraded: 1, watch: 2, healthy: 3 };
@@ -331,7 +333,7 @@ export const staticApi = {
     if (sigQ) {
       let best = null;
       for (const a of c.assets) { if (cls && a.asset_class !== cls) continue; const s = a.signals.find((x) => x.signal === sig && x.z_vs_peers != null); if (s && (!best || s.z_vs_peers > best[1].z_vs_peers)) best = [a, s]; }
-      if (best) { asset_id = best[0].asset_id; const s = best[1]; reason = `${best[0].tag} has the most abnormal ${sig}: ${s.recent_mean} ${s.unit} against a peer mean of ${s.peer_mean} ${s.unit} (z = ${s.z_vs_peers}) [Telemetry_Sample_3d].`; }
+      if (best) { asset_id = best[0].asset_id; const s = best[1]; reason = `${best[0].tag} has the most abnormal ${SIGNAL_NAMES[sig] || sig.replace(/_/g, " ")}: ${s.recent_mean} ${s.unit} against a peer mean of ${s.peer_mean} ${s.unit} (z = ${s.z_vs_peers}) [Telemetry_Sample_3d].`; }
     } else if (/fault|faulty|broken|worst|priority|critical|problem|alarm/.test(t)) {
       const cand = c.assets.filter((a) => !cls || a.asset_class === cls).sort((a, b) => b.priority - a.priority);
       if (cand.length) { const a = cand[0]; asset_id = a.asset_id; reason = `${a.tag} has the highest maintenance priority${cls ? " among " + cls.replace("_", " ").toLowerCase() + "s" : ""}: ${a.condition_state.replace("_", " ")}, health ${a.health_score}, ${a.issue_code} (${a.criticality}) [${a.asset_id}].`; }

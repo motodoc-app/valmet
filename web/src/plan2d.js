@@ -567,7 +567,7 @@ async function showDoc(id) {
 async function showWorkOrder(id) {
   const w = await api.draftWO(id);
   sheet("Work order draft", `<div class="h1" style="font-size:17px">${w.tag} · ${esc(nice(w.action))}</div><div class="sub">${esc(w.status)} · no control actions</div>
-    <div class="section">${kv("Problem", esc(w.problem))}${kv("Type", nice(w.maintenance_type))}${kv("Priority", nice(w.priority))}${kv("Role", nice(w.role))}${kv("Confidence", Math.round(w.confidence * 100) + "%")}</div>
+    <div class="section">${kv("Problem", esc(String(w.problem || "").replace(/^([A-Z][A-Z_]+):\s*/, (m, c) => nice(c.toLowerCase()) + ": ")))}${kv("Type", nice(w.maintenance_type))}${kv("Priority", nice(w.priority))}${kv("Role", nice(w.role))}${kv("Evidence score", (+w.confidence).toFixed(2) + " (not a calibrated probability)")}</div>
     <div class="section"><div class="label">Evidence</div><div class="row">${w.evidence_ids.map((i) => `<span class="cite" data-doc="${i}">${i}</span>`).join("")}</div></div>
     <div class="section"><div class="label">Before any work</div>${w.safety_prerequisites.map((s) => `<label class="gate"><input type="checkbox"/> ${esc(s)}</label>`).join("")}</div>`);
 }
