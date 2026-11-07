@@ -168,7 +168,6 @@ const CLASS_WORDS = { pump: "PROCESS_PUMP", motor: "ELECTRIC_MOTOR", valve: "CON
 export const staticApi = {
   isStatic: true,
   health: async () => { const c = await ctx(); return { ok: true, llm_model: c.manifest.llm, static: true }; },
-  manifest: async () => (await ctx()).manifest,
   scene: async () => (await ctx()).scene,
   grid: async () => { const c = await ctx(); const n = c.nav; return { ...n, walkableMask: n.walk, occupiedMask: Uint8Array.from(n.occ, (v, i) => v | n.blocked[i]) }; },
   async plan({ object_id, start, blocks = [] }) {
@@ -213,6 +212,21 @@ export const staticApi = {
     const sig = Object.entries(SIGNAL_WORDS).find(([w]) => t.includes(w))?.[1];
     let asset_id = selected, reason = "";
     const actions = [];
+    // a question about a named component ("what does the impeller do?"): answer it for that device type and show the part
+    const lib = await staticApi.xrayModel(), selCls = A[selected]?.asset_class;
+    let hits = [];
+    for (const [k, cl] of Object.entries(lib.classes)) for (const p of cl.components) {
+      const n = p.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (new RegExp(`\\b${n}s?\\b`).test(t)) hits.push([n.length, k === selCls, k, p]);
+    }
+    if (cls) hits = hits.filter((h) => h[2] === cls);
+    hits.sort((x, y) => y[0] - x[0] || y[1] - x[1]);
+    if (hits.length && /what (does|is|are)|what's|explain|how (does|do i|to)|inspect|fail|faulty|evidence|purpose|why/.test(t) && !/\bwhere\b/.test(t)) {
+      const [, , ccls, comp] = hits[0];
+      if (A[asset_id]?.asset_class !== ccls) asset_id = c.assets.filter((a) => a.asset_class === ccls).sort((a, b) => b.priority - a.priority)[0]?.asset_id;
+      const ans = await staticApi.query(text, asset_id, comp.id);
+      return { intent: "component", text: ans.text, sources: ans.sources, actions: asset_id ? [{ type: "xray", asset_id, focus: [comp.id] }] : [], asset_id, component: comp.id, mode: ans.mode };
+    }
     if (sig && /abnormal|high|unusual|anomal|elevated|highest|find/.test(t)) {
       let best = null;
       for (const a of c.assets) { if (cls && a.asset_class !== cls) continue; const s = a.signals.find((x) => x.signal === sig && x.z_vs_peers != null); if (s && (!best || s.z_vs_peers > best[1].z_vs_peers)) best = [a, s]; }
@@ -225,7 +239,10 @@ export const staticApi = {
       const same = c.assets.filter((a) => a.asset_class === cls).sort((a, b) => b.priority - a.priority);
       if (same.length) asset_id = same[0].asset_id;
     }
-    const m = t.match(/(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$/);
+    let m = t.match(/(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$/);
+    if (m && /manual|document|\bdocs?\b|knowledge|procedure|guide/.test(m[1])) m = null;   // a library request, not a scene search
+    // "where are the control valves?" names what to look for: the current selection must not answer it
+    if (m && !reason && !sig && !/\b(it|this|that|here|selected)\b/.test(m[1])) asset_id = null;
     if (!asset_id && m && !sig) {
       const tag = t.match(/\b([a-z]{1,2}-\d{3})\b/);
       if (tag) { const hit = c.assets.find((a) => a.tag.toLowerCase() === tag[1]); if (hit) { asset_id = hit.asset_id; reason = `${hit.tag} is a ${hit.asset_class.replaceAll("_", " ").toLowerCase()} in ${hit.area_name} [${hit.asset_id}].`; } }
@@ -238,6 +255,10 @@ export const staticApi = {
           reason = `Found ${found.length} object${found.length === 1 ? "" : "s"} labelled like “${m[1]}” in the scan. Highlighting ${found.length > 1 ? "them" : "it"}; the closest match is ${best.id} (${best.label}, ${Math.round(best.confidence * 100)}% confidence, ${best.label_source}).` + (b ? ` It is mapped to workbook asset ${b.tag} [${b.asset_id}].` : "");
         }
       }
+    }
+    if (/manual|document|\bdocs?\b|knowledge|procedure|guide/.test(t) && !reason && !/send|go to|navigate|dispatch|x-?ray|explode|inside|explain/.test(t)) {
+      const a = A[asset_id], q = a ? `${a.asset_class.replaceAll("_", " ").toLowerCase()} ${a.issue_code.replaceAll("_", " ").toLowerCase()}` : "";
+      return { intent: "command", actions: [{ type: "knowledge", query: q }], asset_id, text: `Opening the library${a ? ` with the documents for ${a.tag} (${q})` : ""}. Every document has an ID you can cite.` };
     }
     if (asset_id && !actions.some((x) => x.type === "select_object")) {
       const a = A[asset_id]; actions.push({ type: "select", asset_id, object_id: a.object_id });
@@ -252,7 +273,9 @@ export const staticApi = {
     if (/practi[cs]e|exercise|train|rehears/.test(t)) actions.push({ type: "practice" });
     if (/learn|tutorial|teach/.test(t)) actions.push({ type: "learn" });
     if (/manual|document|doc|knowledge|procedure/.test(t)) actions.push({ type: "knowledge" });
-    if (!reason && !actions.length) { const a = await staticApi.query(text, selected); return { intent: "question", text: a.text, actions: [], mode: a.mode }; }
+    if (!reason && !actions.length) {
+      const tag = t.match(/\b([a-z]{1,3}-\d{3})\b/), named = tag && c.assets.find((x) => x.tag.toLowerCase() === tag[1])?.asset_id;
+      const a = await staticApi.query(text, named || selected); return { intent: "question", text: a.text, actions: [], mode: a.mode }; }
     if (!reason) reason = actions.map((a) => ({ xray: "Opening the X-Ray view.", practice: "Opening practice.", learn: "Opening the guided lessons.", knowledge: "Opening the library." }[a.type] || "")).join(" ");
     return { intent: "command", text: reason.trim(), actions, asset_id };
   },

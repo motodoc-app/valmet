@@ -37,7 +37,7 @@ def main() -> None:
                 o["vlm_rationale"] = v.get("rationale", "")
     for o in objs:
         o.setdefault("category", _category(o["label"]))
-    objs = apply_annotations(objs, config.ROOT / "config" / "scene_annotations.json")
+    objs = apply_annotations(objs, config.ANNOTATIONS_PATH)
     scene = {
         "frame": {"up": "+Y", "floor_y": 0.0, "units": "approx. metres (see integrity report)"},
         "bounds": {"min": lo.tolist(), "max": hi.tolist()},

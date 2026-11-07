@@ -104,7 +104,7 @@ def nav_plan(req: PlanReq):
 
 
 @app.get("/api/proximity")
-def proximity(x: float, z: float, r: float = 1.2):
+def proximity(x: float, z: float, r: float = config.PROXIMITY_M):
     hits = []
     for o in WORLD.scene["objects"]:
         if o["kind"] != "object":
@@ -204,6 +204,22 @@ def work_order_draft(req: DraftReq):
 SIGNAL_WORDS = {"vibration": "vibration_mm_s", "temperature": "bearing_temp_c", "temp": "bearing_temp_c",
                 "current": "motor_current_a", "pressure": "process_pressure_bar", "flow": "process_flow_pct",
                 "stiction": "stiction_index", "position": "position_actual_pct"}
+def find_component(t: str, cls: str | None, selected_cls: str | None):
+    """Longest component name mentioned in the text, restricted to a named device type; ties go to the selection's type."""
+    hits = []
+    for k, c in LIBRARY["classes"].items():
+        for p in c["components"]:
+            n = p["name"].lower()
+            if re.search(r"\b" + re.escape(n) + r"s?\b", t):
+                hits.append((len(n), k == selected_cls, k, p))
+    if cls:
+        hits = [h for h in hits if h[2] == cls]
+    if not hits:
+        return None
+    hits.sort(key=lambda h: (-h[0], not h[1]))
+    return hits[0][2], hits[0][3]
+
+
 CLASS_WORDS = {"pump": "PROCESS_PUMP", "motor": "ELECTRIC_MOTOR", "valve": "CONTROL_VALVE",
                "transmitter": "PRESSURE_TRANSMITTER", "sensor": "VIBRATION_SENSOR"}
 STOP = {"the", "where", "is", "are", "find", "show", "me", "a", "an", "all", "of", "in", "this", "room", "please", "locate", "which"}
@@ -241,6 +257,20 @@ def command(req: CommandReq):
     sig = next((s for w, s in SIGNAL_WORDS.items() if w in t), None)
     asset_id = req.selected_asset_id
     reason = ""
+    # a question about a named component ("what does the impeller do?"): answer it for that device type and show the part
+    comp = find_component(t, cls, assets.get(asset_id, {}).get("asset_class"))
+    if comp and re.search(r"what (does|is|are)|what's|explain|how (does|do i|to)|inspect|fail|faulty|evidence|purpose|why", t) \
+            and not re.search(r"\bwhere\b", t):
+        ccls, c = comp
+        from .metadata import priority_score
+        if assets.get(asset_id, {}).get("asset_class") != ccls:
+            same = sorted((a for a in assets.values() if a["asset_class"] == ccls),
+                          key=lambda a: -priority_score(WORLD.pack.asset(a["asset_id"])))
+            asset_id = same[0]["asset_id"] if same else None
+        ans = WORLD.copilot.answer(req.text, asset_id, c["id"])
+        acts = [{"type": "xray", "asset_id": asset_id, "focus": [c["id"]]}] if asset_id else []
+        return {"intent": "component", "text": ans["text"], "sources": ans.get("sources", []), "actions": acts,
+                "asset_id": asset_id, "component": c["id"], "mode": ans.get("mode")}
     if sig and re.search(r"abnormal|high|unusual|anomal|elevated|highest|find", t):
         best = None
         for aid, a in assets.items():
@@ -276,6 +306,11 @@ def command(req: CommandReq):
             asset_id = same[0]["asset_id"]
     # "where is the expansion vessel / circulation pump / P-002?" -> semantic search over the scene
     m = re.search(r"(?:where(?:'s| is| are)|locate|find|show me)\s+(?:the\s+|all\s+|a\s+)?(.+?)[?.!]*$", t)
+    if m and re.search(r"manual|document|\bdocs?\b|knowledge|procedure|guide", m.group(1)):
+        m = None          # "show me the manual" is a library request, not a scene search
+    # "where are the control valves?" names what to look for: the current selection must not answer it
+    if m and not reason and not sig and not re.search(r"\b(it|this|that|here|selected)\b", m.group(1)):
+        asset_id = None
     if not asset_id and m and not sig:
         tag = re.search(r"\b([a-z]{1,2}-\d{3})\b", t)
         if tag:
@@ -296,6 +331,14 @@ def command(req: CommandReq):
                           f"({best['label']}, {round(best['confidence'] * 100)}% confidence, {best['label_source']}).")
                 if b:
                     reason += f" It is mapped to workbook asset {b['tag']} [{b['asset_id']}]."
+    lib_only = bool(re.search(r"manual|document|\bdocs?\b|knowledge|procedure|guide", t)) and not reason \
+        and not re.search(r"send|go to|navigate|dispatch|x-?ray|explode|inside|explain", t)
+    if lib_only:
+        a = assets.get(asset_id)
+        q = f"{a['asset_class'].replace('_', ' ').lower()} {a['issue_code'].replace('_', ' ').lower()}" if a else ""
+        return {"intent": "command", "actions": [{"type": "knowledge", "query": q}], "asset_id": asset_id,
+                "text": f"Opening the library{' with the documents for ' + a['tag'] + ' (' + q + ')' if a else ''}. "
+                        "Every document has an ID you can cite."}
     if asset_id and not any(a["type"] == "select_object" for a in actions):
         a = assets[asset_id]
         actions.append({"type": "select", "asset_id": asset_id, "object_id": a["object_id"]})
@@ -323,7 +366,10 @@ def command(req: CommandReq):
     if re.search(r"manual|document|doc|knowledge|procedure", t):
         actions.append({"type": "knowledge"})
     if not reason and not actions:
-        ans = WORLD.copilot.answer(req.text, req.selected_asset_id)
+        # a free question that names a tag ("why is P-005 losing flow?") is scoped to that asset
+        tag = re.search(r"\b([a-z]{1,3}-\d{3})\b", t)
+        named = next((a["asset_id"] for a in assets.values() if tag and a["tag"].lower() == tag.group(1)), None)
+        ans = WORLD.copilot.answer(req.text, named or req.selected_asset_id)
         return {"intent": "question", "text": ans["text"], "sources": ans.get("sources", []), "actions": [],
                 "mode": ans.get("mode")}
     if not reason:

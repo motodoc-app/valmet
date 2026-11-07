@@ -1,0 +1,34 @@
+{
+  "_comment": "One file per site. Copy this file, change the values, then run: python scripts/run_pipeline.py --project config/<your-site>.json",
+  "site": {
+    "name": "Equipment Room",
+    "description": "Valmet × Since AI 2026 challenge scan"
+  },
+  "inputs": {
+    "ply": "data/raw/equipment_room.ply",
+    "workbook": "data/raw/builder_pack.xlsx"
+  },
+  "robot": {
+    "radius_m": 0.20,
+    "max_step_m": 0.18,
+    "proximity_m": 1.2,
+    "obstacle_min_height_m": 0.12,
+    "obstacle_max_height_m": 1.25
+  },
+  "geometry": {
+    "voxel_m": 0.03,
+    "nav_cell_m": 0.05,
+    "min_opacity": 0.25,
+    "max_splat_scale_m": 0.25
+  },
+  "llm": {
+    "model": "gpt-5.4-mini",
+    "vision_model": "gpt-5.4-mini",
+    "enabled": true
+  },
+  "knowledge": {
+    "equipment_library": "backend/xray/knowledge/equipment.json",
+    "scene_annotations": "config/scene_annotations.json",
+    "mapping_overrides": "config/mapping_overrides.json"
+  }
+}

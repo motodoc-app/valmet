@@ -1,1 +1,1 @@
-{"splat_format": "xq16", "lo": [-5.479633331298828, -3.653515100479126, -6.238452911376953], "hi": [7.717873573303223, 5.97881555557251, 6.624453544616699], "log_scale_min": -12.0, "log_scale_span": 12.0, "chunks": [{"file": "scan-0.wasm", "count": 300000, "bytes": 5100000}, {"file": "scan-1.wasm", "count": 430000, "bytes": 7310000}, {"file": "scan-2.wasm", "count": 434997, "bytes": 7394949}], "total": 1164997, "llm": "gpt-5.4-mini"}
+{"llm": "gpt-5.4-mini", "scan_manifest": "scan.json", "scan_fallback": "../data/scene.splat"}

@@ -102,9 +102,22 @@ export class Facility {
    * If the splat engine is unavailable or does not finish within `timeoutMs`, the point cloud simply stays,
    * so the page can never hang on the scan. `onStatus({received, total, phase})` reports progress.
    */
-  async loadScan(manifest, onStatus, { splats = true, timeoutMs = 45000 } = {}) {
+  async loadScan(manifest, onStatus, { splats = true, timeoutMs = 45000, fallback = null, lite = false } = {}) {
+    try {
+      return await this._loadScan(manifest, onStatus, { splats, timeoutMs, lite });
+    } catch (e) {
+      // a missing or broken chunk must not leave the room empty: retry once with the committed scene.splat
+      if (!fallback || manifest === fallback || this.previews.length) throw e;
+      console.warn("scan chunks unavailable, using the full scene file:", e.message);
+      return this._loadScan(fallback, onStatus, { splats, timeoutMs, lite });
+    }
+  }
+
+  async _loadScan(manifest, onStatus, { splats, timeoutMs, lite }) {
     const qa = new URLSearchParams(location.search).get("splat");
-    const chunks = qa ? [{ url: qa }] : manifest.chunks;
+    let chunks = qa ? [{ url: qa }] : manifest.chunks;
+    this.scanSource = qa ? qa : manifest.fallback ? "data/scene.splat (fallback)" : `${chunks.length} streamed chunks`;
+    if (lite && chunks.length > 2) chunks = chunks.slice(0, 2);   // phones: the most important ~730k splats
     const format = qa ? "splat" : manifest.splat_format;
     const total = chunks.reduce((n, c) => n + (c.bytes || 0), 0);
     let received = 0;
@@ -126,7 +139,8 @@ export class Facility {
     };
     // chunk 0 first (fast first picture), the rest in parallel afterwards
     const first = await fetchChunk(chunks[0]);
-    const rest = Promise.all(chunks.slice(1).map(fetchChunk));
+    // later chunks only add detail: if one fails, keep what we have rather than failing the scan
+    const rest = Promise.allSettled(chunks.slice(1).map(fetchChunk));
     const show = async (bytes, c) => {
       const all = format === "xq16" ? decodeXq16(bytes, c.count, manifest) : bytes;
       // split each chunk at the cut-away height: the upper part (ceiling, overhead pipes) can be hidden so
@@ -157,7 +171,7 @@ export class Facility {
     };
     report("render");
     const firstShown = show(first, chunks[0]);
-    const others = (await rest).map((b, i) => show(b, chunks[i + 1]));
+    const others = (await rest).map((r, i) => r.status === "fulfilled" ? show(r.value, chunks[i + 1]) : (console.warn("scan chunk skipped:", r.reason?.message), null)).filter(Boolean);
     await Promise.all([firstShown, ...others]);
     report("done");
   }

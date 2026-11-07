@@ -36,7 +36,7 @@ class Grid:
 class NavMap:
     def __init__(self, scene_pts: np.ndarray, objects: list[dict],
                  bounds_min: np.ndarray, bounds_max: np.ndarray, res: float = config.NAV_CELL,
-                 robot_radius: float = config.ROBOT_RADIUS, max_step: float = 0.18):
+                 robot_radius: float = config.ROBOT_RADIUS, max_step: float = config.ROBOT_MAX_STEP):
         """scene_pts: splat centres (opacity-filtered) in the canonical frame."""
         self.res = res
         self.robot_radius = robot_radius

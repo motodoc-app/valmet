@@ -26,7 +26,7 @@ class World:
                           np.array(self.scene["bounds"]["max"]))
         self.pack = BuilderPack(config.XLSX_PATH)
         self.objects = {o["id"]: o for o in self.scene["objects"]}
-        ann = config.ROOT / "config" / "scene_annotations.json"
+        ann = config.ANNOTATIONS_PATH
         demo_start = json.loads(ann.read_text()).get("demo_start") if ann.exists() else None
         start = self.nav.nearest_walkable(*demo_start) if demo_start else None
         reach = set()
@@ -41,7 +41,7 @@ class World:
                     reach.add(o["id"])
         self.reachable = reach
         self.mapping = build_mapping(self.scene, self.pack, reach,
-                                     load_overrides(config.ROOT / "config" / "mapping_overrides.json"))
+                                     load_overrides(config.MAPPING_OVERRIDES_PATH))
         if start is None:
             # default start: the drivable cell farthest from the target by route distance (crosses the room)
             tobj = self.objects[self.mapping["bindings"][self.mapping["target_asset_id"]]["object_id"]]
@@ -54,7 +54,7 @@ class World:
             self.by_object = {}
             near = {p["object_id"] for p in self.along_route(route["waypoints"], radius=1.3)}
             self.mapping = build_mapping(self.scene, self.pack, reach,
-                                         load_overrides(config.ROOT / "config" / "mapping_overrides.json"), preferred=near)
+                                         load_overrides(config.MAPPING_OVERRIDES_PATH), preferred=near)
         self.by_object = {b["object_id"]: b for b in self.mapping["bindings"].values()}
         self.copilot = Copilot(self.pack, self.mapping)
 
@@ -93,6 +93,7 @@ class World:
             objs.append(d)
         nav = self.nav
         return {
+            "site": config.SITE, "proximity_m": config.PROXIMITY_M,
             "objects": objs, "planes": self.scene["planes"], "stats": self.scene["stats"],
             "ceiling_y": self.scene["ceiling_y"], "bounds": self.scene["bounds"],
             "partial_scan": self.scene["partial_scan"],

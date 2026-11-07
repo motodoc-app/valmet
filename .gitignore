@@ -10,3 +10,5 @@ web/public/data/tiny.splat
 .DS_Store
 .env
 web/public/static/*.wasm
+web/public/static/scan.json
+web/tests/shots/

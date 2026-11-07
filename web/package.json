@@ -1,11 +1,17 @@
 {
   "name": "industrial-xray-ai-web",
   "version": "1.0.0",
-  "description": "",
+  "description": "Industrial X-Ray web app (three.js + Spark). `npm run dev` / `npm run build` generate the scan chunks first.",
   "scripts": {
+    "scan": "node scripts/scan-chunks.mjs",
+    "check": "node scripts/check-manifest.mjs public",
+    "predev": "npm run scan",
     "dev": "vite",
+    "prebuild": "npm run scan && npm run check",
     "build": "vite build",
-    "preview": "vite preview"
+    "postbuild": "node scripts/check-manifest.mjs dist",
+    "preview": "vite preview",
+    "test:e2e": "node tests/e2e.mjs"
   },
   "author": "",
   "license": "ISC",

@@ -21,7 +21,7 @@ from .metadata import BuilderPack, priority_score, telemetry_evidence
 
 # Equipment library: one entry per asset class (exploded model, component knowledge, fault hypotheses,
 # lessons, practice scenario). Adding a device type is a data change, not a code change.
-LIBRARY = json.loads((Path(__file__).parent / "knowledge" / "equipment.json").read_text())
+LIBRARY = json.loads(config.LIBRARY_PATH.read_text())
 
 
 def kb_id(cls: str, component: str) -> str:

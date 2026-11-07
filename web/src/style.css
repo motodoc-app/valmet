@@ -35,7 +35,7 @@ canvas.gl { position: absolute; inset: 0; display: block; }
 /* ---------- chrome ---------- */
 .wordmark { position: absolute; top: 22px; left: 28px; z-index: 5; user-select: none; }
 .wordmark .eyebrow { font-size: 10px; letter-spacing: .42em; color: var(--text-2); text-transform: uppercase; }
-.wordmark .name { font-size: 21px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; margin-top: 4px; }
+.wordmark .name { font-size: 19px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; margin-top: 4px; }
 .modes { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; padding: 3px;
   background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 .modes button { padding: 6px 16px; border-radius: 7px; color: var(--text-2); font-weight: 500; transition: color .2s, background .2s; }
@@ -61,7 +61,9 @@ canvas.gl { position: absolute; inset: 0; display: block; }
 
 /* ---------- cards ---------- */
 .card { position: absolute; z-index: 4; contain: layout paint; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 24px 60px rgba(0, 0, 0, .35); display: flex; flex-direction: column; overflow: hidden; }
-.card.left { top: 92px; left: 24px; width: 268px; max-height: calc(100% - 196px - 230px); }
+.card.left { top: 92px; left: 24px; width: 268px; max-height: calc(100% - 92px - 380px); }
+.card-b { flex: 1 1 auto; min-height: 0; }
+.card-f, .card-h { flex: none; }
 .card.right { top: 92px; right: 64px; width: 360px; max-height: calc(100% - 196px); }
 .card-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; }
 .card-h .t { font-size: 12px; color: var(--text-2); }
@@ -138,7 +140,8 @@ canvas.gl { position: absolute; inset: 0; display: block; }
 .note { font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
 
 /* ---------- dock + rail ---------- */
-.dock { position: absolute; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 5; display: flex; align-items: center;
+/* centred in the space between the mini-map (left) and the tool rail (right) */
+.dock { position: absolute; left: 304px; right: 64px; margin: 0 auto; width: fit-content; max-width: calc(100% - 368px); overflow-x: auto; scrollbar-width: none; bottom: 24px; z-index: 5; display: flex; align-items: center;
   background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, .4); padding: 10px 8px; }
 .dock .grp { display: flex; align-items: center; gap: 4px; padding: 0 10px; }
 .dock .grp + .grp { border-left: 1px solid var(--line); }
@@ -170,6 +173,7 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .rail button { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; color: var(--text-2); }
 .rail button:hover { color: var(--text); background: var(--surface-2); }
+.rail button.on { color: var(--text); background: var(--surface-3); }
 .rail hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
 
 /* ---------- 3D tags ---------- */
@@ -206,7 +210,7 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .progress i { flex: 1; height: 2px; border-radius: 1px; background: var(--surface-3); }
 .progress i.done, .progress i.cur { background: var(--text); }
 .progress i.cur { opacity: .5; }
-.loading { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: var(--bg); transition: opacity .6s; }
+.loading { position: absolute; inset: 0; z-index: 20; pointer-events: none; display: grid; place-items: center; background: var(--bg); transition: opacity .6s; }
 .loading .box { width: 220px; text-align: center; color: var(--text-3); font-size: 12px; }
 .loading .bar { height: 2px; background: var(--surface-3); margin-top: 14px; border-radius: 1px; overflow: hidden; }
 .loading .bar i { display: block; height: 100%; width: 30%; background: var(--text-2); animation: load 1.2s var(--ease) infinite; }
@@ -235,15 +239,100 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .formula b { color: var(--text); font-weight: 500; }
 select.search { appearance: none; cursor: pointer; }
 
-.scan-status { position: absolute; top: 66px; left: 28px; z-index: 6; font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums;
+.scan-status { position: absolute; top: 68px; left: 28px; padding: 2px 9px !important; z-index: 6; font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums;
   background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; }
 
 .minimap { position: absolute; left: 24px; bottom: 24px; z-index: 5; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r); padding: 8px 10px 10px; box-shadow: 0 20px 50px rgba(0, 0, 0, .35); }
 .minimap .mm-h { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--text-2); margin-bottom: 6px; }
 .minimap canvas { display: block; border-radius: 6px; cursor: crosshair; background: rgba(0, 0, 0, .25); }
-@media (max-width: 1100px) { .minimap { display: none; } }
+@media (max-width: 1100px) { .minimap { display: none; } .dock { left: 24px; max-width: calc(100% - 88px); } }
 
 .robot-tag { transform: translate(-50%, -100%); display: flex; gap: 6px; align-items: center; padding: 4px 9px; border-radius: 999px;
   background: #f2f3f5; color: #0a0b0d; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 4px 14px rgba(0, 0, 0, .45); }
 .robot-tag span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+/* ---------- card tools: minimise, plain-language summary ---------- */
+.card-tools { display: inline-flex; gap: 10px; align-items: center; }
+.card.min .card-b > :not(.h1), .card.min .card-f { display: none; }
+.card.min .card-b { padding-bottom: 12px; overflow: hidden; }
+.card.min .card-b .h1 { font-size: 15px; margin: 2px 0 0; }
+.card.left.min .card-b { display: none; }
+.plain { margin: 12px 0 2px; padding: 10px 12px; border-radius: 9px; background: var(--surface-2); color: var(--text-2); font-size: 12.5px; line-height: 1.55; }
+.plain b { color: var(--text); font-weight: 500; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 16px 10px; }
+.chip { font-size: 11.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text-2); white-space: nowrap; }
+.chip:hover { color: var(--text); }
+.chip.on { background: var(--text); color: #0a0b0d; border-color: var(--text); }
+.chip:disabled { opacity: .35; cursor: default; }
+
+/* ---------- playback (scrub forward / reverse) ---------- */
+.routeinfo input[type="range"] { margin-top: 10px; }
+.routeinfo input[type="range"]:disabled { opacity: .35; }
+
+/* ---------- focus mode: hide the chrome to watch the inspection ---------- */
+.focus-exit { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9; display: none; }
+body.focus .card, body.focus .dock, body.focus .rail, body.focus .minimap, body.focus .modes, body.focus .topright, body.focus .scan-status, body.focus .plan-banner, body.focus .plan-legend { display: none !important; }
+body.focus .focus-exit { display: inline-flex; }
+body.focus .vignette { opacity: .4; }
+
+/* ---------- guided tour ---------- */
+.tour { position: absolute; z-index: 10; left: 50%; bottom: 120px; transform: translateX(-50%); width: min(520px, calc(100% - 32px));
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5); padding: 16px 18px 14px; animation: in .3s var(--ease); }
+.tour .h { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-3); }
+.tour .t { font-size: 16px; font-weight: 500; margin: 6px 0 6px; }
+.tour .p { margin-bottom: 8px; }
+.tour .eng { font-size: 11.5px; color: var(--text-3); border-left: 2px solid var(--line-2); padding-left: 10px; margin: 0 0 12px; line-height: 1.5; }
+.tour .nav { display: flex; gap: 8px; justify-content: flex-end; }
+.tour .nav .btn { height: 32px; }
+.seg.small button { padding: 3px 8px; font-size: 11px; }
+
+/* ---------- 2D floor plan (no-WebGL mode) ---------- */
+canvas.plan { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.dock .grp.routeinfo { display: block; }
+.plan-banner { position: absolute; top: 20px; left: 300px; right: 430px; z-index: 6; display: flex; gap: 10px; align-items: center; margin: 0 auto; max-width: 620px; padding: 8px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); color: var(--text-2); font-size: 12px; }
+.plan-banner b { color: var(--text); font-weight: 500; }
+.plan-banner .link { white-space: nowrap; }
+.plan-legend { position: absolute; left: 24px; bottom: 24px; z-index: 4; display: flex; gap: 12px; flex-wrap: wrap; max-width: 280px; font-size: 11px; color: var(--text-3); }
+.plan-legend span { display: inline-flex; gap: 6px; align-items: center; }
+.plan-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.plan-legend i.sq { border-radius: 2px; background: rgba(226, 232, 240, .36); }
+.plan-legend i.eq { border-radius: 2px; background: rgba(74, 80, 90, .9); }
+body.plan-mode .card.right { right: 24px; }
+body.plan-mode .dock { right: 24px; max-width: calc(100% - 328px); }
+body.plan-mode .card.left { max-height: calc(100% - 196px - 70px); }
+
+/* ---------- phones and small tablets ---------- */
+@media (max-width: 760px) {
+  html, body { font-size: 13px; }
+  .wordmark { top: 12px; left: 14px; }
+  .wordmark .eyebrow { display: none; }
+  .wordmark .name { font-size: 14px; letter-spacing: .1em; margin: 0; }
+  .topright { top: 8px; right: 10px; left: 150px; }
+  .ask { width: auto; flex: 1; }
+  .ask .kbd { display: none; }
+  .pop { position: fixed; top: 52px; left: 10px; right: 10px; width: auto; max-height: 55vh; }
+  .modes { top: 52px; left: 10px; right: 10px; transform: none; overflow-x: auto; scrollbar-width: none; }
+  .modes button { flex: 1; padding: 6px 8px; }
+  .dock { top: 96px; bottom: auto; left: 10px; right: 10px; transform: none; width: auto; max-width: none; margin: 0; overflow-x: auto; scrollbar-width: none; padding: 6px 4px; border-radius: 12px; justify-content: flex-start; }
+  .dock .grp { padding: 0 6px; flex: none; }
+  .dock .grp.slider { width: 260px; }
+  .routeinfo { min-width: 210px; }
+  .tool { min-width: 54px; }
+  .rail, .minimap, .card.left { display: none !important; }
+  .card.right { top: auto; bottom: 0; left: 0; right: 0 !important; width: auto; max-height: 46%; border-radius: 16px 16px 0 0; border-bottom: 0; }
+  .card.right.min { max-height: 64px; }
+  .card.right .card-h::before { content: ""; position: absolute; top: 6px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--line-2); }
+  .card.value { top: 96px; width: calc(100% - 20px); max-height: calc(100% - 106px); }
+  .sheet { top: 96px; width: calc(100% - 20px); max-height: calc(100% - 106px); }
+  .toast { top: auto; bottom: calc(46% + 12px); max-width: calc(100% - 24px); }
+  .scan-status { top: auto; bottom: calc(46% + 10px); left: 12px; }
+  .tour { bottom: calc(46% + 12px); }
+  .plan-banner { top: auto; bottom: calc(46% + 10px); left: 10px; right: 10px; transform: none; max-width: none; min-width: 0; }
+  body.plan-mode .modes { display: none; }
+  body.plan-mode .dock { top: 52px; }
+  .plan-legend { display: none; }
+  .btn { height: 42px; }
+  .list-row { padding: 11px 10px; }
+}
+@media (max-width: 1100px) and (min-width: 761px) { .plan-banner { left: 240px; right: 330px; font-size: 11.5px; } }
