@@ -43,6 +43,12 @@ def hypotheses_for(cls: str, issue: str) -> list:
     return [["Unspecified deviation; verify locally", []]]
 
 
+# a question about the selected asset (vs. one about the plant or the prototype): decides whether the offline answer
+# leads with that asset's evidence
+ASSET_Q = re.compile(r"\b(it|its|this|that|[a-z]{1,3}-\d{3})\b|check|safe|running|wrong|problem|evidence|history|confiden|"
+                     r"telemetry|signal|why|suspect|fault|status|condition|health|serviced", re.I)
+
+
 def _tok(s: str) -> list[str]:
     return [w for w in re.findall(r"[a-z0-9_]+", s.lower()) if len(w) > 2]
 
@@ -349,7 +355,7 @@ class Copilot:
         allowed |= {"Telemetry_Sample_3d", "DOC-FIELD-SAFETY", "DOC-RAG-GUIDE", "DOC-3D-MAPPING"}
         client = self._client()
         if client is None:
-            return {"text": self.offline_text(ev, hits), "sources": hits, "mode": "retrieval-only", "asset_id": asset_id}
+            return {"text": self.offline_text(ev if ASSET_Q.search(question) else None, hits), "sources": hits, "mode": "retrieval-only", "asset_id": asset_id}
         slim = None
         if ev:
             slim = {k: v for k, v in ev.items() if k not in ("telemetry", "documents")}
@@ -389,5 +395,5 @@ class Copilot:
             return {"text": text, "sources": hits, "mode": f"llm:{config.LLM_MODEL}", "invalid_citations": bad,
                     "asset_id": asset_id}
         except Exception as e:  # noqa: BLE001
-            return {"text": self.offline_text(ev, hits), "sources": hits, "mode": f"retrieval-only ({type(e).__name__})",
+            return {"text": self.offline_text(ev if ASSET_Q.search(question) else None, hits), "sources": hits, "mode": f"retrieval-only ({type(e).__name__})",
                     "asset_id": asset_id}

@@ -46,10 +46,12 @@ const rawDump = (txt) => {
 
 const isStatic = !process.env.BASE;
 const LIVE = /Live AI/, PRE = /Pre-generated/, DOC = /Document search/, RULE = /Rule-based/;
-const ANSWER = isStatic ? PRE : LIVE;            // what a free question should produce in this mode
+// what a free question should produce: pre-generated (static), live AI (server); a server without LLM quota falls back
+// to the pre-generated answer or document search and must say so
+const ANSWER = isStatic ? PRE : process.env.EXPECT_LIVE ? LIVE : /Live AI|live AI unavailable/;
 const QUESTIONS = [
   // [question, label regex, check(answer) → bool, description]
-  ["What's wrong with P-005?", isStatic ? PRE : LIVE, (a) => /foul/i.test(a.text) && a.sel === "P-005" && a.diag === "P-005", "fouling, P-005 selected + diagnosis"],
+  ["What's wrong with P-005?", isStatic ? PRE : process.env.EXPECT_LIVE ? LIVE : /Live AI|Rule-based/, (a) => /foul/i.test(a.text) && a.sel === "P-005" && a.diag === "P-005", "fouling, P-005 selected + diagnosis"],
   ["and what should I check first?", ANSWER, (a) => /hydraulic/i.test(a.text), "follow-up keeps P-005: hydraulic path"],
   ["Is it safe to keep running?", ANSWER, (a) => /cannot|can't|site procedure|qualified|lockout/i.test(a.text) && /P-005|ASSET-017|pump/i.test(a.text), "no safety verdict, defers to site procedures"],
   ["What evidence supports this?", ANSWER, (a) => a.cites >= 2, "evidence with ≥2 citations"],

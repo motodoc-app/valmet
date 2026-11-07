@@ -90,7 +90,9 @@ Phones get a bottom-sheet layout and a lighter scan.
   template mode with the same evidence, confidence and citations.
 * **Hosted / static mode:** `python scripts/export_static.py && cd web && npm run build` produces `web/dist`, a static
   site with no server. Routes and reroutes are planned in the browser by a JS port of `navigation.py`, and the
-  diagnoses are the backend's own output, generated at export time.
+  diagnoses are the backend's own output, generated at export time. `python scripts/export_faq.py` adds the copilot FAQ
+  (`static/faq.json`: 9 questions for every asset plus 50 general ones, answered by the backend copilot with citation
+  checks); the hosted copilot answers from it and labels every answer with how it was made.
 * **Tests:** `pytest -q` (pipeline guarantees) and `cd web && npm run build && node tests/e2e.mjs` (headless
   Chromium: the full 3D journey, every X-Ray device type, copilot commands, the floor plan with WebGL disabled, GPU
   context loss, missing scan chunks and a phone viewport; needs a global `playwright`). Point it at a running dev

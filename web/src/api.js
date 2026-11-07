@@ -17,7 +17,15 @@ const serverApi = {
   grid: async () => { const g = await fetch("/api/nav/grid").then(j); const n = g.W * g.H; return { ...g, walkableMask: unpack(g.walkable, n), occupiedMask: unpack(g.occupied, n) }; },
   plan: (body) => post("/api/nav/plan", body),
   diagnose: (id) => fetch(`/api/diagnose/${id}`).then(j),
-  command: (text, selected) => post("/api/copilot/command", { text, selected_asset_id: selected }),
+  async command(text, selected, history = []) {
+    const r = await post("/api/copilot/command", { text, selected_asset_id: selected, history });
+    // live AI unavailable (no key, no quota, no network): use the pre-generated answer to a similar question instead
+    // of plain document search, labelled as such (copilot-ui shows "live AI unavailable")
+    if (r.intent === "question" && /^(retrieval-only|template)/.test(r.mode || "")) {
+      try { const f = await staticApi.answer(text, r.asset_id || selected, history); if (f.mode === "faq") return { ...r, ...f, actions: r.actions, fallback: r.mode }; } catch { /* keep the server answer */ }
+    }
+    return r;
+  },
   query: (question, asset_id, component) => post("/api/copilot/query", { question, asset_id, component }),
   search: (q) => fetch(`/api/knowledge/search?q=${encodeURIComponent(q || "pump fouling flow current")}`).then(j),
   doc: (id) => fetch(`/api/knowledge/doc/${encodeURIComponent(id)}`).then(j),
