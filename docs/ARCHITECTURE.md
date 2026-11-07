@@ -102,6 +102,29 @@ live in `config/project.json`, read by `backend/xray/config.py`; `scripts/run_pi
 any project file. See `docs/REPLICATE.md`. The design language is one calm dark
 studio look with the system typeface, a numbered list card, a tabbed detail card, a bottom control dock and a tool rail.
 
+## 7b. Pre-visit workflow modules (`web/src/ext.js` + one file per feature)
+`ext.js` is the extension interface: `registerMode` (a tab with its own cards, dock and picking), `addRailButton`,
+and hooks (`boot`, `frame`, `select`, `minimap`, `planExtras`, `modeChange`). Every route request goes through
+`withExtras`, so a module can add obstacles (`blocks`) or free a footprint (`clears`) for all planners at once.
+- **Scene understanding** (`quality.js`, `scripts/scene_quality.py` → `static/quality.json`, `docs/SCENE_QUALITY.md`):
+  exact tier counts (candidates → specific type → confident → review-corrected → linked), data-quality flags
+  (fragments, tiny/flat, low support, possible over-merges), and a frozen, stratified 60-object AI second-opinion
+  audit with Wilson intervals; a blank CSV for the human check.
+- **Layers** (`layers.js`, `semantic.js`, `scanfilter.js`, `sitemap.js`, Facility methods): category-coloured boxes
+  in one `InstancedMesh` over a dimmed scan; "show uncertain"; a clean-scan filter that splits haze splats into
+  their own layer at decode time (≈ 6 % of splats); an overhead site map with legend, click-to-fly and PNG export.
+- **Maintenance planning** (`planning.js`): a virtual proxy of an object (oriented footprint) dragged on the floor;
+  live collision checks against other objects' boxes and occupied grid cells (excluding the original footprint),
+  clearance from the grid distance transform, an assumed P-005 service zone, and the route re-planned on drop with
+  the proxy as an obstacle and the original footprint cleared (`clears` in `navigation.py`, `world.py`, `api.py`
+  and the browser planner). The scan is never modified. Export as Markdown/JSON.
+- **Remote support** (`support.js`): pins on objects or the floor, a question, the shared asset context and plan,
+  serialised (deflate + base64url) into a `#support=` link, a code or a JSON/Markdown package with an optional
+  view snapshot; the expert view adds pins, an AI-drafted recommendation that must be reviewed, and a work-order
+  draft; "send back" makes the next round. Asynchronous by design: no session server.
+- **Tour** (`tour.js`) drives the whole P-005 story through these modules; `?capture` renders frame by frame for
+  the recorded demo (`web/tests/record-demo.cjs`).
+
 ## 8. API (FastAPI, follows the workbook `API_Contract`)
 `GET /api/assets`, `/api/assets/{id}`, `/telemetry`, `/events`, `/documents`, `GET /api/scene/anchors`,
 `POST /api/copilot/query`, `POST /api/work-orders/draft` (draft only), plus `GET /api/scene`, `GET /api/nav/grid`,
