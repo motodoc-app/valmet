@@ -226,6 +226,7 @@ function renderOverviewCard() {
 }
 
 function renderTransitCard() {
+  if (APP.modes.get(S.mode)?.ownsCard) return;          // Plan / Support keep their own card while the robot drives
   const assets = [...S.seen.keys()].map((id) => S.data.objects.find((o) => o.id === id)).filter((o) => o?.asset);
   const others = S.seen.size - assets.length;
   card(`${header("En route", S.navObject.asset.tag, "")}
@@ -593,6 +594,7 @@ async function arrive() {
   renderDock(); renderLeft();
   toast(`Arrived at <b>${o.asset.tag}</b>. Diagnosis ready.`);
   S.diag = await S.diagPromise; S.tab = "overview";
+  if (APP.modes.get(S.mode)?.ownsCard) return;
   $("#right").classList.remove("min");
   renderDiagnosis();
 }
