@@ -19,6 +19,7 @@ import "./planning.js";
 import "./support.js";
 import "./layers.js";
 import "./quality.js";
+import "./xray-overlay.js";   // in-scene X-Ray panel + arrival prompt (APP.xo, APP.arrival)
 
 // ------------------------------------------------------------------ skeleton
 function modeTabs() {
@@ -56,6 +57,7 @@ $("#app").innerHTML = `
   <button data-rail="focus" title="Focus: hide panels (F)">${icon("focus")}</button><button data-rail="full" title="Full screen">${icon("full")}</button><button data-rail="help" title="About this demo">${icon("help")}</button>
 </div>
 <div class="scan-status hidden" id="scanStatus" role="status"></div>
+<div class="pov-hud hidden" id="povHud" role="status" aria-live="off"></div>
 <div class="minimap" id="minimap" aria-label="Mini-map"><div class="mm-h"><span>Room overview</span><span class="note">click to look</span></div><canvas></canvas></div>
 <button class="btn focus-exit" id="focusExit">${icon("close")}Show panels</button>
 <div class="loading" id="loading"><div class="box">Starting<div class="bar"><i></i></div></div></div>`;
@@ -134,7 +136,8 @@ async function boot() {
   initTraining(S, { $, esc, cites, setMode, card: (h) => ($("#right").innerHTML = h), xCam, xControls, toast, icon, focusPart });
   Object.assign(APP, { S, THREE, scene: fac, camera, controls, xCam, xControls, renderer, canvas, labelsRoot: $(".labels"), api, flyTo, card, sheet,
     setMode, sceneMode, selectObject, selectAsset, restart, dispatch, blockAisle, replan, renderDock, renderLeft, renderRail,
-    renderOverviewCard, renderDiagnosis, renderAssetCard, resetAll, setCamera, showWorkOrder, enterXRay, ask, toast, viewOffset });
+    renderOverviewCard, renderDiagnosis, renderAssetCard, resetAll, setCamera, showWorkOrder, enterXRay, ask, toast, viewOffset,
+    prepareXRay, selectComponent, cancelTween: () => { tween = null; }, xHome });
   emit("boot", APP);
   renderLeft(); renderOverviewCard(); renderDock();
   initMinimap().catch((e) => console.warn("mini-map", e));
@@ -214,7 +217,12 @@ function renderLeft() {
         <span class="nm"><b>${a.tag}</b><small>${nice(a.asset_class)} · ${a.is_target ? "Simulated fault" : nice(a.issue_code)}</small></span>
         <span class="health s-${a.condition_state}">${a.health_score}</span></button>`).join("")}</div>
     <div class="card-f"><span><b>${S.data.stats.n_objects}</b> object candidates</span><span><b>${nav.walkable_area_m2}</b> m² drivable</span><span><b>${(S.data.integrity.declared_vertex_count / 1e6).toFixed(1)}M</b> splats</span></div>`;
-  $("#left").onclick = (e) => { if (e.target.closest("[data-min-card]")) return; const r = e.target.closest("[data-asset]"); if (r) selectAsset(r.dataset.asset, { fly: true }); };
+  $("#left").onclick = (e) => {
+    if (e.target.closest("[data-min-card]")) return;
+    const r = e.target.closest("[data-asset]"); if (!r) return;
+    if (APP.xo?.open) return APP.xo.show(r.dataset.asset);      // X-Ray panel open: look inside that asset instead
+    selectAsset(r.dataset.asset, { fly: true });
+  };
 }
 
 function renderComponents() {
@@ -286,15 +294,23 @@ function renderAssetCard(o) {
   }
   card(`${header(nice(a.asset_class), a.tag, '<span class="tag syn">Synthetic</span>', true)}
     <div class="sub"><span class="status s-${a.condition_state}">${nice(a.condition_state)}</span> · ${esc(a.issue_summary)}</div>
-    <div class="actions-top">
-      <button class="btn primary" data-act="dispatch-sel">${icon("play")}Send robot here</button>
-      <button class="btn" data-act="diagnose-sel">${icon("spark")}What's wrong?</button>
-      ${S.kb.classes[a.asset_class] ? `<button class="btn" data-act="xray-sel">${icon("layers")}See inside</button>` : ""}</div>
+    ${assetActions(o)}
     <div class="section">${kv("Health", a.health_score)}${kv("Criticality", esc(a.criticality))}${kv("Area", esc(a.area_name))}</div>
     ${equipmentInfo(a)}
     <div class="section"><div class="label">3D identity</div>${identityRows(o)}</div></div>`);
 }
 
+/** One connected twin: the same four actions on every asset card (scene click, list, search, copilot, arrival).
+ *  The primary action follows the journey: send the robot first; once it stands at this asset, look inside. */
+function assetActions(o) {
+  const a = o.asset, model = !!S.kb.classes[a.asset_class], here = robotAt(o);
+  return `<div class="actions-top">
+      <button class="btn ${here && model ? "" : "primary"}" data-act="dispatch-sel" ${here ? "disabled title=\"The robot is standing at this asset\"" : ""}>${icon(here ? "check" : "play")}${here ? "Robot is here" : "Send robot here"}</button>
+      ${model ? `<button class="btn ${here ? "primary" : ""}" data-act="xo-sel" title="Open the exploded teaching model over the scene">${icon("layers")}Explore internals (X-Ray)</button>` : ""}
+      <button class="btn" data-act="diagnose-sel">${icon("spark")}What's wrong?</button>
+      ${APP.modes.has("plan") ? `<button class="btn" data-act="plan-sel" title="Plan the access: move what is in the way in a safe layout simulation">${icon("grid")}Plan access</button>` : ""}</div>`;
+}
+const robotAt = (o) => !!(o && S.robot.arrived && S.navObject?.id === o.id && S.curve && S.robot.s >= S.robot.len - 0.05);
 function equipmentInfo(a) {
   const lib = S.kb.classes[a.asset_class];
   if (!lib) return "";
@@ -339,6 +355,8 @@ $("#right").addEventListener("click", async (e) => {
   if (act === "diagnose-sel") { S.cardLock = true; S.diag = await api.diagnose(S.selected.asset.asset_id); S.tab = "overview"; renderDiagnosis(); }
   if (act === "xray") enterXRay(null, S.diag?.asset?.asset_id);
   if (act === "xray-sel") enterXRay(null, S.selected.asset.asset_id);
+  if (act === "xo-sel") APP.xo ? APP.xo.show(S.selected.asset.asset_id) : enterXRay(null, S.selected.asset.asset_id);
+  if (act === "plan-sel") { const o = S.selected; if (APP.planning?.pickObject) APP.planning.pickObject(o.id); else setMode("plan"); }
   if (act === "wo") showWorkOrder(S.diag.asset.asset_id);
   if (act === "result") renderDiagnosis();
   if (act === "isolate") { const on = S.xray.hidden.size === 0; S.xray.isolate(on ? S.xSelected : null); renderPartCard(); }
@@ -364,6 +382,9 @@ function viewOffset(c) {
 }
 
 // ------------------------------------------------------------------ dock
+// Camera modes (the navpad's Robot / Eye / Angled / Top buttons map onto the same ids: robot = pov, eye = free at eye level)
+const CAMS = [["pov", "Robot POV", "Ride along: the robot's own camera, rendered from the 3D scan"], ["chase", "Chase", "Follow behind the robot"],
+  ["broadcast", "Angled", "Watch from above at an angle, like a broadcast camera"], ["top", "Top", "Look straight down on the whole room"], ["free", "Free", "Move the camera yourself"]];
 const SHORT = { PROCESS_PUMP: "Pump", ELECTRIC_MOTOR: "Motor", CONTROL_VALVE: "Valve", PRESSURE_TRANSMITTER: "Transmitter", VIBRATION_SENSOR: "Vibration sensor" };
 function renderDock() {
   const x = ["xray", "learn", "practice"].includes(S.mode);
@@ -390,7 +411,7 @@ function renderDock() {
     <div class="grp routeinfo"><div class="top"><span>Route</span><b id="rLen">${r ? r.length_m + " m" : "Not planned"}</b></div>
       <input type="range" id="scrub" min="0" max="1000" value="${active ? Math.round((R.s / R.len) * 1000) : 0}" ${active ? "" : "disabled"} aria-label="Route progress: drag to scrub forward or back"/>
       <small id="rMeta">${r ? `<span id="rProg"></span>A* ${r.compute_ms} ms · clearance ${r.validation.min_clearance_m} m · ${r.validation.collisions} collisions` : `Robot radius ${S.data.navigation.robot_radius_m} m · step limit ${S.data.navigation.max_step_m} m`}</small></div>
-    <div class="grp"><div class="seg" role="group" aria-label="Camera">${[["chase", "Chase"], ["broadcast", "Broadcast"], ["top", "Top"], ["free", "Free"]].map(([v, l]) => `<button data-cam="${v}" class="${S.cam === v ? "on" : ""}">${l}</button>`).join("")}</div></div>
+    <div class="grp"><div class="seg" role="group" aria-label="Camera">${CAMS.map(([v, l, t]) => `<button data-cam="${v}" class="${S.cam === v ? "on" : ""}" title="${t}" aria-pressed="${S.cam === v}">${l}</button>`).join("")}</div></div>
 `;
   progressUI();
 }
@@ -451,7 +472,8 @@ $("#rail").addEventListener("click", async (e) => {
   const r = e.target.closest("[data-rail]")?.dataset.rail;
   if (r?.startsWith("x:")) { await APP.rail.find((b) => b.id === r.slice(2))?.onClick(APP); return renderRail(); }
   const x = !sceneMode(), cam = x ? xCam : camera, ctl = x ? xControls : controls;
-  if (r === "in" || r === "out") { const v = cam.position.clone().sub(ctl.target).multiplyScalar(r === "in" ? 0.8 : 1.25); flyTo(ctl.target.clone().add(v), ctl.target.clone(), 0.4, cam, ctl); }
+  if (r === "in" || r === "out") {
+    if (!x && S.cam === "pov") setCamera("free"); const v = cam.position.clone().sub(ctl.target).multiplyScalar(r === "in" ? 0.8 : 1.25); flyTo(ctl.target.clone().add(v), ctl.target.clone(), 0.4, cam, ctl); }
   if (r === "reset") x ? flyTo(xHome().pos, xHome().tgt, 1, xCam, xControls) : flyTo(S.home.pos, S.home.tgt);
   if (r === "full") document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.().catch(() => {});
   if (r === "help") showAbout();
@@ -645,7 +667,8 @@ async function arrive() {
   S.fac.setHighlighted([], { selected: o.id, target: o.id });
   const owned = APP.modes.get(S.mode)?.ownsCard;          // Plan / Support keep their own cards
   renderDock(); if (!owned) renderLeft();
-  toast(`Arrived at <b>${o.asset.tag}</b>. Diagnosis ready.`);
+  // in-scene prompt (navigate → arrive → inspect → understand), except in modes that own their card (Plan, Support)
+  if (owned || !APP.arrival?.show(o)) toast(`Arrived at <b>${o.asset.tag}</b>. Diagnosis ready.`);
   S.diag = await S.diagPromise; S.tab = "overview";
   if (owned || APP.modes.get(S.mode)?.ownsCard) return;
   $("#right").classList.remove("min");
@@ -670,15 +693,78 @@ function topView() {
   // a hair of +z offset keeps OrbitControls stable; screen right = +x, screen down = +z (same as the mini-map)
   return { pos: new THREE.Vector3(r.cx, h, r.cz + 0.01), tgt: new THREE.Vector3(r.cx, 0, r.cz) };
 }
+/** Switch the facility camera. Only the camera changes: route, progress, speed and the moving/paused state never do. */
 export function setCamera(mode) {
+  const prev = S.cam;
   S.cam = mode;
   const high = mode === "broadcast" || mode === "top";
   S.fac.setCutaway(high);
   controls.minPolarAngle = 0;
   camera.far = high ? 120 : 80; camera.updateProjectionMatrix();
+  if (mode === "pov") {
+    // blend from wherever the camera is into the robot's sensor pose (no cut, no restart)
+    tween = null; povYaw = null;
+    povBlend = prev === "pov" ? null : { k: 0, p0: camera.position.clone(), t0: controls.target.clone() };
+    return;
+  }
   if (mode === "top") { const v = topView(); flyTo(v.pos, v.tgt, 1.2); }
   if (mode === "broadcast") { const p = S.fac.robot.position, b = broadcastOffset(); flyTo(new THREE.Vector3(p.x + b.x, b.y, p.z + b.z), new THREE.Vector3(p.x, 0.2, p.z), 1.2); }
-  if (mode === "chase" && !S.robot.moving) flyTo(S.home.pos, S.home.tgt, 1.0);
+  if (mode === "chase") {
+    // paused or arrived on a route: settle in behind the robot; idle at the dock: the eye-level home view
+    if (S.robot.moving) return;
+    if (S.curve) { tween = null; camYaw = null; S.robot.follow = 1.6; } else flyTo(S.home.pos, S.home.tgt, 1.0);
+  }
+}
+
+// ------------------------------------------------------------------ robot POV: the robot's own (simulated) camera
+// Sensor ~0.95 m up at the front of the robot, looking along a damped heading with a slight downward tilt.
+// The heading is smoothed on top of the robot's own damped yaw, so corners turn the view gently; scrubbing snaps the
+// robot but the camera eases after it. After arrival the camera turns to face the asset. The robot's own body is hidden.
+const POV = { h: 0.95, fwd: 0.17, look: 2.2, tilt: 0.14, w: 4.2, wMax: 2.2 };   // m, m, m, rad, 1/s, rad/s
+let povYaw = null, povW = 0, povBlend = null, povHidden = false;
+function povCamera(dt) {
+  const r = S.fac.robot, p = r.position, R = S.robot;
+  let want = r.rotation.y;
+  if (R.arrived && !R.moving && S.curve && R.s >= R.len - 1e-3 && S.navObject) {
+    const c = S.navObject.center; if (Math.hypot(c[0] - p.x, c[2] - p.z) > 0.05) want = Math.atan2(c[0] - p.x, c[2] - p.z);
+  }
+  if (povYaw === null || !Number.isFinite(povYaw)) { povYaw = want; povW = 0; }
+  // critically damped spring on the heading with a turn-rate limit: no whip pans, no jerk when a turn starts or ends
+  let d = want - povYaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+  povW += (POV.w * POV.w * d - 2 * POV.w * povW) * dt;
+  povW = Math.max(-POV.wMax, Math.min(POV.wMax, povW));
+  povYaw += povW * dt;
+  const fx = Math.sin(povYaw), fz = Math.cos(povYaw);
+  _v.set(p.x + fx * POV.fwd, POV.h, p.z + fz * POV.fwd);
+  _t.set(_v.x + fx * POV.look, POV.h - Math.tan(POV.tilt) * POV.look, _v.z + fz * POV.look);
+  if (povBlend) {
+    povBlend.k = Math.min(1, povBlend.k + dt / 0.8);
+    const k = povBlend.k, e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    camera.position.lerpVectors(povBlend.p0, _v, e); controls.target.lerpVectors(povBlend.t0, _t, e);
+    if (k >= 1) povBlend = null;
+  } else { camera.position.copy(_v); controls.target.copy(_t); }
+}
+/** Hide the robot's own body in POV (the camera sits inside its sensor head); the spectator tag stays managed by setCutaway. */
+function povRobotVisibility(pov) {
+  if (pov === povHidden) return;
+  povHidden = pov;
+  const r = S.fac.robot;
+  for (const c of r.children) if (c !== r.userData.tag) c.visible = !pov;
+}
+let hudClock = 1;
+function povHud(dt, on) {
+  const el = $("#povHud");
+  hudClock += dt;
+  if (!on) { if (!el.classList.contains("hidden")) el.classList.add("hidden"); return; }
+  if (hudClock < 0.12 && !el.classList.contains("hidden")) return;
+  hudClock = 0;
+  const R = S.robot, active = !!S.curve, left = active ? Math.max(0, R.len - R.s) : 0;
+  const tag = S.navObject?.asset?.tag || S.target.asset.tag;
+  const state = !active ? "Docked · waiting for a route" : R.moving ? (R.dir < 0 ? "Reversing" : `Driving to ${tag}`) : R.s >= R.len - 1e-3 ? `Arrived at ${tag}` : R.s <= 1e-3 ? "At the start · paused" : "Paused";
+  el.innerHTML = `<div class="pov-top"><span class="pov-rec"><i></i>Robot camera</span><span class="pov-state">${state}</span></div>
+    <div class="pov-tel"><span>Speed <b>${(R.moving ? R.v : 0).toFixed(2)} m/s</b></span><span>To go <b>${active ? left.toFixed(1) + " m" : "–"}</b></span></div>
+    <div class="pov-note">Simulated robot camera — rendered from the 3D scan, not a live feed</div>`;
+  el.classList.remove("hidden");
 }
 
 // ------------------------------------------------------------------ mini-map (2D, always shows the whole room)
@@ -700,6 +786,7 @@ async function initMinimap() {
   const cv = $("#minimap canvas");
   cv.width = MM.w * 2; cv.height = MM.h * 2; cv.style.width = MM.w + "px"; cv.style.height = MM.h + "px";
   cv.onclick = (e) => {             // click the map to look there from above
+    if (APP.xo?.open) return;
     const r = cv.getBoundingClientRect(), x = MM.grid.x0 + (e.clientX - r.left) / MM.k, z = MM.grid.z0 + (e.clientY - r.top) / MM.k;
     S.cam = "free"; renderDock();
     flyTo(new THREE.Vector3(x, 4.5, z + 2.2), new THREE.Vector3(x, 0, z), 0.9);
@@ -743,6 +830,8 @@ function drawMinimap(dt) {
 // ------------------------------------------------------------------ camera tween
 let tween = null;
 function flyTo(pos, target, dur = 1.1, cam = camera, ctl = controls) {
+  // a requested facility view (select + fly, zoom, reset, mini-map...) takes the camera out of the robot POV
+  if (cam === camera && S.cam === "pov") { S.cam = "free"; povBlend = null; if (sceneMode() && !APP.modes.get(S.mode)?.dock) renderDock(); }
   tween = { p0: cam.position.clone(), t0: ctl.target.clone(), p1: pos.clone(), t1: target.clone(), k: 0, dur, cam, ctl };
 }
 function updateTween(dt) {
@@ -969,6 +1058,7 @@ export function ask(q) { return COPILOT.ask(q); }
 // [/copilot-ui]
 
 async function runAskActions(r) {
+    if (r.actions?.length && APP.xo?.open) APP.xo.close();   // the copilot drives the room: put it back first
     for (const a of r.actions || []) {
       if (a.type === "select") { if (!sceneMode()) setMode("facility"); selectAsset(a.asset_id, { fly: !r.actions.some((x) => x.type === "navigate") }); }
       if (a.type === "navigate") { S.blocks = []; S.fac.setBlocks([]); S.prevRoute = null; await dispatch(a.asset_id); }
@@ -1029,7 +1119,8 @@ document.addEventListener("click", (e) => {
   const xc = e.target.closest("#right [data-xclass]"); if (xc) return openClass(xc.dataset.xclass);
   const c = e.target.closest(".cite, [data-docid]"); if (c) showDoc(c.dataset.doc || c.dataset.docid);
   const x = e.target.closest("[data-xcomp]"); if (x) enterXRay(x.dataset.xcomp.split(","), S.diag?.asset?.asset_id);
-  const xp = e.target.closest("[data-xpart]"); if (xp && S.selected?.asset) enterXRay([xp.dataset.xpart], S.selected.asset.asset_id);
+  const xp = e.target.closest("[data-xpart]");
+  if (xp && S.selected?.asset) { if (sceneMode() && APP.xo) APP.xo.show(S.selected.asset.asset_id, { focus: xp.dataset.xpart }); else enterXRay([xp.dataset.xpart], S.selected.asset.asset_id); }
 });
 async function showWorkOrder(id) {
   const w = await api.draftWO(id);
@@ -1066,8 +1157,13 @@ function showAbout() {
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let down = null;
 canvas.addEventListener("pointerdown", (e) => (down = [e.clientX, e.clientY]));
+// dragging or scrolling the view in Robot POV hands the camera to the user (Free); a plain click still picks
+const leavePov = () => { if (S.cam === "pov" && sceneMode() && controls.enabled) { setCamera("free"); renderDock(); } };
+canvas.addEventListener("pointermove", (e) => { if (S.cam === "pov" && down && e.buttons && Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) leavePov(); });
+canvas.addEventListener("wheel", leavePov, { passive: true });
 canvas.addEventListener("pointerup", (e) => {
   if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  if (APP.xo?.open) return;                 // the room is inert behind the X-Ray panel (its state is restored on close)
   ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   if (sceneMode()) {
     ray.setFromCamera(ndc, camera);
@@ -1099,13 +1195,19 @@ function frame(dt, t) {
   if (!S.fac) return;
   if (!["xray", "learn", "practice"].includes(S.mode)) {
     updateRobot(dt, t);
+    const pov = S.cam === "pov" && sceneMode();
+    if (pov) povCamera(dt);
+    povRobotVisibility(pov);
+    povHud(dt, pov && !APP.xo?.open);
     emit("frame", dt, t);
     drawMinimap(dt);
     if (!S.robot.moving) S.fac.pulse(t, S.target.id);
     controls.update();
     renderer.render(fac, camera);
     labels.render(fac, camera);
+    if (APP.xo?.open) APP.xo.render(dt, t);       // in-scene X-Ray panel: drawn only while it is open
   } else {
+    povRobotVisibility(false); povHud(dt, false);
     S.xray.update(dt, t);
     xControls.update();
     renderer.render(S.xray.scene, xCam);
