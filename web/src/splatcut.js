@@ -61,6 +61,32 @@ export class SplatCut {
       hx: o.size[0] / 2 + CUT.PAD, hy: (y1 - y0) / 2, hz: o.size[2] / 2 + CUT.PAD };
   }
 
+  /** Top-down density of opaque splats standing between y0 and y1 above the floor, on a `cell`-metre grid, built once
+   *  per loaded scan. It lets Plan see things the segmentation missed (a second pallet truck, a loose box) when it
+   *  suggests a spot: the object boxes and the navigation grid alone do not contain them. */
+  standing({ cell = 0.1, y0 = 0.15, y1 = 1.2 } = {}) {
+    const key = this.srcKey();
+    if (this._standing?.key === key) return this._standing;
+    const H = halfLUT(), cells = new Map();
+    for (const src of this.sources()) {
+      const ps = src.packedSplats, arr = ps.packedArray, n = ps.numSplats;
+      src.updateWorldMatrix(true, false);
+      const e = src.matrixWorld.elements;
+      for (let i = 0; i < n; i++) {
+        if ((arr[i * 4] >>> 24) < 128) continue;                     // faint splats (haze) do not count
+        const w1 = arr[i * 4 + 1], w2 = arr[i * 4 + 2];
+        const x = H[w1 & 0xffff], y = H[w1 >>> 16], z = H[w2 & 0xffff];
+        const wy = e[1] * x + e[5] * y + e[9] * z + e[13]; if (wy < y0 || wy > y1) continue;
+        const wx = e[0] * x + e[4] * y + e[8] * z + e[12], wz = e[2] * x + e[6] * y + e[10] * z + e[14];
+        const k = Math.floor(wx / cell) * 65536 + Math.floor(wz / cell);
+        cells.set(k, (cells.get(k) || 0) + 1);
+      }
+    }
+    const at = (x, z) => cells.get(Math.floor(x / cell) * 65536 + Math.floor(z / cell)) || 0;
+    this._standing = { key, cell, at };
+    return this._standing;
+  }
+
   /** Copy the splats inside the object's box into new SplatMeshes (one per source mesh that has any). Once per object. */
   extract(o) {
     const key = this.srcKey(), old = this.cache.get(o.id);

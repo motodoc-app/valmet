@@ -1189,6 +1189,24 @@ function onDock(e) {
 }
 function renderAll() { renderLeft(); renderCard(); renderDock(); }
 
+/** Share of a footprint where the loaded scan has something standing that no object box covers (0 with no splats).
+ *  The original spots of moved objects do not count: their splats move with them. */
+const SCAN_BUSY = 12, SCAN_BUSY_SHARE = 0.06;
+function scanBusy(fp) {
+  if (!P.cut?.available) return 0;
+  let st; try { st = P.cut.standing(); } catch { return 0; }
+  const own = P.moves.map((m) => footprint(objOf(m.id), null, 0.08));
+  const cs = Math.cos(fp.yaw), sn = Math.sin(fp.yaw);
+  let n = 0, busy = 0;
+  for (let lx = -fp.w / 2 + 0.05; lx <= fp.w / 2; lx += 0.1) for (let lz = -fp.d / 2 + 0.05; lz <= fp.d / 2; lz += 0.1) {
+    const x = fp.x + lx * cs - lz * sn, z = fp.z + lx * sn + lz * cs;
+    n++;
+    if (own.some((o) => overlap({ x, z, w: 0.01, d: 0.01, yaw: 0 }, o))) continue;
+    if (st.at(x, z) > SCAN_BUSY) busy++;
+  }
+  return n ? busy / n : 0;
+}
+
 // ------------------------------------------------------------------ demo (guided tour, recorded video)
 /** Deterministic search for a free, sensible spot outside the service zone that does not block the robot route. */
 async function findSpot(id) {
@@ -1205,6 +1223,7 @@ async function findSpot(id) {
       if (!relax && route && polyDist(fp, route) < 0.45) continue;
       const ev = evaluate(id, pose);
       if (ev.status !== "ok") continue;
+      if (scanBusy(fp) > SCAN_BUSY_SHARE) continue;   // something unsegmented stands there in the scan
       const score = disp + (yaw === o.yaw ? 0 : 0.15);
       if (!best || score < best.score) best = { score, pose };
     }
@@ -1380,7 +1399,7 @@ on("boot", () => {
   }).observe($(sel), { childList: true });
   guard("#right", ".pl-disc", renderCard);
   guard("#left", ".pl-steps", renderLeft);
-  APP.planning = { view: (k) => frameView(0.9, k), getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _evaluate: (id, pose) => evaluate(id, pose),
+  APP.planning = { view: (k) => frameView(0.9, k), getState, setState, reset: () => reset({ quiet: true }), demo, summary, keysOwned, done, suggest, stage, exportMarkdown: () => markdown(summary()), _findSpot: findSpot, _scanBusy: (id, pose) => scanBusy(footprint(objOf(id), pose)), _evaluate: (id, pose) => evaluate(id, pose),
     undo, redo, history: () => ({ undo: P.undo.length, redo: P.redo.length }), pick: (id) => pick(id), pickObject, movable: (id) => movable(objOf(id) || APP.S.objById?.get(id)),
     cutStats: () => ({ available: !!P.cut?.available, enabled: P.cutOn, shown: P.moves.filter((m) => P.cut?.isCut(m.id)).map((m) => m.id), objects: P.moves.map((m) => ({ id: m.id, ...(P.cut?.stats(m.id) || {}) })), log: P.cut?.log || [] }),
     setCutout: (on) => { P.cutOn = !!on; P.dirtyField = true; refresh(); renderAll(); return P.cutOn; } };
