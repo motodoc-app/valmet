@@ -1,22 +1,43 @@
-// Thin API client. Every call goes to the FastAPI backend (vite proxies /api in dev).
-const j = async (r) => {
-  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
-  return r.json();
-};
-const post = (url, body) =>
-  fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(j);
+// API client. Uses the FastAPI backend when it is running (dev / local demo); otherwise falls back to the
+// serverless implementation in static-api.js (hosted demo). Both expose the same functions.
+import { staticApi } from "./static-api.js";
 
-export const api = {
+const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
+const post = (url, body) => fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(j);
+const unpack = (hex, n) => {
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) out[i] = (parseInt(hex.substr((i >> 3) * 2, 2), 16) >> (7 - (i & 7))) & 1;
+  return out;
+};
+
+const serverApi = {
+  isStatic: false,
+  health: () => fetch("/api/health").then(j),
+  manifest: async () => ({ splat_urls: ["./data/scene.splat"] }),
   scene: () => fetch("/api/scene").then(j),
-  assets: () => fetch("/api/assets").then(j),
-  grid: () => fetch("/api/nav/grid").then(j),
+  grid: async () => { const g = await fetch("/api/nav/grid").then(j); const n = g.W * g.H; return { ...g, walkableMask: unpack(g.walkable, n), occupiedMask: unpack(g.occupied, n) }; },
   plan: (body) => post("/api/nav/plan", body),
   diagnose: (id) => fetch(`/api/diagnose/${id}`).then(j),
-  telemetry: (id) => fetch(`/api/assets/${id}/telemetry`).then(j),
   command: (text, selected) => post("/api/copilot/command", { text, selected_asset_id: selected }),
   query: (question, asset_id, component) => post("/api/copilot/query", { question, asset_id, component }),
-  search: (q) => fetch(`/api/knowledge/search?q=${encodeURIComponent(q)}`).then(j),
+  search: (q) => fetch(`/api/knowledge/search?q=${encodeURIComponent(q || "pump fouling flow current")}`).then(j),
   doc: (id) => fetch(`/api/knowledge/doc/${encodeURIComponent(id)}`).then(j),
   xrayModel: () => fetch("/api/xray/model").then(j),
   draftWO: (asset_id) => post("/api/work-orders/draft", { asset_id }),
 };
+
+export let api = staticApi;
+export async function connect() {
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 1500);
+    const r = await fetch("/api/health", { signal: ctl.signal });
+    clearTimeout(t);
+    if (r.ok && (r.headers.get("content-type") || "").includes("json")) api = serverApi;
+  } catch { /* hosted demo: no server */ }
+  if (api.isStatic) {
+    const m = await staticApi.manifest();
+    staticApi.manifest = async () => ({ ...m, splat_urls: m.splat_chunks.map((c) => `./static/${c}`) });
+  }
+  return api;
+}

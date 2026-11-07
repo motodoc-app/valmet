@@ -226,6 +226,24 @@ class NavMap:
         r, c = np.unravel_index(int(np.argmin(score)), score.shape)
         return int(r), int(c)
 
+    def farthest_from(self, cell: tuple[int, int]) -> tuple[int, int]:
+        """Walkable cell with the largest step-respecting route distance from `cell` (Dijkstra/BFS on the grid)."""
+        from collections import deque
+        H, W = self.walkable.shape
+        dist = np.full((H, W), -1, np.int32)
+        dist[cell] = 0
+        q = deque([cell])
+        while q:
+            r, c = q.popleft()
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < H and 0 <= nc < W and dist[nr, nc] < 0 and self.walkable[nr, nc] \
+                        and abs(self.height_filled[nr, nc] - self.height_filled[r, c]) <= self.max_step:
+                    dist[nr, nc] = dist[r, c] + 1
+                    q.append((nr, nc))
+        r, c = np.unravel_index(int(np.argmax(dist)), dist.shape)
+        return int(r), int(c)
+
     def astar(self, start: tuple[int, int], goal: tuple[int, int]) -> list[tuple[int, int]] | None:
         H, W = self.walkable.shape
         walk = self.walkable

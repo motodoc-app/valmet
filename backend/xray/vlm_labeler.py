@@ -108,7 +108,7 @@ def ask_vlm(views: list[Image.Image], o: dict) -> dict:
     return out
 
 
-def label_all(scene: dict, out_dir: Path, workers: int = 8, limit: int | None = None,
+def label_all(scene: dict, out_dir: Path, workers: int = 12, limit: int | None = None,
               save_crops: bool = True) -> dict:
     cache_path = out_dir / "vlm_labels.json"
     labels = json.loads(cache_path.read_text()) if cache_path.exists() else {}

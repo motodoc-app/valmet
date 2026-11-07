@@ -13,7 +13,6 @@ from .mapping import build_mapping, load_overrides
 from .metadata import BuilderPack
 from .navigation import NavMap
 
-DEMO_START_XZ = (-0.8, 1.32)   # in the double doorway: the robot enters the plant room from the corridor
 
 
 class World:
@@ -27,22 +26,35 @@ class World:
                           np.array(self.scene["bounds"]["max"]))
         self.pack = BuilderPack(config.XLSX_PATH)
         self.objects = {o["id"]: o for o in self.scene["objects"]}
-        start = self.nav.nearest_walkable(*DEMO_START_XZ)
+        ann = config.ROOT / "config" / "scene_annotations.json"
+        demo_start = json.loads(ann.read_text()).get("demo_start") if ann.exists() else None
+        start = self.nav.nearest_walkable(*demo_start) if demo_start else None
         reach = set()
-        if start is not None:
-            from scipy import ndimage
-            lab, _ = ndimage.label(self.nav.walkable)
-            zone = lab[start]
-            for o in self.scene["objects"]:
-                if o["kind"] != "object":
-                    continue
+        # reachability over the largest walkable zone (start is chosen after the target is known)
+        from scipy import ndimage
+        lab, n = ndimage.label(self.nav.walkable)
+        main_zone = int(np.argmax(ndimage.sum(self.nav.walkable, lab, range(1, n + 1)))) + 1 if n else 0
+        for o in self.scene["objects"]:
+            if o["kind"] == "object":
                 g = self.nav.approach_cell(o)
-                if g is not None and lab[g] == zone:
+                if g is not None and lab[g] == main_zone:
                     reach.add(o["id"])
         self.reachable = reach
-        self.start_xz = self.nav.grid.to_world(*start) if start else DEMO_START_XZ
         self.mapping = build_mapping(self.scene, self.pack, reach,
                                      load_overrides(config.ROOT / "config" / "mapping_overrides.json"))
+        if start is None:
+            # default start: the drivable cell farthest from the target by route distance (crosses the room)
+            tobj = self.objects[self.mapping["bindings"][self.mapping["target_asset_id"]]["object_id"]]
+            start = self.nav.farthest_from(self.nav.approach_cell(tobj))
+        self.start_xz = self.nav.grid.to_world(*start)
+        # second pass: prefer binding assets to objects the robot passes on the demo route
+        tobj = self.mapping["bindings"][self.mapping["target_asset_id"]]["object_id"]
+        route = self.nav.plan(self.start_xz, self.objects[tobj])
+        if route.get("ok"):
+            self.by_object = {}
+            near = {p["object_id"] for p in self.along_route(route["waypoints"], radius=1.3)}
+            self.mapping = build_mapping(self.scene, self.pack, reach,
+                                         load_overrides(config.ROOT / "config" / "mapping_overrides.json"), preferred=near)
         self.by_object = {b["object_id"]: b for b in self.mapping["bindings"].values()}
         self.copilot = Copilot(self.pack, self.mapping)
 

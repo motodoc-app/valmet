@@ -1,598 +1,607 @@
-// Industrial X-Ray AI — app controller (facility → navigation → diagnosis → X-Ray → learn/practice).
+// Industrial X-Ray — app controller.
+// Journey: facility → ask / dispatch → route + proximity → arrival diagnosis → X-Ray → Learn / Practice.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { SparkRenderer } from "@sparkjsdev/spark";
-import { api } from "./api.js";
+import { api, connect } from "./api.js";
 import { Facility } from "./facility.js";
 import { XRay } from "./xray.js";
 import { initTraining } from "./training.js";
+import { icon } from "./icons.js";
 
 const $ = (s, el = document) => el.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const fmt = (s) => String(s ?? "").replaceAll("_", " ").toLowerCase();
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+export const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const nice = (s) => { const t = String(s ?? "").replaceAll("_", " ").toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
 export const cites = (text) => esc(text).replace(/\[([^\[\]]{2,80})\]/g, (_, ids) =>
-  ids.split(",").map((i) => `<span class="cite" data-doc="${i.trim()}">${i.trim()}</span>`).join(""));
+  ids.split(",").map((i) => `<span class="cite" data-doc="${esc(i.trim())}">${esc(i.trim())}</span>`).join(""));
+const pad = (n) => String(n).padStart(2, "0");
 
-// ------------------------------------------------------------------ DOM skeleton
+// ------------------------------------------------------------------ skeleton
 $("#app").innerHTML = `
 <canvas class="gl"></canvas>
+<div class="vignette"></div>
 <div class="labels"></div>
-<div class="flash"></div>
-<div class="topbar">
-  <div class="brand"><div class="logo"></div><div>Industrial X-Ray AI<small>FROM FACTORY TO COMPONENT · VALMET × SINCE AI 2026</small></div></div>
-  <div class="modes">
-    <button data-mode="facility" class="on">FACILITY</button>
-    <button data-mode="xray">X-RAY</button>
-    <button data-mode="learn">LEARN</button>
-    <button data-mode="practice">PRACTICE</button>
-    <button data-mode="knowledge">KNOWLEDGE</button>
+<div class="fade"></div>
+<div class="wordmark"><div class="eyebrow">Industrial X-Ray</div><div class="name">Equipment Room</div></div>
+<nav class="modes" aria-label="Mode">
+  <button data-mode="facility" class="on">Facility</button><button data-mode="xray">X-Ray</button>
+  <button data-mode="learn">Learn</button><button data-mode="practice">Practice</button>
+</nav>
+<div class="topright">
+  <div class="ask">
+    <label class="field">${icon("search")}<input id="ask" placeholder="Ask about the plant" autocomplete="off" aria-label="Ask the copilot"/><span class="kbd">/</span></label>
+    <div class="pop hidden" id="pop"></div>
   </div>
-  <div class="badges"><span class="badge warn" id="scanBadge">PARTIAL SCAN</span><span class="badge syn">SYNTHETIC ASSET DATA</span><span class="badge" id="llmBadge">AI</span></div>
+  <button class="iconbtn" id="libBtn" title="Library">${icon("book")}</button>
 </div>
-<div class="banner hidden" id="banner"></div>
-<div class="panel left" id="left"></div>
-<div class="panel right" id="right"></div>
-<div class="panel modal hidden" id="modal"></div>
-<div class="cmd">
-  <div class="answer hidden" id="answer"></div>
-  <div class="sugg" id="sugg"></div>
-  <div class="cmdbox"><span style="color:var(--accent);font-weight:700">⌘</span>
-    <input id="cmdInput" placeholder="Ask the copilot — e.g. “Where is the faulty pump?”" autocomplete="off" />
-    <button class="btn primary" id="cmdSend">Ask</button></div>
+<aside class="card left" id="left"></aside>
+<aside class="card right" id="right"></aside>
+<div class="card sheet hidden" id="sheet"></div>
+<div class="dock" id="dock"></div>
+<div class="rail" id="rail">
+  <button data-rail="in" title="Zoom in">${icon("plus")}</button><button data-rail="out" title="Zoom out">${icon("minus")}</button>
+  <button data-rail="reset" title="Reset view">${icon("reset")}</button><hr>
+  <button data-rail="full" title="Full screen">${icon("full")}</button><button data-rail="help" title="About this demo">${icon("help")}</button>
 </div>
-<div class="loading" id="loading"><div class="box"><div class="ring"></div>Loading 3D scan & scene intelligence…</div></div>`;
+<div class="loading" id="loading"><div class="box">Loading the scan<div class="bar"><i></i></div><div id="loadPct" style="margin-top:10px"></div></div></div>`;
 
-// ------------------------------------------------------------------ renderer + scenes
+// ------------------------------------------------------------------ renderer, scenes, cameras
 const canvas = $("canvas.gl");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
 const labels = new CSS2DRenderer({ element: $(".labels") });
 labels.setSize(innerWidth, innerHeight);
 
-const facScene = new THREE.Scene();
-facScene.background = new THREE.Color(0x070b14);
-facScene.add(new THREE.HemisphereLight(0xffffff, 0x223344, 1.6));
-const dl = new THREE.DirectionalLight(0xffffff, 1.2); dl.position.set(2, 4, 1); facScene.add(dl);
-facScene.add(new SparkRenderer({ renderer }));
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.03, 80);
-camera.position.set(-0.15, 1.85, -1.45);
+const fac = new THREE.Scene();
+fac.background = new THREE.Color(0x0a0b0d);
+fac.add(new THREE.HemisphereLight(0xffffff, 0x30343a, 1.4));
+const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(2, 4, 1); fac.add(sun);
+fac.add(new SparkRenderer({ renderer }));
+const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.03, 80);
 const controls = new OrbitControls(camera, canvas);
-controls.target.set(-2.6, 0.35, 0.25);
 controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI * 0.495;
-
-const xCam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.02, 60);
-xCam.position.set(0.55, 1.35, 3.3);
+controls.maxPolarAngle = Math.PI * 0.49;
+const xCam = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.02, 60);
 const xControls = new OrbitControls(xCam, canvas);
-xControls.target.set(-0.25, -0.05, 0);
 xControls.enableDamping = true;
 xControls.enabled = false;
+xControls.minDistance = 1.2; xControls.maxDistance = 9;
+xControls.maxPolarAngle = Math.PI * 0.48;
+const XHOME = { pos: new THREE.Vector3(2.4, 2.1, 4.4), tgt: new THREE.Vector3(-0.1, 0.45, 0) };
 
 addEventListener("resize", () => {
-  renderer.setSize(innerWidth, innerHeight);
-  labels.setSize(innerWidth, innerHeight);
+  renderer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight);
   for (const c of [camera, xCam]) { c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix(); }
 });
 
 // ------------------------------------------------------------------ state
 export const S = {
-  mode: "facility", data: null, fac: null, xray: null, kb: null,
-  selected: null, target: null, diag: null, route: null, curve: null, prevRoute: null,
-  robot: { moving: false, s: 0, speed: 0.45, len: 0 }, blocks: [], seen: new Map(), follow: true,
-  showMode: "all", gridShown: false, placingBlock: false, xSelected: null,
+  mode: "facility", data: null, fac: null, xray: null, kb: null, home: null,
+  selected: null, target: null, diag: null, curve: null, route: null, prevRoute: null,
+  robot: { moving: false, s: 0, speed: 0.45, len: 0 }, blocks: [], seen: new Map(),
+  follow: true, frames: "all", grid: false, tab: "overview", xSelected: null, xTab: "overview",
 };
 
 // ------------------------------------------------------------------ boot
-const boot = async () => {
-  const [data, kb] = await Promise.all([api.scene(), api.xrayModel()]);
+async function boot() {
+  await connect();
+  const [data, kb, manifest] = await Promise.all([api.scene(), api.xrayModel(), api.manifest()]);
   S.data = data; S.kb = kb;
-  S.fac = new Facility(facScene, data);
-  S.xray = new XRay(kb);
+  S.fac = new Facility(fac, data);
+  S.xray = new XRay(kb, renderer);
   S.target = data.objects.find((o) => o.id === data.target_object_id);
-  $("#scanBadge").textContent = `PARTIAL SCAN · ${(data.integrity.contiguous_valid_fraction * 100).toFixed(1)}% OF SPLATS VALID`;
-  $("#scanBadge").title = `Records ${data.integrity.first_implausible_record.toLocaleString()}+ of the supplied PLY are corrupt (identical in PLY/RAR/ZIP). See data/processed/integrity_report.md`;
-  fetch("/api/health").then((r) => r.json()).then((h) => { $("#llmBadge").textContent = h.llm_model ? `AI · ${h.llm_model}` : "AI · TEMPLATE MODE"; });
-  renderLeft();
-  renderRightIdle();
-  renderSuggestions();
-  initTraining(S, { $, esc, cites, setMode, renderRight: (h) => ($("#right").innerHTML = h), xCam, xControls, ask, toast });
-  try { await S.fac.splat.initialized; } catch (e) { console.warn(e); }
+  S.home = homeView();
+  camera.position.copy(S.home.pos); controls.target.copy(S.home.tgt);
+  xCam.position.copy(XHOME.pos); xControls.target.copy(XHOME.tgt);
+  initTraining(S, { $, esc, cites, setMode, card: (h) => ($("#right").innerHTML = h), xCam, xControls, toast, icon, focusPart });
+  renderLeft(); renderOverviewCard(); renderDock();
+  try {
+    await S.fac.loadSplats(manifest.splat_urls, (p) => ($("#loadPct").textContent = `${Math.round(p * 100)}%`));
+  } catch (e) { console.warn(e); }
   $("#loading").style.opacity = 0;
-  setTimeout(() => $("#loading").remove(), 700);
-};
+  setTimeout(() => $("#loading")?.remove(), 700);
+}
 
-// ------------------------------------------------------------------ left panel
+function homeView() {
+  // Corner-to-corner view under the ceiling: from the room corner nearest the robot, looking across the room.
+  const b = S.data.bounds, s = S.data.start;
+  const x = s[0] < (b.min[0] + b.max[0]) / 2 ? b.min[0] + 0.9 : b.max[0] - 0.9;
+  const z = s[2] < (b.min[2] + b.max[2]) / 2 ? b.min[2] + 0.9 : b.max[2] - 0.9;
+  const cx = (b.min[0] + b.max[0]) / 2, cz = (b.min[2] + b.max[2]) / 2;
+  return { pos: new THREE.Vector3(x, 1.85, z), tgt: new THREE.Vector3(cx + (cx - x) * 0.25, 0.2, cz + (cz - z) * 0.25) };
+}
+
+// ------------------------------------------------------------------ left card: assets (facility) / components (x-ray)
 function renderLeft() {
-  const d = S.data;
-  const assets = d.objects.filter((o) => o.asset).map((o) => o.asset);
-  const order = { attention_required: 0, degraded: 1, watch: 2, healthy: 3 };
-  assets.sort((a, b) => (b.is_target - a.is_target) || order[a.condition_state] - order[b.condition_state] || a.health_score - b.health_score);
-  const cats = {};
-  for (const o of d.objects) if (o.kind === "object") cats[o.category] = (cats[o.category] || 0) + 1;
-  const nav = d.navigation;
+  if (["xray", "learn", "practice"].includes(S.mode)) return renderComponents();
+  const assets = S.data.objects.filter((o) => o.asset).map((o) => o.asset);
+  const rank = { attention_required: 0, degraded: 1, watch: 2, healthy: 3 };
+  assets.sort((a, b) => (b.is_target - a.is_target) || rank[a.condition_state] - rank[b.condition_state] || a.health_score - b.health_score);
+  const nav = S.data.navigation;
   $("#left").innerHTML = `
-  <div class="ph"><h3>Scene intelligence</h3></div>
-  <div class="pb">
-    <div class="kpis">
-      <div class="kpi"><b>${d.stats.n_objects}</b><span>3D-framed objects</span></div>
-      <div class="kpi"><b>${d.n_bound_assets}</b><span>mapped assets</span></div>
-      <div class="kpi"><b>${nav.walkable_area_m2}</b><span>m² walkable</span></div>
-    </div>
-    <div class="row" style="margin-top:8px">${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="chip">${k} ${v}</span>`).join("")}</div>
-    <div class="note" style="margin-top:6px">Structure: floor, ceiling (${d.ceiling_y?.toFixed(2)} m), ${d.planes.filter((p) => p.label === "wall").length} wall plane · ${nav.levels.length} floor-height clusters detected</div>
-    <div class="seg" style="margin-top:10px" id="showSeg">
-      <button data-v="all" class="on">All frames</button><button data-v="assets">Assets only</button><button data-v="none">Hide</button></div>
-    <div class="row" style="margin-top:8px">
-      <button class="chip" id="gridBtn">Nav grid</button>
-      <button class="chip on" id="followBtn">Follow cam</button>
-      <button class="chip" id="resetCam">Overview</button>
-    </div>
-    <div class="legend" style="margin-top:10px">
-      <span><i style="background:var(--ok)"></i>healthy</span><span><i style="background:var(--watch)"></i>watch</span>
-      <span><i style="background:var(--warn)"></i>degraded</span><span><i style="background:var(--bad)"></i>attention</span>
-      <span><i style="background:#60a5fa"></i>rotating</span><span><i style="background:#a78bfa"></i>valve</span>
-      <span><i style="background:#94a3b8"></i>piping</span><span><i style="background:#22d3ee"></i>instrument</span>
-    </div>
-  </div>
-  <div class="ph"><h3>Assets · priority order</h3></div>
-  <div class="scroll pb" style="padding-top:6px" id="assetList">
-    ${assets.map((a) => `<div class="asset" data-asset="${a.asset_id}">
-      <span class="dot st-${a.condition_state}"></span>
-      <div><b>${a.tag}</b>${a.is_target ? ' <span class="sus">TARGET</span>' : ""}<small>${fmt(a.asset_class)} · ${fmt(a.issue_code)}</small></div>
-      <em class="st-${a.condition_state}" style="color:var(--st)">${a.health_score}</em></div>`).join("")}
-  </div>`;
-  $("#showSeg").onclick = (e) => {
-    const v = e.target.dataset.v; if (!v) return;
-    S.showMode = v; S.fac.setShowMode(v);
-    [...$("#showSeg").children].forEach((b) => b.classList.toggle("on", b.dataset.v === v));
-  };
-  $("#gridBtn").onclick = async (e) => {
-    S.gridShown = !S.gridShown;
-    e.target.classList.toggle("on", S.gridShown);
-    if (S.gridShown) S.fac.showGrid(await api.grid());
-    S.fac.gridGroup.visible = S.gridShown;
-  };
-  $("#followBtn").onclick = (e) => { S.follow = !S.follow; e.target.classList.toggle("on", S.follow); };
-  $("#resetCam").onclick = () => flyTo(new THREE.Vector3(-0.15, 1.85, -1.45), new THREE.Vector3(-2.6, 0.35, 0.25));
-  $("#assetList").onclick = (e) => {
-    const el = e.target.closest("[data-asset]"); if (!el) return;
-    selectAsset(el.dataset.asset, { fly: true });
+    <div class="card-h"><span class="t">Assets by priority</span><span class="note">${assets.length}</span></div>
+    <div class="card-b" style="padding:0 8px 8px">${assets.map((a, i) => `
+      <button class="list-row ${S.selected?.asset?.asset_id === a.asset_id ? "on" : ""}" data-asset="${a.asset_id}">
+        <span class="n">${pad(i + 1)}</span>
+        <span class="nm"><b>${a.tag}</b><small>${nice(a.asset_class)} · ${a.is_target ? "Simulated fault" : nice(a.issue_code)}</small></span>
+        <span class="health s-${a.condition_state}">${a.health_score}</span></button>`).join("")}</div>
+    <div class="card-f"><span><b>${S.data.stats.n_objects}</b> objects</span><span><b>${nav.walkable_area_m2}</b> m² drivable</span><span><b>${(S.data.integrity.declared_vertex_count / 1e6).toFixed(1)}M</b> splats</span></div>`;
+  $("#left").onclick = (e) => { const r = e.target.closest("[data-asset]"); if (r) selectAsset(r.dataset.asset, { fly: true }); };
+}
+
+function renderComponents() {
+  const lead = new Set(S.diag?.hypotheses?.[0]?.components || []);
+  const alt = new Set((S.diag?.hypotheses || []).slice(1).flatMap((h) => h.components));
+  $("#left").innerHTML = `
+    <div class="card-h"><span class="t">Components</span><button class="link" data-close-x title="Back to facility">${icon("close")}</button></div>
+    <div class="card-b" style="padding:0 8px 8px">${S.xray.order().map((id, i) => {
+      const c = S.kb.components.find((x) => x.id === id);
+      return `<button class="list-row ${S.xSelected === id ? "on" : ""}" data-comp="${id}"><span class="n">${pad(i + 1)}</span>
+        <span class="nm"><b>${esc(c.name)}</b></span>${lead.has(id) ? '<span class="pill red">Suspected</span>' : alt.has(id) ? '<span class="pill amber">Alternative</span>' : S.xSelected === id ? icon("chev") : ""}</button>`;
+    }).join("")}</div>`;
+  $("#left").onclick = (e) => {
+    if (e.target.closest("[data-close-x]")) return setMode("facility");
+    const r = e.target.closest("[data-comp]"); if (r) selectComponent(r.dataset.comp);
   };
 }
 
-// ------------------------------------------------------------------ right panel
-function renderRightIdle() {
-  const t = S.target?.asset;
-  $("#right").innerHTML = `
-  <div class="ph"><h3>Field-service copilot</h3></div>
-  <div class="pb">
-    <div class="li" style="border-color:rgba(244,63,94,.45);background:rgba(244,63,94,.07);display:block">
-      <div style="font:700 10px var(--mono);letter-spacing:.1em;color:#fda4af">SIMULATED FAULT</div>
-      <div style="margin-top:3px"><b style="font-family:var(--mono)">${t?.tag}</b> · ${fmt(t?.asset_class)} — ${esc(t?.issue_summary)}</div>
-      <div class="note">Health ${t?.health_score} · ${t?.criticality} · highest maintenance priority in the builder pack</div>
-    </div>
-    <div class="actions"><button class="btn primary" id="dispatch">▶ Dispatch inspection robot</button><button class="btn" id="locate">Locate</button></div>
-    <div class="sec"><h4>How this works</h4>
-      <div class="step"><b>1</b><div>Scan → ${S.data.stats.n_objects} objects segmented & 3D-framed (plane fitting + DBSCAN), labelled by a vision-language model, reviewed.</div></div>
-      <div class="step"><b>2</b><div>Workbook assets mapped to compatible objects with explicit confidence.</div></div>
-      <div class="step"><b>3</b><div>Robot plans a collision-free route on the walkable floor (A*, ${S.data.navigation.robot_radius_m} m radius) and frames assets within 1.2 m.</div></div>
-      <div class="step"><b>4</b><div>On arrival the copilot diagnoses from telemetry, alarms, work orders & documents — every claim cited.</div></div>
-    </div>
-    <div class="sec"><h4>Proximity feed <span id="feedCount"></span></h4><div class="list feed" id="feed"><div class="note">Robot idle.</div></div></div>
-  </div>`;
-  $("#dispatch").onclick = () => dispatch(S.target.asset.asset_id);
-  $("#locate").onclick = () => selectAsset(S.target.asset.asset_id, { fly: true });
+// ------------------------------------------------------------------ right card
+function card(html) { $("#right").innerHTML = html; $("#right").scrollTop = 0; }
+function header(eyebrow, title, tags = "", closable = false) {
+  return `<div class="card-h" style="padding-bottom:0"><span class="eyebrow-row">${eyebrow}${tags}</span>${closable ? `<button class="link" data-close-card title="Close">${icon("close")}</button>` : ""}</div>
+  <div class="card-b"><div class="h1">${title}</div>`;
+}
+const kv = (k, v) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`;
+
+function renderOverviewCard() {
+  const t = S.target.asset;
+  card(`${header("Simulated fault", t.tag, '<span class="tag syn">Synthetic</span>')}
+    <div class="sub">${nice(t.asset_class)} · ${esc(t.area_name)}</div>
+    <p class="p" style="margin-top:12px">${esc(t.issue_summary)}. It has the highest maintenance priority in the builder pack, so the inspection robot is sent to it.</p>
+    ${kv("Condition", `<span class="status s-${t.condition_state}">${nice(t.condition_state)}</span>`)}${kv("Health", t.health_score)}${kv("Criticality", esc(t.criticality))}
+    ${kv("Mapped to", `${S.target.label} · ${Math.round(t.mapping_confidence * 100)}%`)}
+    <div class="section stack"><button class="btn primary block" data-act="dispatch">${icon("play")}Send inspection robot</button>
+      <button class="btn block" data-act="locate">${icon("target")}Show in scan</button></div>
+    <div class="section"><div class="label">How it works</div>
+      <div class="step"><span class="k">1</span><span>The scan is split into ${S.data.stats.n_objects} objects, each framed and named with a confidence.</span></div>
+      <div class="step"><span class="k">2</span><span>Workbook assets are matched to compatible objects.</span></div>
+      <div class="step"><span class="k">3</span><span>The robot plans a collision-free route on the drivable floor and reads every asset within 1.2 m.</span></div>
+      <div class="step"><span class="k">4</span><span>On arrival, the copilot explains the fault with cited evidence.</span></div></div>
+  </div>`);
 }
 
-function sparkline(series, w = 96, h = 28, color = "#38bdf8") {
-  if (!series?.length) return "";
-  const v = series.map((s) => s[1]);
-  const lo = Math.min(...v), hi = Math.max(...v), r = hi - lo || 1;
-  const pts = v.map((y, i) => `${(i / (v.length - 1)) * w},${h - 2 - ((y - lo) / r) * (h - 4)}`).join(" ");
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}"><polyline fill="none" stroke="${color}" stroke-width="1.5" points="${pts}"/></svg>`;
+function renderTransitCard() {
+  const assets = [...S.seen.keys()].map((id) => S.data.objects.find((o) => o.id === id)).filter((o) => o?.asset);
+  const others = S.seen.size - assets.length;
+  card(`${header("En route", S.navObject.asset.tag, "")}
+    <div class="sub">${S.route.length_m} m · ${S.route.validation.collision_free ? "collision-free" : "check route"} · min clearance ${S.route.validation.min_clearance_m} m</div>
+    <div class="section"><div class="label"><span>Assets read along the way</span><span>${assets.length}</span></div>
+      <div class="feed">${assets.map((o) => `<button class="list-row" data-obj="${o.id}"><span class="dot s-${o.asset.condition_state}"></span>
+        <span class="nm"><b style="font-family:var(--mono)">${o.asset.tag}</b><small>${nice(o.asset.condition_state)} · ${nice(o.asset.issue_code)}</small></span><span class="health s-${o.asset.condition_state}">${o.asset.health_score}</span></button>`).join("") || '<div class="note">Nothing in range yet.</div>'}</div></div>
+    <div class="section note">${others} other objects framed within 1.2 m.</div></div>`);
 }
 
-function renderAssetCard(o, extra = "", showActions = true) {
+function renderAssetCard(o) {
   const a = o.asset;
-  const head = a ? `<div class="hdr st-${a.condition_state}">
-      <div class="gauge" style="--v:${a.health_score}"><span>${a.health_score}</span></div>
-      <div><div class="title">${a.tag}</div><div class="sub">${fmt(a.asset_class)} · ${esc(a.area_name)} · ${esc(a.criticality)}</div>
-      <span class="status">${fmt(a.condition_state)}</span> <span class="sub">${esc(a.issue_summary)}</span></div></div>` :
-    `<div class="title" style="font-size:15px">${esc(o.label)}</div><div class="sub">No workbook asset mapped — scene object only</div>`;
-  return `<div class="ph"><h3>${a ? "Asset" : "Scene object"} · ${o.id}</h3></div><div class="pb">${head}
-    <div class="sec"><h4>3D identity</h4>
-      <div class="li" style="display:block">Label <b>${esc(o.label)}</b> · ${Math.round(o.confidence * 100)}% · <code>${o.label_source}</code>
-      ${o.heuristic_label ? `<div class="note">geometry heuristic proposed: ${esc(o.heuristic_label)}</div>` : ""}
-      ${o.vlm_rationale ? `<div class="note">VLM: ${esc(o.vlm_rationale)}</div>` : ""}
-      ${o.review_note ? `<div class="note">Human review: ${esc(o.review_note)}${o.auto_label ? ` (automatic label was “${esc(o.auto_label)}”)` : ""}${o.merged_from ? ` · merged ${o.merged_from.length} clusters` : ""}</div>` : ""}
-      <div class="note">Frame ${o.size.map((v) => v.toFixed(2)).join(" × ")} m · centre (${o.center.map((v) => v.toFixed(2)).join(", ")}) · ${o.n_points} splats ${o.reachable ? "· reachable" : "· not reachable from walkable floor"}</div>
-      ${a ? `<div class="note">Mapping: ${esc(a.mapping_method)} · confidence ${a.mapping_confidence}</div>` : ""}</div></div>
-    ${extra}
-    ${a && showActions ? `<div class="actions"><button class="btn primary" data-act="nav">▶ Send robot</button><button class="btn" data-act="diag">Diagnose</button>${a.asset_class === "PROCESS_PUMP" || a.asset_class === "ELECTRIC_MOTOR" ? '<button class="btn xray" data-act="xray">ENTER X-RAY MODE</button>' : ""}</div>` : ""}
-  </div>`;
-}
-
-async function selectAsset(assetId, { fly = false } = {}) {
-  const o = S.data.objects.find((x) => x.asset?.asset_id === assetId);
-  if (!o) return;
-  selectObject(o, { fly });
-}
-
-function selectObject(o, { fly = false } = {}) {
-  S.selected = o;
-  document.querySelectorAll(".asset").forEach((el) => el.classList.toggle("sel", el.dataset.asset === o.asset?.asset_id));
-  S.fac.setHighlighted([...S.seen.keys()], { selected: o.id, target: S.target?.id });
-  if (S.mode === "facility") {
-    $("#right").innerHTML = renderAssetCard(o);
-    bindCardActions(o);
+  if (!a) {
+    return card(`${header(nice(o.category), esc(o.label), "", true)}
+      <div class="sub">Scene object · not linked to a workbook asset</div>
+      <div class="section">${identityRows(o)}</div></div>`);
   }
-  if (fly) {
-    const c = new THREE.Vector3(...o.center);
-    const off = new THREE.Vector3(1.6, 1.3, 1.6);
-    if (c.x < -2) off.set(1.8, 1.2, 0.6);
-    flyTo(c.clone().add(off), c);
-  }
+  card(`${header(nice(a.asset_class), a.tag, '<span class="tag syn">Synthetic</span>', true)}
+    <div class="sub"><span class="status s-${a.condition_state}">${nice(a.condition_state)}</span> · ${esc(a.issue_summary)}</div>
+    <div class="section">${kv("Health", a.health_score)}${kv("Criticality", esc(a.criticality))}${kv("Area", esc(a.area_name))}</div>
+    <div class="section"><div class="label">3D identity</div>${identityRows(o)}</div>
+    <div class="section stack"><button class="btn primary block" data-act="dispatch-sel">${icon("play")}Send robot here</button>
+      <button class="btn block" data-act="diagnose-sel">${icon("spark")}Diagnose now</button></div></div>`);
 }
 
-function bindCardActions(o) {
-  $("#right").onclick = async (e) => {
-    const act = e.target.closest("[data-act]")?.dataset.act;
-    if (!act) return;
-    if (act === "nav") dispatch(o.asset.asset_id);
-    if (act === "diag") showDiagnosis(await api.diagnose(o.asset.asset_id));
-    if (act === "xray") enterXRay();
-    if (act === "wo") showWorkOrder(o.asset.asset_id);
-    if (act === "learn") setMode("learn");
-    if (act === "practice") setMode("practice");
-  };
+function identityRows(o) {
+  return `${kv("Label", `${esc(o.label)} · ${Math.round(o.confidence * 100)}%`)}${kv("Source", { "vlm+geometry": "Vision model + geometry", "human-verified": "Human verified", "geometry-heuristic": "Geometry rules" }[o.label_source] || o.label_source)}
+    ${kv("Frame", `${o.size.map((v) => v.toFixed(2)).join(" × ")} m`)}${o.asset ? kv("Mapping", `${Math.round(o.asset.mapping_confidence * 100)}%`) : ""}
+    ${o.review_note ? `<p class="note" style="margin-top:8px">${esc(o.review_note)}</p>` : o.vlm_rationale ? `<p class="note" style="margin-top:8px">${esc(o.vlm_rationale)}</p>` : ""}`;
 }
 
-function showDiagnosis(d) {
-  S.diag = d;
-  const o = S.data.objects.find((x) => x.asset?.asset_id === d.asset.asset_id);
-  const c = d.confidence;
-  const sigs = d.telemetry.signals.map((s) => {
-    const z = s.z_vs_peers ?? s.z_vs_own_baseline;
-    const cls = Math.abs(z) >= 2 ? "hi" : Math.abs(z) >= 1 ? "mid" : "";
-    return `<div class="sig"><div><b>${s.signal}</b><small>now ${s.recent_mean}${s.unit} · baseline ${s.baseline_mean} · peers ${s.peer_mean ?? "–"} · <span class="z ${cls}">z ${z}</span>${s.abnormal ? ' <span class="sus">ABNORMAL</span>' : ""}</small></div>${sparkline(s.series, 96, 28, cls === "hi" ? "#f43f5e" : cls === "mid" ? "#facc15" : "#38bdf8")}</div>`;
+function sparkline(series, w = 88, h = 26, hot = false) {
+  if (!series?.length) return "";
+  const v = series.map((s) => s[1]), lo = Math.min(...v), hi = Math.max(...v), r = hi - lo || 1;
+  const pts = v.map((y, i) => [(i / (v.length - 1)) * w, h - 3 - ((y - lo) / r) * (h - 6)]);
+  const d = pts.map((p) => p.join(",")).join(" ");
+  const [ex, ey] = pts.at(-1);
+  const col = hot ? "var(--bad)" : "var(--text-2)";
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}"><polyline fill="none" stroke="${col}" stroke-width="1.25" points="${d}"/><circle cx="${ex}" cy="${ey}" r="2" fill="${col}"/></svg>`;
+}
+
+function narrative(text) {
+  // Render the copilot's labelled lines (Observation / Evidence / Hypothesis / Uncertainty / Next safe step) as blocks.
+  const parts = String(text).split(/\n+|(?=(?:Observation|Evidence|Hypothesis|Uncertainty|Next safe step):)/).map((x) => x.trim()).filter(Boolean);
+  return parts.map((p) => {
+    const m = p.match(/^(Observation|Evidence|Hypothesis|Uncertainty|Next safe step):\s*(.*)$/s);
+    return m ? `<div class="nblock"><div class="label">${m[1]}</div><div class="narr">${cites(m[2])}</div></div>` : `<div class="narr">${cites(p)}</div>`;
   }).join("");
-  const extra = `
-  <div class="sec"><h4>AI diagnosis <span class="note">${esc(d.narrative.mode)}</span></h4><div class="narr">${cites(d.narrative.text)}</div>
-    ${d.narrative.invalid_citations?.length ? `<div class="note">Removed ${d.narrative.invalid_citations.length} unsupported citation(s): ${esc(d.narrative.invalid_citations.join(", "))}</div>` : `<div class="note">All citations verified against the evidence package.</div>`}</div>
-  <div class="sec"><h4>Confidence <b style="font-family:var(--mono)">${c.overall}</b></h4><div class="bar"><i style="width:${c.overall * 100}%"></i></div>
-    <div class="note" style="margin-top:4px">model ${c.model_confidence} · evidence support ${c.evidence_support} · data-quality penalty −${c.data_quality_penalty} · 3D mapping ${c.mapping_confidence}<br>${esc(c.explanation)}</div></div>
-  <div class="sec"><h4>Telemetry evidence <span class="note">${esc(d.telemetry.source)}</span></h4>${sigs}</div>
-  <div class="sec"><h4>Hypotheses</h4>${d.hypotheses.map((h) => `<div class="hyp ${h.rank === 1 ? "lead" : ""}"><div><b>${esc(h.hypothesis)}</b><div class="note">${h.status}</div></div>${h.components.length ? `<button class="btn" data-xcomp="${h.components.join(",")}">X-Ray ▸</button>` : ""}</div>`).join("")}</div>
-  <div class="sec"><h4>Alarms & events</h4><div class="list">${d.events.slice(0, 5).map((e) => `<div class="li"><code>${e.event_id}</code><span class="sev-${e.severity}">${e.severity}</span><span>${fmt(e.event_type)} · ${e.event_code} · ${e.timestamp}</span></div>`).join("") || '<div class="note">none</div>'}</div></div>
-  <div class="sec"><h4>Maintenance history</h4><div class="list">${d.work_orders.slice(0, 4).map((w) => `<div class="li"><code>${w.work_order_id}</code><span>${w.opened_at?.slice(0, 10)} · ${esc(w.action)} → ${fmt(w.result)}</span></div>`).join("") || '<div class="note">none</div>'}</div></div>
-  <div class="sec"><h4>Similar service cases</h4><div class="list">${d.similar_cases.slice(0, 3).map((k) => `<div class="li"><code>${k.case_id}</code><span>${esc(k.historical_interpretation)} → ${esc(k.recommended_next_check)}</span></div>`).join("")}</div></div>
-  <div class="sec"><h4>Data quality (lowers confidence)</h4><div class="row">${d.data_quality.map((q) => `<span class="chip">${q.issue_id} ${fmt(q.issue_type)}</span>`).join("") || '<span class="note">none</span>'}</div></div>
-  <div class="sec"><h4>Recommended safe next steps</h4>${d.next_steps.map((s, i) => `<div class="step"><b>${i + 1}</b><div>${esc(s.step)} <span class="cite" data-doc="${s.source}">${s.source}</span></div></div>`).join("")}</div>
-  <div class="sec"><h4>Sources</h4><div class="row">${d.documents.map((x) => `<span class="cite" data-doc="${x.id}">${x.id}</span>`).join("")}</div></div>
-  <div class="actions"><button class="btn xray" data-act="xray">ENTER X-RAY MODE</button><button class="btn" data-act="wo">Draft work order</button><button class="btn" data-act="learn">Learn</button><button class="btn" data-act="practice">Practise</button></div>
-  <div class="note" style="margin-top:8px">${esc(d.synthetic_notice)} Decision support only — no control actions.</div>`;
-  $("#right").innerHTML = renderAssetCard(o, extra, false);
-  bindCardActions(o);
-  $("#right").scrollTop = 0;
 }
 
-async function showWorkOrder(assetId) {
-  const w = await api.draftWO(assetId);
-  openModal(`<button class="close" data-close>✕</button><h3>Work-order draft · ${w.draft_id}</h3>`, `
-    <div class="li" style="display:block;border-color:rgba(250,204,21,.4)"><b>${w.status}</b> — ${w.control_actions}</div>
-    <div class="sec"><h4>Asset</h4>${w.tag} (${w.asset_id}) · ${esc(w.area_name)}</div>
-    <div class="sec"><h4>Problem</h4>${esc(w.problem)}</div>
-    <div class="sec"><h4>Requested action</h4>${esc(w.action)} · ${w.maintenance_type} · priority ${w.priority} · role ${fmt(w.role)}</div>
-    <div class="sec"><h4>Evidence</h4><div class="row">${w.evidence_ids.map((i) => `<span class="cite" data-doc="${i}">${i}</span>`).join("")} ${w.knowledge_doc_id ? `<span class="cite" data-doc="${w.knowledge_doc_id}">${w.knowledge_doc_id}</span>` : ""}</div></div>
-    <div class="sec"><h4>Safety prerequisites</h4>${w.safety_prerequisites.map((s) => `<div class="gate">☐ ${esc(s)}</div>`).join("")}</div>
-    <div class="sec"><h4>Copilot confidence</h4>${w.confidence}</div>`);
-}
-
-// ------------------------------------------------------------------ modal + citations
-function openModal(head, body) {
-  const m = $("#modal");
-  m.innerHTML = `<div class="ph">${head}</div><div class="pb">${body}</div>`;
-  m.classList.remove("hidden");
-}
-document.addEventListener("click", async (e) => {
-  if (e.target.matches("[data-close]")) { $("#modal").classList.add("hidden"); if (S.mode === "knowledge") setMode(S.prevMode || "facility"); }
-  const c = e.target.closest(".cite");
-  if (c) {
-    const id = c.dataset.doc;
-    if (/^(EVT|WO|DQ)-/.test(id)) return toast(`${id} is shown in the diagnosis panel (events / work orders / data quality).`);
-    if (id === "Telemetry_Sample_3d") return toast("Telemetry_Sample_3d — 30-min synthetic stream from the builder pack (see Telemetry evidence).");
-    try { const d = await api.doc(id); showDoc(d); } catch { toast(`${id}: workbook record (see evidence panel)`); }
-  }
-  const xc = e.target.closest("[data-xcomp]");
-  if (xc) { enterXRay(xc.dataset.xcomp.split(",")); }
-});
-function showDoc(d) {
-  openModal(`<button class="close" data-close>✕</button><h3>${esc(d.id)}</h3>`,
-    `<div class="title" style="font-size:15px">${esc(d.title)}</div><div class="note">${esc(d.kind)} · scope ${esc(d.scope)} · source: ${esc(d.source)}</div>
-     <div class="narr" style="margin-top:10px">${esc(d.text)}</div>
-     ${d.kind === "training_kb" ? '<div class="note" style="margin-top:6px">General training knowledge for the illustrative model — not an OEM manual.</div>' : ""}
-     <div class="sec"><h4>Ask about this document</h4><div class="row"><input class="search" id="docQ" placeholder="Question…" style="flex:1"/><button class="btn primary" id="docAsk">Ask</button></div><div id="docA" style="margin-top:8px"></div></div>`);
-  $("#docAsk").onclick = async () => {
-    $("#docA").innerHTML = '<div class="note">Thinking…</div>';
-    const a = await api.query(`${$("#docQ").value} (document ${d.id})`, d.asset_id || S.diag?.asset?.asset_id, d.component);
-    $("#docA").innerHTML = `<div class="narr">${cites(a.text)}</div><div class="note">${esc(a.mode)}</div>`;
+function renderDiagnosis() {
+  const d = S.diag, a = d.asset, c = d.confidence;
+  const tabs = ["overview", "evidence", "sources"];
+  const body = {
+    overview: `${narrative(d.narrative.text)}
+      <p class="note" style="margin-top:8px">${d.narrative.invalid_citations?.length ? `${d.narrative.invalid_citations.length} unsupported citation(s) removed.` : "Every citation was checked against the evidence."} ${esc(d.narrative.mode.startsWith("llm") ? "Written by " + d.narrative.mode.slice(4) : "Template wording")}.</p>
+      <div class="section"><div class="label"><span>Confidence</span><span style="color:var(--text)">${Math.round(c.overall * 100)}%</span></div>
+        <div class="meter"><i style="width:${c.overall * 100}%"></i></div>
+        ${kv("Model confidence", c.model_confidence)}${kv("Evidence support", c.evidence_support)}${kv("Data-quality penalty", "−" + c.data_quality_penalty)}${kv("3D mapping", c.mapping_confidence)}</div>
+      <div class="section"><div class="label">Hypotheses</div>${d.hypotheses.map((h) => `<div class="hyp"><div>${esc(h.hypothesis)}<small>${h.rank === 1 ? "Leading" : "Alternative, not excluded"}</small></div>${h.components.length ? `<button class="link" data-xcomp="${h.components.join(",")}">X-Ray ${icon("chev")}</button>` : ""}</div>`).join("")}</div>
+      <div class="section"><div class="label">Next safe steps</div>${d.next_steps.map((s, i) => `<div class="step"><span class="k">${i + 1}</span><span>${esc(s.step)} <span class="cite" data-doc="${s.source}">${s.source}</span></span></div>`).join("")}</div>`,
+    evidence: `<div class="label note" style="margin-bottom:4px">Last 12 h against own baseline and class peers</div>
+      ${d.telemetry.signals.map((s) => { const z = s.z_vs_peers ?? s.z_vs_own_baseline; const hot = s.abnormal || Math.abs(z) >= 2;
+        return `<div class="sig"><div><b>${nice(s.signal.replace(/_(mm_s|c|a|pct|bar|rpm)$/, ""))}</b><small>${s.recent_mean} ${s.unit} · peers ${s.peer_mean ?? "–"} · <span class="${hot ? "flag" : ""}">z ${z}</span></small></div>${sparkline(s.series, 88, 26, hot)}</div>`; }).join("")}
+      <div class="section"><div class="label">Alarms and events</div>${d.events.slice(0, 5).map((e) => `<div class="ev"><code>${e.event_id}</code><span>${nice(e.event_type)} · ${e.event_code}</span><small>${e.timestamp} · ${e.severity}</small></div>`).join("") || '<div class="note">None</div>'}</div>
+      <div class="section"><div class="label">Work orders</div>${d.work_orders.slice(0, 4).map((w) => `<div class="ev"><code>${w.work_order_id}</code><span>${esc(nice(w.action))}</span><small>${(w.opened_at || "").slice(0, 10)} · ${nice(w.result)}</small></div>`).join("") || '<div class="note">None</div>'}</div>
+      <div class="section"><div class="label">Data quality</div><div class="row">${d.data_quality.map((q) => `<span class="pill">${q.issue_id} · ${nice(q.issue_type)}</span>`).join("") || '<span class="note">No issues</span>'}</div></div>`,
+    sources: `${d.documents.map((x) => `<button class="doc" data-docid="${x.id}"><span class="k">${nice(x.kind)}</span><code>${x.id}</code><p>${esc(x.title)}</p></button>`).join("")}
+      ${d.similar_cases.slice(0, 3).map((k) => `<button class="doc" data-docid="${k.case_id}"><span class="k">Service case</span><code>${k.case_id}</code><p>${esc(k.historical_interpretation)}</p></button>`).join("")}`,
   };
+  card(`${header(nice(a.asset_class), `${a.tag} diagnosis`, '<span class="tag syn">Synthetic</span>', true)}
+    <div class="sub"><span class="status s-${a.condition_state}">${nice(a.condition_state)}</span> · health ${a.health_score} · ${esc(a.criticality)}</div>
+    <div class="tabs">${tabs.map((t) => `<button data-tab="${t}" class="${S.tab === t ? "on" : ""}">${nice(t)}</button>`).join("")}</div>
+    ${body[S.tab]}
+    <div class="section stack"><button class="btn primary block" data-act="xray">${icon("layers")}Open X-Ray view</button>
+      <button class="btn block" data-act="wo">${icon("doc")}Draft work order</button></div>
+    <p class="note" style="margin-top:10px;text-align:center">Decision support only. No control actions.</p></div>`);
 }
 
-let toastTimer;
-export function toast(msg, ms = 4200) {
-  let t = $(".toast");
-  if (!t) { t = document.createElement("div"); t.className = "toast"; $("#app").appendChild(t); }
-  t.innerHTML = msg;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.remove(), ms);
+$("#right").addEventListener("click", async (e) => {
+  const t = e.target;
+  const tab = t.closest("[data-tab]"); if (tab) { S.tab = tab.dataset.tab; return renderDiagnosis(); }
+  const xt = t.closest("[data-xtab]"); if (xt) { S.xTab = xt.dataset.xtab; return renderPartCard(); }
+  if (t.closest("[data-close-card]")) { S.selected = null; S.fac.setHighlighted([], { target: S.target.id }); renderLeft(); return S.diag ? renderDiagnosis() : renderOverviewCard(); }
+  const row = t.closest("[data-obj]"); if (row) return selectObject(S.data.objects.find((o) => o.id === row.dataset.obj));
+  const act = t.closest("[data-act]")?.dataset.act;
+  if (act === "dispatch") dispatch(S.target.asset.asset_id);
+  if (act === "locate") selectObject(S.target, { fly: true });
+  if (act === "dispatch-sel") dispatch(S.selected.asset.asset_id);
+  if (act === "diagnose-sel") { S.diag = await api.diagnose(S.selected.asset.asset_id); S.tab = "overview"; renderDiagnosis(); }
+  if (act === "xray") enterXRay();
+  if (act === "wo") showWorkOrder(S.diag.asset.asset_id);
+  if (act === "isolate") { const on = S.xray.hidden.size === 0; S.xray.isolate(on ? S.xSelected : null); renderPartCard(); }
+  if (act === "askpart") askPart();
+});
+
+// ------------------------------------------------------------------ selection
+function selectAsset(id, opts) { const o = S.data.objects.find((x) => x.asset?.asset_id === id); if (o) selectObject(o, opts); }
+function selectObject(o, { fly = false } = {}) {
+  if (!o) return;
+  S.selected = o;
+  S.fac.setHighlighted([...S.seen.keys()], { selected: o.id, target: S.target.id });
+  renderLeft();
+  if (!S.robot.moving) renderAssetCard(o);
+  if (fly) { const c = new THREE.Vector3(...o.center); flyTo(c.clone().add(viewOffset(c)), c); }
 }
+function viewOffset(c) {
+  // stand on the walkable side: toward the room centre
+  const centre = new THREE.Vector3((S.data.bounds.min[0] + S.data.bounds.max[0]) / 2, 0, (S.data.bounds.min[2] + S.data.bounds.max[2]) / 2);
+  const d = centre.sub(c).setY(0).normalize();
+  return new THREE.Vector3(d.x * 1.9, 1.15, d.z * 1.9);
+}
+
+// ------------------------------------------------------------------ dock
+function renderDock() {
+  const x = ["xray", "learn", "practice"].includes(S.mode);
+  if (x) {
+    const pct = Math.round(S.xray.target * 100);
+    $("#dock").innerHTML = `
+      <div class="grp"><button class="tool" data-d="assemble">${icon("cube")}Assemble</button></div>
+      <div class="grp slider"><div class="top"><span>Explode</span><span id="xpct">${pct}%</span></div><input type="range" id="explode" min="0" max="100" value="${pct}" aria-label="Explode"/></div>
+      <div class="grp"><button class="tool" data-d="all">${icon("expand")}All parts</button><button class="tool ${S.xray.ghost ? "on" : ""}" data-d="ghost"><span class="switch"></span>See-through</button><button class="tool ${S.xray.labelsOn ? "on" : ""}" data-d="labels"><span class="switch"></span>Labels</button></div>`;
+    $("#explode").oninput = (e) => { S.xray.setExplode(e.target.value / 100); $("#xpct").textContent = `${e.target.value}%`; };
+    return;
+  }
+  const r = S.route;
+  $("#dock").innerHTML = `
+    <div class="grp"><button class="tool" data-d="dispatch" ${S.robot.moving ? "disabled" : ""}>${icon("play")}${S.route && !S.robot.moving ? "Restart" : "Dispatch"}</button>
+      <button class="tool" data-d="block" ${S.robot.moving ? "" : "disabled"}>${icon("barrier")}Block aisle</button></div>
+    <div class="grp routeinfo"><div class="top"><span>Route</span><b id="rLen">${r ? r.length_m + " m" : "Not planned"}</b></div><div class="bar"><i id="rBar"></i></div>
+      <small id="rMeta">${r ? `A* ${r.compute_ms} ms · min clearance ${r.validation.min_clearance_m} m · ${r.validation.collisions} collisions` : `Robot radius ${S.data.navigation.robot_radius_m} m · step limit ${S.data.navigation.max_step_m} m`}</small></div>
+    <div class="grp"><div class="seg" role="group" aria-label="Frames">${["all", "assets", "none"].map((v) => `<button data-frames="${v}" class="${S.frames === v ? "on" : ""}">${{ all: "All frames", assets: "Assets", none: "Off" }[v]}</button>`).join("")}</div></div>
+    <div class="grp"><button class="tool ${S.grid ? "on" : ""}" data-d="grid"><span class="switch"></span>Floor map</button><button class="tool ${S.follow ? "on" : ""}" data-d="follow"><span class="switch"></span>Follow</button></div>`;
+}
+$("#dock").addEventListener("click", async (e) => {
+  const f = e.target.closest("[data-frames]");
+  if (f) { S.frames = f.dataset.frames; S.fac.setShowMode(S.frames); return renderDock(); }
+  const d = e.target.closest("[data-d]")?.dataset.d;
+  if (!d) return;
+  if (d === "dispatch") { S.blocks = []; S.fac.setBlocks([]); S.prevRoute = null; S.fac.robot.position.set(...S.data.start); dispatch((S.selected?.asset || S.target.asset).asset_id); }
+  if (d === "block") blockAisle();
+  if (d === "grid") { S.grid = !S.grid; if (S.grid) S.fac.showGrid(await api.grid()); S.fac.gridGroup.visible = S.grid; renderDock(); }
+  if (d === "follow") { S.follow = !S.follow; renderDock(); }
+  if (d === "assemble") { S.xray.setExplode(0); renderDock(); }
+  if (d === "all") { S.xray.isolate(null); flyTo(XHOME.pos, XHOME.tgt, 1, xCam, xControls); if (S.xSelected) renderPartCard(); }
+  if (d === "ghost") { S.xray.setGhost(!S.xray.ghost); renderDock(); }
+  if (d === "labels") { S.xray.setLabels(!S.xray.labelsOn); renderDock(); }
+});
+
+// ------------------------------------------------------------------ rail
+$("#rail").addEventListener("click", (e) => {
+  const r = e.target.closest("[data-rail]")?.dataset.rail;
+  const x = S.mode !== "facility", cam = x ? xCam : camera, ctl = x ? xControls : controls;
+  if (r === "in" || r === "out") { const v = cam.position.clone().sub(ctl.target).multiplyScalar(r === "in" ? 0.8 : 1.25); flyTo(ctl.target.clone().add(v), ctl.target.clone(), 0.4, cam, ctl); }
+  if (r === "reset") x ? flyTo(XHOME.pos, XHOME.tgt, 1, xCam, xControls) : flyTo(S.home.pos, S.home.tgt);
+  if (r === "full") document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.().catch(() => {});
+  if (r === "help") showAbout();
+});
 
 // ------------------------------------------------------------------ navigation + robot
-async function dispatch(assetId, { start = null } = {}) {
+async function dispatch(assetId, { start = null, quiet = false } = {}) {
   const o = S.data.objects.find((x) => x.asset?.asset_id === assetId);
-  if (!o) return;
+  if (!o) return null;
   if (S.mode !== "facility") setMode("facility");
-  S.navAsset = assetId;
   S.navObject = o;
-  const st = start || [S.fac.robot.position.x, S.fac.robot.position.z];
-  const res = await api.plan({ object_id: o.id, start: st, blocks: S.blocks });
-  if (!res.ok) { toast(`⚠ ${esc(res.reason)}`); return null; }
+  const p = S.fac.robot.position;
+  const res = await api.plan({ object_id: o.id, start: start || [p.x, p.z], blocks: S.blocks });
+  if (!res.ok) { toast(esc(res.reason)); return null; }
   S.route = res;
   S.curve = S.fac.drawRoute(res.waypoints);
   if (S.prevRoute) S.fac.ghostRoute(S.prevRoute);
-  S.robot.len = S.curve.getLength();
-  S.robot.s = 0;
-  S.robot.moving = true;
+  Object.assign(S.robot, { len: S.curve.getLength(), s: 0, moving: true });
   S.seen.clear();
-  const v = res.validation;
-  toast(`Route ${res.length_m} m · A* ${res.compute_ms} ms · ${res.raw_cells} cells → ${res.waypoints.length} waypoints · ${v.collision_free ? "✔ collision-free" : "✖ collision"} (min clearance ${v.min_clearance_m} m ≥ ${v.robot_radius_m} m robot radius)`);
-  if (S.mode === "facility") {
-    renderRightIdle();
-    $("#feed").innerHTML = "";
-    $("#dispatch").textContent = "⏸ Robot en route…";
-    $("#dispatch").disabled = true;
-    const blockBtn = document.createElement("button");
-    blockBtn.className = "btn danger"; blockBtn.textContent = "⛔ Block walkway";
-    blockBtn.onclick = () => blockWalkway();
-    $("#dispatch").parentElement.appendChild(blockBtn);
-  }
+  S.diag = null;
   S.diagPromise = api.diagnose(assetId);
+  if (!quiet) toast(`Route planned: <b>${res.length_m} m</b> in ${res.compute_ms} ms. Collision-free, minimum clearance ${res.validation.min_clearance_m} m.`);
+  renderDock(); renderTransitCard();
   return res;
 }
 
-async function blockWalkway() {
-  if (!S.curve) return;
-  // drop a barrier on the route ahead of the robot (≈ 0.9 m ahead or mid-route)
-  const ahead = Math.min(S.robot.s + 0.9, S.robot.len * 0.8);
-  const p = S.curve.getPointAt(Math.max(0, Math.min(1, ahead / S.robot.len)));
-  const b = { x: +p.x.toFixed(2), z: +p.z.toFixed(2), w: 0.7, d: 0.5 };
+async function blockAisle() {
+  if (!S.curve || !S.robot.moving) return;
+  const ahead = Math.min(S.robot.s + 0.9, S.robot.len * 0.85);
+  const p = S.curve.getPointAt(Math.min(1, ahead / S.robot.len)), tan = S.curve.getTangentAt(Math.min(1, ahead / S.robot.len));
+  // barrier across the aisle: its long side is perpendicular to the direction of travel
+  const b = { x: +p.x.toFixed(2), z: +p.z.toFixed(2), w: 0.9, d: 0.35, yaw: Math.atan2(tan.z, tan.x) + Math.PI / 2 };
   S.blocks.push(b);
   S.fac.setBlocks(S.blocks);
   S.prevRoute = S.route.waypoints;
-  const t0 = performance.now();
-  const res = await dispatch(S.navAsset, { start: [S.fac.robot.position.x, S.fac.robot.position.z] });
-  if (res) toast(`⛔ Walkway blocked at (${b.x}, ${b.z}) → route recalculated in ${Math.round(performance.now() - t0)} ms: ${res.length_m} m, ${res.validation.collision_free ? "still collision-free ✔" : "✖"}`, 6000);
+  const prevLen = S.route.length_m - S.robot.s;
+  const res = await dispatch(S.navObject.asset.asset_id, { quiet: true });
+  if (res) toast(`Aisle blocked. New route in <b>${res.compute_ms} ms</b>: ${res.length_m} m instead of ${prevLen.toFixed(2)} m, still collision-free.`, 6000);
 }
 
-const _v = new THREE.Vector3();
-function updateRobot(dt) {
+const _v = new THREE.Vector3(), _t = new THREE.Vector3();
+function updateRobot(dt, t) {
   const R = S.robot, robot = S.fac.robot;
-  robot.userData.lidar.rotation.z += dt * 4;
-  robot.userData.ring.material.opacity = 0.35 + 0.25 * Math.sin(performance.now() / 300);
+  robot.userData.ring.material.opacity = 0.22 + 0.12 * Math.sin(t * 2);
   if (!R.moving || !S.curve) return;
   R.s = Math.min(R.len, R.s + R.speed * dt);
-  const t = R.s / R.len;
-  const p = S.curve.getPointAt(t), tan = S.curve.getTangentAt(t);
+  const u = R.s / R.len, p = S.curve.getPointAt(u), tan = S.curve.getTangentAt(u);
   robot.position.set(p.x, 0, p.z);
-  robot.rotation.y = Math.atan2(tan.x, tan.z);
-  // proximity: assets/objects within 1.2 m of the robot get framed + listed
+  const want = Math.atan2(tan.x, tan.z);
+  let dy = want - robot.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  robot.rotation.y += dy * Math.min(1, dt * 8);
   const near = [];
   for (const o of S.data.objects) {
     if (o.kind !== "object") continue;
-    const d = Math.hypot(o.center[0] - p.x, o.center[2] - p.z);
-    if (d < 1.2) near.push([o, d]);
+    if (Math.hypot(o.center[0] - p.x, o.center[2] - p.z) < 1.2) near.push(o.id);
   }
-  const nearIds = near.map(([o]) => o.id);
-  S.fac.setHighlighted(nearIds, { selected: S.selected?.id, target: S.target?.id });
-  for (const [o, d] of near) {
-    if (!S.seen.has(o.id)) {
-      S.seen.set(o.id, d);
-      if (o.asset || S.seen.size < 400) addFeed(o, d);
-    }
-  }
+  let added = false;
+  for (const id of near) if (!S.seen.has(id)) { S.seen.set(id, true); added = true; }
+  S.fac.setHighlighted(near, { selected: S.selected?.id, target: S.target.id });
+  if (added) renderTransitCard();
+  const bar = $("#rBar"); if (bar) bar.style.width = `${u * 100}%`;
   if (S.follow) {
-    const back = new THREE.Vector3(-tan.x, 0, -tan.z).multiplyScalar(2.1);
-    const side = new THREE.Vector3(tan.z, 0, -tan.x).multiplyScalar(0.5);
-    _v.set(p.x + back.x + side.x, 1.8, p.z + back.z + side.z);
-    camera.position.lerp(_v, Math.min(1, dt * 2.2));
-    controls.target.lerp(new THREE.Vector3(p.x + tan.x * 0.8, 0.55, p.z + tan.z * 0.8), Math.min(1, dt * 3));
+    _v.set(p.x - tan.x * 2.6 + tan.z * 0.7, 1.9, p.z - tan.z * 2.6 - tan.x * 0.7);
+    camera.position.lerp(_v, Math.min(1, dt * 2));
+    controls.target.lerp(_t.set(p.x + tan.x * 0.9, 0.5, p.z + tan.z * 0.9), Math.min(1, dt * 3));
   }
   if (R.s >= R.len - 1e-3) { R.moving = false; arrive(); }
 }
 
-function addFeed(o, d) {
-  const feed = $("#feed"); if (!feed) return;
-  const a = o.asset;
-  const el = document.createElement("div");
-  el.className = "li";
-  el.style.cursor = "pointer";
-  el.innerHTML = a
-    ? `<span class="dot st-${a.condition_state}" style="width:8px;height:8px;border-radius:50%;margin-top:4px;flex:none"></span><div><b style="font-family:var(--mono)">${a.tag}</b> ${fmt(a.condition_state)} · health ${a.health_score}<div class="note">${esc(o.label)} · ${d.toFixed(1)} m · ${esc(a.issue_code)}</div></div>`
-    : `<code>${o.id}</code><span>${esc(o.label)} <span class="note">${Math.round(o.confidence * 100)}% · ${d.toFixed(1)} m</span></span>`;
-  el.onclick = () => selectObject(o);
-  if (a) feed.prepend(el); else feed.appendChild(el);
-  while (feed.children.length > 60) feed.lastChild.remove();
-  const assets = [...S.seen.keys()].filter((id) => S.data.objects.find((x) => x.id === id)?.asset).length;
-  $("#feedCount").textContent = `${S.seen.size} framed · ${assets} assets`;
-}
-
 async function arrive() {
-  toast(`✔ Arrived at ${S.navObject.asset.tag}. Running grounded diagnosis…`);
-  const o = S.navObject;
-  const c = new THREE.Vector3(...o.center);
-  flyTo(new THREE.Vector3(c.x + 1.5, 1.35, c.z + 0.9), c);
+  const o = S.navObject, c = new THREE.Vector3(...o.center), r = S.fac.robot.position.clone();
+  const dir = c.clone().sub(r).setY(0).normalize();
+  flyTo(r.clone().addScaledVector(dir, -1.3).setY(1.55), c.clone().setY(Math.max(0.35, c.y)));
   S.selected = o;
-  S.fac.setHighlighted([...S.seen.keys()].filter((id) => S.data.objects.find((x) => x.id === id)?.asset), { selected: o.id, target: o.id });
-  const d = await S.diagPromise;
-  showDiagnosis(d);
+  S.fac.setHighlighted([], { selected: o.id, target: o.id });
+  renderDock(); renderLeft();
+  toast(`Arrived at <b>${o.asset.tag}</b>. Diagnosis ready.`);
+  S.diag = await S.diagPromise; S.tab = "overview";
+  renderDiagnosis();
 }
 
 // ------------------------------------------------------------------ camera tween
 let tween = null;
-function flyTo(pos, target, dur = 1.2, cam = camera, ctl = controls) {
+function flyTo(pos, target, dur = 1.1, cam = camera, ctl = controls) {
   tween = { p0: cam.position.clone(), t0: ctl.target.clone(), p1: pos.clone(), t1: target.clone(), k: 0, dur, cam, ctl };
 }
 function updateTween(dt) {
   if (!tween) return;
   tween.k = Math.min(1, tween.k + dt / tween.dur);
-  const e = tween.k < 0.5 ? 2 * tween.k * tween.k : 1 - Math.pow(-2 * tween.k + 2, 2) / 2;
+  const k = tween.k, e = 1 - Math.pow(1 - k, 3);
   tween.cam.position.lerpVectors(tween.p0, tween.p1, e);
   tween.ctl.target.lerpVectors(tween.t0, tween.t1, e);
-  if (tween.k >= 1) tween = null;
+  if (k >= 1) tween = null;
 }
 
 // ------------------------------------------------------------------ X-Ray
 async function enterXRay(focus = null) {
-  if (!S.diag && S.target) S.diag = await api.diagnose(S.target.asset.asset_id);
-  const comps = focus || S.diag?.hypotheses?.flatMap((h) => h.components) || [];
-  // transition: fly into the machine, scanline flash, swap scene
+  if (!S.diag) S.diag = await api.diagnose(S.target.asset.asset_id);
   if (S.mode === "facility") {
-    const o = S.diag ? S.data.objects.find((x) => x.asset?.asset_id === S.diag.asset.asset_id) : S.target;
+    const o = S.data.objects.find((x) => x.asset?.asset_id === S.diag.asset.asset_id) || S.target;
     const c = new THREE.Vector3(...o.center);
-    flyTo(c.clone().add(new THREE.Vector3(0.35, 0.15, 0.25)), c, 0.9);
-    await new Promise((r) => setTimeout(r, 700));
-    $(".flash").classList.add("on");
-    await new Promise((r) => setTimeout(r, 450));
+    flyTo(c.clone().add(new THREE.Vector3(0.3, 0.1, 0.3)), c, 0.8);
+    await wait(500); $(".fade").classList.add("on"); await wait(500);
   }
   setMode("xray");
-  xCam.position.set(0.55, 1.35, 3.3); xControls.target.set(-0.25, -0.05, 0);
+  xCam.position.copy(XHOME.pos).multiplyScalar(1.25); xControls.target.copy(XHOME.tgt);
+  flyTo(XHOME.pos, XHOME.tgt, 1.4, xCam, xControls);
   S.xray.setExplode(0);
-  S.xray.highlight(S.diag?.hypotheses?.[0]?.components || comps);
-  setTimeout(() => { S.xray.setExplode(1); }, 900);
-  setTimeout(() => $(".flash").classList.remove("on"), 120);
-  renderXRayPanel(comps);
+  const lead = S.diag.hypotheses[0]?.components || [];
+  S.xray.highlight(lead, { alt: S.diag.hypotheses.slice(1).flatMap((h) => h.components) });
+  $(".fade").classList.remove("on");
+  setTimeout(() => { S.xray.setExplode(0.65); renderDock(); }, 900);
+  S.xSelected = (focus && focus[0]) || lead[0] || null;
+  renderComponents(); renderPartCard();
 }
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function renderXRayPanel(suspects = []) {
-  const kb = S.kb;
+function renderPartCard() {
+  if (S.mode !== "xray") return;
+  const c = S.kb.components.find((x) => x.id === S.xSelected);
+  if (!c) return card(`${header("Illustrative model", "Centrifugal pump", '<span class="tag">Illustrative</span>')}
+    <p class="p" style="margin-top:12px">${esc(S.kb.model.provenance)}</p><p class="note">Select a component on the left or in the model.</p></div>`);
   const lead = new Set(S.diag?.hypotheses?.[0]?.components || []);
-  const alt = new Set((S.diag?.hypotheses || []).slice(1).flatMap((h) => h.components));
-  const sel = S.xSelected ? kb.components.find((c) => c.id === S.xSelected) : null;
   const tel = Object.fromEntries((S.diag?.telemetry?.signals || []).map((s) => [s.signal, s]));
-  $("#right").innerHTML = `
-  <div class="ph"><h3>X-Ray inspection · ${S.diag ? S.diag.asset.tag : "pump"}</h3></div>
-  <div class="pb">
-    <div class="li" style="display:block;border-color:rgba(250,204,21,.4);background:rgba(250,204,21,.06)"><b style="color:#fde68a">Illustrative model</b><div class="note">${esc(kb.model.provenance)}</div></div>
-    <div class="row" style="margin-top:10px"><button class="btn" id="xExplode">${S.xray.target > 0.5 ? "⇤ Reassemble" : "⇹ Explode"}</button><button class="btn" id="xGhost">${S.xray.ghost ? "Solid casing" : "Ghost casing"}</button><button class="btn" id="xBack">← Facility</button></div>
-    ${S.diag ? `<div class="sec"><h4>Linked diagnosis</h4><div class="li" style="display:block"><b>${S.diag.asset.tag}</b> · ${S.diag.asset.issue_code} · confidence ${S.diag.confidence.overall}<div class="note">Leading hypothesis: ${esc(S.diag.hypotheses[0].hypothesis)}. Red = components linked to the leading hypothesis${alt.size ? ", amber = alternatives" : ""}.</div></div></div>` : ""}
-    <div class="sec"><h4>Components</h4>${kb.components.map((c) => `<div class="comp ${c.id === S.xSelected ? "sel" : ""}" data-comp="${c.id}"><span>${esc(c.name)} <span class="note">${c.group}</span></span>${lead.has(c.id) ? '<span class="sus">SUSPECTED</span>' : alt.has(c.id) ? '<span class="sus" style="color:#fde68a;border-color:rgba(250,204,21,.5);background:rgba(250,204,21,.12)">ALT</span>' : ""}</div>`).join("")}</div>
-    ${sel ? `<div class="sec"><h4>${esc(sel.name)} <span class="cite" data-doc="KB-XRAY-PUMP#${sel.id}">KB-XRAY-PUMP#${sel.id}</span></h4>
-      <div class="narr">${esc(sel.function)}</div>
-      <div class="sec"><h4>Typical failure symptoms</h4>${sel.failure_symptoms.map((s) => `<div class="step"><b>•</b><div>${esc(s)}</div></div>`).join("")}</div>
-      <div class="sec"><h4>Evidence signals ${S.diag ? `for ${S.diag.asset.tag}` : ""}</h4>${sel.evidence_signals.map((s) => { const t = tel[s]; return `<div class="sig"><div><b>${s}</b><small>${t ? `now ${t.recent_mean}${t.unit} · peers ${t.peer_mean} · z ${t.z_vs_peers}${t.abnormal ? " · ABNORMAL" : ""}` : "not measured on this asset"}</small></div>${t ? sparkline(t.series) : ""}</div>`; }).join("")}</div>
-      <div class="sec"><h4>Ask the copilot about this component</h4><div class="row"><input class="search" id="xQ" value="What does the ${esc(sel.name.toLowerCase())} do and what evidence suggests it may be faulty?" style="flex:1"/><button class="btn primary" id="xAsk">Ask</button></div><div id="xA" style="margin-top:8px"></div></div>
-    </div>` : `<div class="note" style="margin-top:10px">Click a part in 3D or in the list. <span class="kbd">drag</span> rotate · <span class="kbd">scroll</span> zoom.</div>`}
-  </div>`;
-  $("#xExplode").onclick = () => { S.xray.setExplode(S.xray.target > 0.5 ? 0 : 1); renderXRayPanel(suspects); };
-  $("#xGhost").onclick = () => { S.xray.setGhost(!S.xray.ghost); renderXRayPanel(suspects); };
-  $("#xBack").onclick = () => setMode("facility");
-  $("#right").querySelectorAll("[data-comp]").forEach((el) => (el.onclick = () => selectComponent(el.dataset.comp)));
-  if (sel) $("#xAsk").onclick = async () => {
-    $("#xA").innerHTML = '<div class="note">Retrieving sources…</div>';
-    const a = await api.query($("#xQ").value, S.diag?.asset?.asset_id, sel.id);
-    $("#xA").innerHTML = `<div class="narr">${cites(a.text)}</div><div class="note">${esc(a.mode)} · ${a.sources.length} sources retrieved</div>`;
+  const isolated = S.xray.hidden.size > 0;
+  const tabs = { overview: "Overview", evidence: "Evidence", ask: "Ask" };
+  const body = {
+    overview: `<p class="p">${esc(c.function)}</p>${kv("Group", nice(c.group))}${kv("Linked faults", c.issue_codes.map(nice).join(", "))}
+      ${lead.has(c.id) ? kv("Status", `<span style="color:var(--bad)">Suspected for ${S.diag.asset.tag}</span>`) : ""}
+      <div class="section"><div class="label">Typical failure signs</div>${c.failure_symptoms.map((s, i) => `<div class="step"><span class="k">${i + 1}</span><span>${esc(s.charAt(0).toUpperCase() + s.slice(1))}</span></div>`).join("")}</div>`,
+    evidence: `<div class="label note" style="margin-bottom:4px">Signals for ${S.diag?.asset?.tag ?? "the target"}</div>${c.evidence_signals.map((s) => { const t = tel[s]; const hot = t && (t.abnormal || Math.abs(t.z_vs_peers ?? 0) >= 1.5);
+      return `<div class="sig"><div><b>${nice(s.replace(/_(mm_s|c|a|pct|bar|rpm)$/, ""))}</b><small>${t ? `${t.recent_mean} ${t.unit} · peers ${t.peer_mean} · <span class="${hot ? "flag" : ""}">z ${t.z_vs_peers}</span>` : "Not measured on this asset"}</small></div>${t ? sparkline(t.series, 88, 26, hot) : ""}</div>`; }).join("")}`,
+    ask: `<input class="search" id="partQ" value="What does the ${esc(c.name.toLowerCase())} do and what evidence suggests it may be faulty?"/>
+      <div class="section"><button class="btn block" data-act="askpart">${icon("spark")}Ask the copilot</button></div><div id="partA" class="section"></div>`,
   };
+  card(`${header(nice(c.group), esc(c.name), '<span class="tag">Illustrative</span>')}
+    <div class="tabs">${Object.entries(tabs).map(([k, v]) => `<button data-xtab="${k}" class="${S.xTab === k ? "on" : ""}">${v}</button>`).join("")}</div>
+    ${body[S.xTab]}
+    <div class="section"><button class="btn block" data-act="isolate">${icon("target")}${isolated ? "Show all parts" : "Isolate component"}</button></div>
+    <div class="section" style="text-align:center"><button class="link" data-docid="KB-XRAY-PUMP#${c.id}">Training note ${icon("arrow")}</button></div></div>`);
 }
 
+async function askPart() {
+  $("#partA").innerHTML = '<div class="note">Looking it up…</div>';
+  const a = await api.query($("#partQ").value, S.diag?.asset?.asset_id, S.xSelected);
+  $("#partA").innerHTML = `<div class="narr">${cites(a.text)}</div><p class="note" style="margin-top:6px">${esc(a.mode)} · ${a.sources?.length ?? 0} sources</p>`;
+}
+
+export function focusPart(id, dist = 1.6) {
+  const c = S.xray.partCenter(id);
+  const dir = XHOME.pos.clone().sub(XHOME.tgt).normalize();
+  flyTo(c.clone().addScaledVector(dir, dist), c, 0.9, xCam, xControls);
+}
 function selectComponent(id) {
   S.xSelected = id;
-  S.xray.highlight(S.diag?.hypotheses?.[0]?.components || [], { selected: id });
-  const c = S.xray.partCenter(id);
-  flyTo(c.clone().add(new THREE.Vector3(0.9, 0.55, 1.2)), c, 0.8, xCam, xControls);
-  if (S.mode === "xray") renderXRayPanel();
+  S.xray.selected = id;
+  if (S.mode === "xray") { renderComponents(); renderPartCard(); focusPart(id); }
   S.onComponentPick?.(id);
 }
 
 // ------------------------------------------------------------------ modes
 export function setMode(mode) {
-  if (mode === "knowledge") { S.prevMode = S.mode; openKnowledge(); }
-  const xr = ["xray", "learn", "practice"].includes(mode);
+  const x = ["xray", "learn", "practice"].includes(mode);
+  if (mode === "xray" && S.mode === "facility" && !S.diag) return enterXRay();
   S.mode = mode;
-  document.querySelectorAll(".modes button").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
-  controls.enabled = !xr; xControls.enabled = xr;
-  $(".labels").style.display = xr ? "none" : "";
-  $("#left").classList.toggle("hidden", xr);
-  $("#banner").classList.toggle("hidden", !xr);
-  $("#banner").textContent = mode === "practice" ? "EDUCATIONAL SIMULATION · not certified training · no connection to real controls" : "ILLUSTRATIVE PROCEDURAL MODEL · not captured by the scan · not an OEM drawing";
-  if (mode === "facility") { $(".flash").classList.remove("on"); if (S.diag) showDiagnosis(S.diag); else renderRightIdle(); }
-  if (mode === "xray") renderXRayPanel();
+  $$(".modes button").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
+  controls.enabled = !x; xControls.enabled = x;
+  $(".labels").innerHTML = "";
+  $("#left").classList.toggle("hidden", mode !== "facility" && mode !== "xray");
+  S.onComponentPick = null;
+  if (mode === "facility") { S.xray.selected = null; renderLeft(); S.diag ? renderDiagnosis() : (S.robot.moving ? renderTransitCard() : renderOverviewCard()); }
+  if (mode === "xray") { renderComponents(); renderPartCard(); }
   if (mode === "learn") S.training.learn();
   if (mode === "practice") S.training.practice();
+  renderDock();
 }
-document.querySelector(".modes").onclick = (e) => {
-  const m = e.target.dataset.mode; if (!m) return;
-  if (m === "xray") enterXRay(); else setMode(m);
-};
+$(".modes").onclick = (e) => { const m = e.target.closest("[data-mode]")?.dataset.mode; if (m) m === "xray" ? enterXRay() : setMode(m); };
 
-async function openKnowledge(q = "") {
-  openModal(`<button class="close" data-close>✕</button><h3>Machine Knowledge Center</h3>`, `
-    <input class="search" id="kq" placeholder="Search manuals, asset cards, service cases… e.g. 'fouling pump flow'" value="${esc(q)}"/>
-    <div class="note" style="margin:6px 0 10px">Corpus: 8 Valmet knowledge docs · 30 asset cards (generated from workbook rows) · 50 historical service cases · 11 illustrative component notes. BM25 retrieval; answers cite IDs.</div>
-    <div id="kres"></div>
-    <div class="sec"><h4>Ask the knowledge base</h4><div class="row"><input class="search" id="kask" placeholder="e.g. What evidence suggests fouling?" style="flex:1"/><button class="btn primary" id="kgo">Ask</button></div><div id="kans" style="margin-top:8px"></div></div>`);
-  const run = async () => {
-    const res = await api.search($("#kq").value || "pump fouling flow current");
-    $("#kres").innerHTML = res.map((d) => `<div class="doc" data-docid="${esc(d.id)}"><span class="k">${d.kind}</span><code>${esc(d.id)}</code> ${esc(d.title)}<div class="note">${esc(d.text.slice(0, 170))}…</div></div>`).join("") || '<div class="note">No results.</div>';
-    $("#kres").querySelectorAll("[data-docid]").forEach((el) => (el.onclick = async () => showDoc(await api.doc(el.dataset.docid))));
-  };
-  $("#kq").onkeydown = (e) => e.key === "Enter" && run();
-  $("#kgo").onclick = async () => {
-    $("#kans").innerHTML = '<div class="note">Thinking…</div>';
-    const a = await api.query($("#kask").value, S.diag?.asset?.asset_id);
-    $("#kans").innerHTML = `<div class="narr">${cites(a.text)}</div><div class="note">${esc(a.mode)}</div>`;
-  };
-  run();
+// ------------------------------------------------------------------ ask
+const SUGG = ["Where is the faulty pump?", "Find the equipment with abnormal vibration", "Send a technician to inspect the faulty pump", "Show me the relevant manual", "Can I practise inspecting this equipment?"];
+const pop = $("#pop"), askIn = $("#ask");
+function showSuggestions() {
+  pop.innerHTML = SUGG.map((s) => `<button class="sugg" data-q="${esc(s)}">${icon("search")}${esc(s)}</button>`).join("");
+  pop.classList.remove("hidden");
 }
+askIn.addEventListener("focus", () => { if (!pop.dataset.answer) showSuggestions(); });
+askIn.addEventListener("keydown", (e) => { if (e.key === "Enter") ask(askIn.value); if (e.key === "Escape") { pop.classList.add("hidden"); askIn.blur(); } });
+pop.addEventListener("click", (e) => { const s = e.target.closest("[data-q]"); if (s) ask(s.dataset.q); if (e.target.closest("[data-pop-close]")) { pop.classList.add("hidden"); delete pop.dataset.answer; } });
+document.addEventListener("keydown", (e) => { if (e.key === "/" && document.activeElement !== askIn && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); askIn.focus(); } });
+document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".ask")) pop.classList.add("hidden"); });
 
-// ------------------------------------------------------------------ command bar
-function renderSuggestions() {
-  const s = ["Where is the faulty pump?", "Find the equipment with abnormal vibration", "Send a technician to inspect the faulty pump",
-    "Show me the relevant manual", "Can I practise inspecting this equipment?"];
-  $("#sugg").innerHTML = s.map((x) => `<button>${x}</button>`).join("");
-  $("#sugg").onclick = (e) => { if (e.target.tagName === "BUTTON") { $("#cmdInput").value = e.target.textContent; ask(); } };
-}
-export async function ask(text) {
-  const q = text ?? $("#cmdInput").value.trim();
-  if (!q) return;
-  const box = $("#answer");
-  box.classList.remove("hidden");
-  box.innerHTML = `<div class="who">COPILOT</div><div class="note">Working on “${esc(q)}”…</div>`;
+export async function ask(q) {
+  q = (q || "").trim(); if (!q) return;
+  askIn.value = q;
+  pop.dataset.answer = "1";
+  pop.innerHTML = `<div class="reply"><div class="who"><span>Copilot</span></div><span class="note">Working…</span></div>`;
+  pop.classList.remove("hidden");
   try {
     const r = await api.command(q, S.selected?.asset?.asset_id || S.diag?.asset?.asset_id);
-    box.innerHTML = `<button class="close" onclick="this.parentElement.classList.add('hidden')">✕</button><div class="who">COPILOT · ${r.intent === "command" ? "ACTION" : "ANSWER"}</div>${cites(r.text)}`;
+    pop.innerHTML = `<div class="reply"><div class="who"><span>Copilot</span><button class="link" data-pop-close>${icon("close")}</button></div>${cites(r.text)}</div>`;
     for (const a of r.actions || []) {
-      if (a.type === "select" && a.asset_id) { if (S.mode !== "facility") setMode("facility"); await selectAsset(a.asset_id, { fly: !r.actions.some((x) => x.type === "navigate") }); }
-      if (a.type === "navigate") await dispatch(a.asset_id);
+      if (a.type === "select") { if (S.mode !== "facility") setMode("facility"); selectAsset(a.asset_id, { fly: !r.actions.some((x) => x.type === "navigate") }); }
+      if (a.type === "navigate") { S.blocks = []; S.fac.setBlocks([]); S.prevRoute = null; await dispatch(a.asset_id); }
       if (a.type === "xray") await enterXRay();
       if (a.type === "practice") setMode("practice");
       if (a.type === "learn") setMode("learn");
-      if (a.type === "knowledge") setMode("knowledge");
+      if (a.type === "knowledge") openLibrary();
     }
-  } catch (e) {
-    box.innerHTML = `<div class="who">COPILOT</div>Error: ${esc(e.message)}`;
-  }
-  $("#cmdInput").value = "";
+  } catch (e) { pop.innerHTML = `<div class="reply">Something went wrong: ${esc(e.message)}</div>`; }
 }
-$("#cmdSend").onclick = () => ask();
-$("#cmdInput").onkeydown = (e) => e.key === "Enter" && ask();
+
+// ------------------------------------------------------------------ library, docs, work order, about
+function sheet(head, body) {
+  $("#sheet").innerHTML = `<div class="card-h"><span class="t">${head}</span><button class="link" data-close-sheet>${icon("close")}</button></div><div class="card-b">${body}</div>`;
+  $("#sheet").classList.remove("hidden");
+}
+$("#sheet").addEventListener("click", (e) => { if (e.target.closest("[data-close-sheet]")) $("#sheet").classList.add("hidden"); });
+$("#libBtn").onclick = () => openLibrary();
+async function openLibrary(q = "") {
+  sheet("Library", `<input class="search" id="libQ" placeholder="Search manuals, asset cards and service cases" value="${esc(q)}"/>
+    <p class="note" style="margin:8px 0 4px">8 knowledge documents, 30 asset cards, 50 service cases and 11 training notes. Answers cite the document IDs.</p><div id="libRes"></div>`);
+  const run = async () => {
+    const res = await api.search($("#libQ").value);
+    $("#libRes").innerHTML = res.map((d) => `<button class="doc" data-docid="${esc(d.id)}"><span class="k">${nice(d.kind)}</span><code>${esc(d.id)}</code><p>${esc(d.title)} · ${esc(d.text.slice(0, 120))}…</p></button>`).join("") || '<p class="note">No matches.</p>';
+  };
+  $("#libQ").onkeydown = (e) => e.key === "Enter" && run();
+  run();
+}
+async function showDoc(id) {
+  if (/^(EVT|WO|DQ)-/.test(id)) return toast(`${esc(id)} is listed under Evidence in the diagnosis.`);
+  if (id === "Telemetry_Sample_3d") return toast("Telemetry_Sample_3d is the 30-minute synthetic telemetry stream in the builder pack.");
+  try {
+    const d = await api.doc(id);
+    sheet(esc(d.id), `<div class="h1" style="font-size:17px">${esc(d.title)}</div><div class="sub">${nice(d.kind)} · ${esc(d.source)}</div>
+      <p class="p" style="margin-top:12px;color:var(--text)">${esc(d.text)}</p>${d.kind === "training_kb" ? '<p class="note">General training knowledge for the illustrative model, not an OEM manual.</p>' : ""}`);
+  } catch { toast(`${esc(id)} is a workbook record.`); }
+}
+document.addEventListener("click", (e) => {
+  const c = e.target.closest(".cite, [data-docid]"); if (c) showDoc(c.dataset.doc || c.dataset.docid);
+  const x = e.target.closest("[data-xcomp]"); if (x) enterXRay(x.dataset.xcomp.split(","));
+});
+async function showWorkOrder(id) {
+  const w = await api.draftWO(id);
+  sheet("Work order draft", `<div class="h1" style="font-size:17px">${w.tag} · ${esc(nice(w.action))}</div><div class="sub">${esc(w.status)} · no control actions</div>
+    <div class="section">${kv("Problem", esc(w.problem))}${kv("Type", nice(w.maintenance_type))}${kv("Priority", nice(w.priority))}${kv("Role", nice(w.role))}${kv("Confidence", Math.round(w.confidence * 100) + "%")}</div>
+    <div class="section"><div class="label">Evidence</div><div class="row">${w.evidence_ids.map((i) => `<span class="cite" data-doc="${i}">${i}</span>`).join("")}</div></div>
+    <div class="section"><div class="label">Before any work</div>${w.safety_prerequisites.map((s) => `<label class="gate"><input type="checkbox"/> ${esc(s)}</label>`).join("")}</div>`);
+}
+function showAbout() {
+  const i = S.data.integrity, n = S.data.navigation;
+  sheet("About this demo", `<div class="h1" style="font-size:17px">Industrial X-Ray</div><p class="p">Valmet × Since AI 2026 challenge entry: semantic 3D scene understanding and an autonomous field-service copilot.</p>
+    ${kv("Scan", `${i.declared_vertex_count.toLocaleString()} splats · ${Math.round(i.contiguous_valid_fraction * 100)}% valid`)}${kv("Objects framed", S.data.stats.n_objects)}${kv("Assets mapped", S.data.n_bound_assets)}
+    ${kv("Drivable floor", `${n.walkable_area_m2} m²`)}${kv("Robot radius", `${n.robot_radius_m} m`)}${kv("Backend", api.isStatic ? "Static export (hosted)" : "Live Python API")}
+    <div class="section"><div class="label">What is real and what is illustrative</div>
+      <div class="step"><span class="k">1</span><span>The room, object frames, labels and routes come from the supplied scan.</span></div>
+      <div class="step"><span class="k">2</span><span>Asset data is synthetic and mapped to objects with stated confidence.</span></div>
+      <div class="step"><span class="k">3</span><span>The X-Ray pump is a procedural teaching model, not captured by the scan and not an OEM drawing.</span></div></div>
+    <div class="section"><div class="label">Keys</div>${kv("Ask", '<span class="kbd">/</span>')}${kv("Orbit · pan · zoom", "Drag · right-drag · scroll")}</div>`);
+}
+
+let toastTimer;
+export function toast(msg, ms = 4200) {
+  let t = $(".toast");
+  if (!t) { t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); $("#app").appendChild(t); }
+  t.innerHTML = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.remove(), ms);
+}
 
 // ------------------------------------------------------------------ picking
-const ray = new THREE.Raycaster();
-const ndc = new THREE.Vector2();
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let down = null;
 canvas.addEventListener("pointerdown", (e) => (down = [e.clientX, e.clientY]));
 canvas.addEventListener("pointerup", (e) => {
@@ -601,15 +610,9 @@ canvas.addEventListener("pointerup", (e) => {
   if (S.mode === "facility") {
     ray.setFromCamera(ndc, camera);
     const hits = ray.intersectObjects(S.fac.pickables(), false);
-    if (hits.length) {
-      // prefer the smallest frame under the cursor (nested objects)
-      hits.sort((a, b) => {
-        const sa = a.object.parent.scale, sb = b.object.parent.scale;
-        return sa.x * sa.y * sa.z - sb.x * sb.y * sb.z;
-      });
-      const o = S.data.objects.find((x) => x.id === hits[0].object.userData.objectId);
-      if (o) selectObject(o);
-    }
+    if (!hits.length) return;
+    hits.sort((a, b) => { const sa = a.object.parent.scale, sb = b.object.parent.scale; return sa.x * sa.y * sa.z - sb.x * sb.y * sb.z; });
+    selectObject(S.data.objects.find((x) => x.id === hits[0].object.userData.objectId));
   } else {
     ray.setFromCamera(ndc, xCam);
     const hits = ray.intersectObjects(S.xray.pickables(), false);
@@ -619,26 +622,27 @@ canvas.addEventListener("pointerup", (e) => {
 
 // ------------------------------------------------------------------ loop
 const clock = new THREE.Clock();
-const QA = new URLSearchParams(location.search).has("qa");   // headless screenshots: throttle software rendering
+const QA = new URLSearchParams(location.search).has("qa");
 let lastQA = -1e9;
 renderer.setAnimationLoop(() => {
   if (QA) { const now = performance.now(); if (now - lastQA < 2500) return; lastQA = now; }
   const dt = QA ? 0.05 : Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   updateTween(dt);
   if (!S.fac) return;
-  if (["xray", "learn", "practice"].includes(S.mode)) {
+  if (S.mode === "facility") {
+    updateRobot(dt, t);
+    if (!S.robot.moving) S.fac.pulse(t, S.target.id);
+    controls.update();
+    renderer.render(fac, camera);
+    labels.render(fac, camera);
+  } else {
     S.xray.update(dt, t);
     xControls.update();
     renderer.render(S.xray.scene, xCam);
-  } else {
-    updateRobot(dt);
-    if (S.target) S.fac.pulse(t, [S.target.id]);
-    controls.update();
-    renderer.render(facScene, camera);
-    labels.render(facScene, camera);
+    labels.render(S.xray.scene, xCam);
   }
 });
 
 window.__app = S;
-Object.assign(window, { __dispatch: dispatch, __enterXRay: enterXRay, __setMode: setMode, __ask: ask, __block: blockWalkway, __select: selectAsset });
+Object.assign(window, { __dispatch: dispatch, __enterXRay: enterXRay, __setMode: setMode, __ask: ask, __block: blockAisle, __select: selectAsset });
 boot();

@@ -21,12 +21,14 @@ def world():
     return World()
 
 
-def test_integrity_report_flags_partial_scan():
+def test_integrity_report_is_consistent():
     rep = json.loads((config.DATA_OUT / "integrity_report.json").read_text())
     assert rep["size_matches_header"] is True
     assert rep["first_implausible_record"] == rep["contiguous_valid_records"]
-    assert rep["contiguous_valid_records"] < rep["declared_vertex_count"]
-    assert rep["tail_plausible_fraction"] < 0.05          # tail is noise, not data
+    if rep["contiguous_valid_records"] < rep["declared_vertex_count"]:
+        assert rep["tail_plausible_fraction"] < 0.05      # a corrupt tail is noise, never used as data
+    else:
+        assert rep["contiguous_valid_fraction"] == 1.0
 
 
 def test_objects_are_framed_and_labelled(world):

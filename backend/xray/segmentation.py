@@ -162,51 +162,37 @@ def extract_structure(p: np.ndarray, rng: np.random.Generator) -> tuple[list[dic
                 planes.append({"label": "ceiling", "normal": [0, -1, 0], "offset": cy, "n_points": int(ce.sum())})
         except RuntimeError:
             pass
-    # walls: iterative vertical RANSAC with large-extent requirement
-    rest = ~struct & (p[:, 1] > 0.1)
-    failures = 0
-    rejected = np.zeros(len(p), bool)
-    for _ in range(14):
-        idx = np.where(rest)[0]
-        if len(idx) < 3000:
-            break
-        sub = idx[rng.choice(len(idx), min(40000, len(idx)), replace=False)]
-        best = None
-        for hint in (np.array([1.0, 0, 0]), np.array([0, 0, 1.0])):
+    # walls: the room envelope. For each side of the (yaw-aligned) room, fit a vertical plane with RANSAC
+    # inside a slab next to the robust boundary; accept only large, tall planes.
+    band = ~struct & (p[:, 1] > 0.1)
+    lo, hi = np.percentile(p[band], 0.5, axis=0), np.percentile(p[band], 99.5, axis=0)
+    for ax, hint in ((0, np.array([1.0, 0, 0])), (2, np.array([0, 0, 1.0]))):
+        for side, bound in ((-1, lo[ax]), (1, hi[ax])):
+            slab = band & (np.abs(p[:, ax] - bound) < 0.6)
+            idx = np.where(slab)[0]
+            if len(idx) < 800:
+                continue
+            sub = idx[rng.choice(len(idx), min(30000, len(idx)), replace=False)]
             try:
-                n, d, _ = ransac_plane(p[sub], normal_hint=hint, thresh=0.035, max_angle_deg=8, iters=300, rng=rng)
+                n, d, _ = ransac_plane(p[sub], normal_hint=hint, thresh=0.05, max_angle_deg=6, iters=400, rng=rng)
             except RuntimeError:
                 continue
-            inl = np.abs(p[idx] @ n + d) < 0.035
-            if best is None or inl.sum() > best[2].sum():
-                best = (n, d, inl)
-        if best is None:
-            break
-        n, d, inl = best
-        P = p[idx[inl]]
-        tang = np.cross(n, [0, 1, 0]); tang /= np.linalg.norm(tang)
-        t = P @ tang
-        width = np.percentile(t, 98) - np.percentile(t, 2)
-        height = np.percentile(P[:, 1], 98) - np.percentile(P[:, 1], 2)
-        # a wall must be large, tall and densely supported
-        near_existing = any(
-            abs(np.dot(n, w["normal"])) > 0.97 and abs(abs(d) - abs(w["offset"])) < 0.4
-            for w in planes if w["label"] == "wall")
-        if near_existing or width < 1.0 or height < 1.0 or inl.sum() < 1200 or \
-                (inl.sum() / max(width * height, 1e-3)) < 120:
-            failures += 1
-            if failures >= 4:
-                break
-            # make the rejected support unavailable for the next hypothesis but keep it as objects
-            rest[idx[inl]] = False
-            rejected[idx[inl]] = True
-            continue
-        struct[idx[inl]] = True
-        rest[idx[inl]] = False
-        planes.append({"label": "wall", "normal": np.round(n, 4).tolist(), "offset": float(d),
-                       "n_points": int(inl.sum()), "width": float(width), "height": float(height),
-                       "t_range": [float(np.percentile(t, 2)), float(np.percentile(t, 98))],
-                       "y_range": [float(np.percentile(P[:, 1], 2)), float(np.percentile(P[:, 1], 98))]})
+            inl = np.abs(p[idx] @ n + d) < 0.06
+            P = p[idx[inl]]
+            if len(P) < 500:
+                continue
+            tang = np.cross(n, [0, 1, 0]); tang /= np.linalg.norm(tang)
+            t = P @ tang
+            width = np.percentile(t, 99) - np.percentile(t, 1)
+            height = np.percentile(P[:, 1], 99) - np.percentile(P[:, 1], 1)
+            if width < 1.5 or height < 1.0:
+                continue
+            struct[idx[inl]] = True
+            planes.append({"label": "wall", "normal": np.round(n, 4).tolist(), "offset": float(d),
+                           "n_points": int(inl.sum()), "width": float(width), "height": float(height),
+                           "side": ("-" if side < 0 else "+") + "xz"[ax // 2],
+                           "t_range": [float(np.percentile(t, 1)), float(np.percentile(t, 99))],
+                           "y_range": [float(np.percentile(P[:, 1], 1)), float(np.percentile(P[:, 1], 99))]})
     return planes, struct
 
 

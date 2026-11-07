@@ -9,7 +9,7 @@ DATA_RAW = Path(os.environ.get("XRAY_DATA_RAW", ROOT / "data" / "raw"))
 DATA_OUT = Path(os.environ.get("XRAY_DATA_OUT", ROOT / "data" / "processed"))
 WEB_PUBLIC = ROOT / "web" / "public" / "data"
 
-PLY_PATH = Path(os.environ.get("XRAY_PLY", DATA_RAW / "industrial_boiler_room.ply"))
+PLY_PATH = Path(os.environ.get("XRAY_PLY", DATA_RAW / "equipment_room.ply"))
 XLSX_PATH = Path(os.environ.get("XRAY_XLSX", DATA_RAW / "builder_pack.xlsx"))
 CONFIG_DIR = ROOT / "config"
 

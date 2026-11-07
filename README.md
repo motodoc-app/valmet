@@ -1,88 +1,81 @@
-# Industrial X-Ray AI — From Factory to Component
+# Industrial X-Ray — From Factory to Component
 
 **Valmet × Since AI Hackathon 2026 · Industrial Metaverse: Semantic 3D Scene Understanding & Autonomous Field-Service Copilot**
 
-A working demonstrator that turns Valmet's raw Gaussian-splat scan of a boiler room into a scene that *understands its
-equipment*. An inspection robot drives a computed, collision-free route to a faulty pump, framing every asset it passes.
-On arrival a grounded copilot explains the fault with cited evidence. The technician can then go *inside* the
-machine (X-Ray), learn why the fault happens, and rehearse an inspection in a scored virtual exercise.
+The demonstrator takes a raw Gaussian-splat scan of an equipment room and works out what is in it. An inspection robot
+plans a collision-free route to a faulty pump and reads every asset it passes. On arrival, a copilot explains the fault
+using cited evidence. The technician can then open an X-Ray view of the machine, learn why the fault happens and
+rehearse the inspection.
 
 ```
-fault detected → machine located → safe navigation → grounded AI diagnosis → X-Ray component view → learn / practise → work-order draft
+fault detected → located → safe route (live reroute) → grounded diagnosis → X-Ray component view → learn / practise → work-order draft
 ```
 
-| Challenge criterion (weight) | What the demo shows |
+| Criterion (weight) | What the demo shows |
 |---|---|
-| Semantic extraction & 3D frames (30 %) | **170 objects** segmented from the splats and boxed with oriented 3D frames. Floor, ceiling and wall are plane-fitted. A vision-language model labels each cluster from renders. Every label carries its confidence and source. |
-| Obstacle-aware navigation & proximity (25 %) | 2.5-D multi-level height-field, clearance-aware A* and line-of-sight smoothing. **Every route is re-validated** (min clearance ≥ robot radius, 0 collisions). A blocked walkway triggers live rerouting (~10 ms). Objects within 1.2 m of the robot are framed and listed live. |
-| Grounded AI diagnostics (20 %) | A deterministic evidence engine combines telemetry z-scores against the asset's own baseline and its peers, alarms, work orders, similar cases and data-quality issues. The LLM narration may cite **only IDs from that evidence package**, and the server strips any other ID. The confidence calculation is shown. A template fallback works offline. |
-| Backend architecture (15 %) | Modular Python pipeline (`step1 → step2 → step3`) and a FastAPI service that follows the builder pack's `API_Contract`. Pytest covers the core guarantees. |
-| Demo clarity & innovation (10 %) | Photoreal splats in the browser, a one-click robot dispatch, a natural-language command bar, and the facility → X-Ray → Learn → Practice journey. |
+| Semantic extraction & 3D frames (30 %) | **676 objects** with oriented 3D frames, plus floor, ceiling and **4 walls** fitted as planes, from the full 1.68 M-splat scan. A vision-language model names every cluster from renders, and each label carries its confidence and source. Four human review corrections are recorded and visible in the UI. |
+| Obstacle-aware navigation & proximity (25 %) | Multi-level height-field, clearance-aware A*, smoothing and an **independent validation** pass. The demo route is **8.4 m across the room**, with 0 collisions and minimum clearance of at least the 0.20 m robot radius. **Block aisle** reroutes live in about 10–20 ms. Every object within 1.2 m is framed (208 along the route), and the 19 workbook assets passed are read out. |
+| Grounded AI diagnostics (20 %) | A deterministic evidence engine combines telemetry z-scores against the asset's own baseline and its peers, alarms, work orders, similar cases and data-quality issues. The LLM narration may cite **only** IDs from that evidence; the server removes anything else. The confidence calculation is shown (0.52 for P-005). |
+| Backend architecture (15 %) | Modular Python pipeline and a FastAPI service following the workbook's `API_Contract`. Pytest covers the core guarantees. A serverless export runs the same app as a static site. |
+| Demo clarity & innovation (10 %) | Photoreal splats in the browser, natural-language commands, and a calm studio-style UI. The journey runs facility → X-Ray → Learn → Practice. |
 
-## Quick start (demo uses the committed, pre-processed data)
+## Run it
 
 ```bash
-# backend
 pip install -r requirements.txt
-cd backend && uvicorn xray.api:app --port 8000          # http://localhost:8000/docs
-# web (second terminal)
-cd web && npm install && npm run dev -- --port 5173     # http://localhost:5173
+cd backend && uvicorn xray.api:app --port 8000      # API + docs at http://localhost:8000/docs
+cd web && npm install && npm run dev                 # http://localhost:5173 (uses the live API)
 ```
 
-* Optional AI narration: set `OPENAI_API_KEY` (model: `XRAY_LLM_MODEL`, default `gpt-5.4-mini`). Without it the copilot
-  runs in **template mode**: the same evidence, confidence and citations, phrased by templates.
-* Single process: `cd web && npm run build`, then `cd backend && python -m xray.api` serves the app at `http://localhost:8000`.
-* Tests: `pytest -q` (offline, deterministic).
+* **AI narration:** set `OPENAI_API_KEY` (`XRAY_LLM_MODEL`, default `gpt-5.4-mini`). Without it the copilot runs in
+  template mode with the same evidence, confidence and citations.
+* **Hosted / static mode:** `python scripts/export_static.py && cd web && npm run build` produces `web/dist`, a static
+  site with no server. Routes and reroutes are planned in the browser by a JS port of `navigation.py`, and the
+  diagnoses are the backend's own output, generated at export time.
+* **Tests:** `pytest -q`.
 
-### Demo script (≈ 4 min)
-1. **Facility.** The left panel shows 170 framed objects, 30 mapped assets and 5.5 m² of walkable floor. Toggle *Nav grid* to show walkable (green) and occupied (red) cells.
-2. In the command bar, type **“Where is the faulty pump?”**. The camera flies to **P-005** (FOULING, health 44, A-critical).
-3. Type **“Send a technician to inspect the faulty pump”**. A toast reports route length, compute time and validation (min clearance). The robot enters through the doorway, and assets within 1.2 m light up with status labels while the proximity feed fills.
-4. Press **⛔ Block walkway**. A barrier drops on the route, A* replans from the robot's current position, and the old route stays visible as a ghost.
-5. **Arrival.** The diagnosis panel shows the cited narrative, a confidence breakdown, telemetry sparklines with z-scores, alarms, work orders, similar cases, data-quality penalties and the next safe steps. Click any citation chip to open its source.
-6. **ENTER X-RAY MODE.** The scan transitions to an exploded, *illustrative* pump. The impeller and volute are flagged red (leading hypothesis) and the wear ring amber (alternative). Click a part to see its function, symptoms and live evidence signals for P-005, then ask the copilot about it.
-7. **LEARN → “Why does fouling lower flow but raise current?”** Each step highlights the relevant parts.
-8. **PRACTICE.** Confirm the safety gate, then work through the bearing-degradation scenario: pick the component, answer the quiz, and do the virtual disassembly and reassembly in order. Finish on the scored summary.
-9. Back in the facility, use **Draft work order** to produce a draft (no control actions) with evidence IDs and safety prerequisites.
-
-## Pipeline
-
-```
-data/raw/industrial_boiler_room.ply ─┐
-                                     ├─ scripts/step1_scene.py     integrity report, canonical frame, web .splat, caches
-data/raw/builder_pack.xlsx ──────────┤─ scripts/step2_semantics.py planes + DBSCAN + OBBs (+ VLM labels + review layer)
-                                     └─ scripts/step3_vlm.py       optional: label clusters with a VLM (cached)
-backend/xray/api.py                  World = scene + NavMap + mapping + copilot  →  REST API
-web/                                 three.js + Spark (Gaussian splats) UI
+### Rebuild from the raw scan
+Put `equipment_room.ply` and `builder_pack.xlsx` in `data/raw/` (see `data/raw/README.md`), then run:
+```bash
+python scripts/step1_scene.py      # integrity report, canonical frame, web splat, caches
+python scripts/step2_semantics.py  # planes, objects, 3D frames (+ cached VLM labels + review layer)
+python scripts/step3_vlm.py        # optional: label clusters with a vision-language model (cached)
+python scripts/step2_semantics.py  # merge labels
 ```
 
-Re-run on a new or repaired scan: put the files in `data/raw/`, then run `python scripts/step1_scene.py && python scripts/step2_semantics.py && python scripts/step3_vlm.py && python scripts/step2_semantics.py`.
+## Demo script (≈ 4 min)
+1. **Facility.** The left list shows the 30 workbook assets in priority order. Hover over the scan: 676 frames,
+   with assets coloured by condition. In the dock, switch frames between *All*, *Assets* and *Off*, and turn on
+   *Floor map* to see the drivable floor.
+2. Press **/** and ask **“Where is the faulty pump?”**. The camera flies to **P-005**: fouling, health 44, production-critical.
+3. Ask **“Send a technician to inspect the faulty pump”**. The robot crosses the room, assets light up as it passes
+   and the right card lists every asset it reads.
+4. Press **Block aisle**. A barrier drops across the route ahead and the robot replans from where it is. The old
+   route stays visible as a dashed line.
+5. **Arrival.** The diagnosis card has three tabs. *Overview* covers observation, evidence, hypothesis, uncertainty,
+   the next safe step and the confidence breakdown. *Evidence* has telemetry sparklines with z-scores, alarms, work
+   orders and data quality. *Sources* lists the documents. Click any citation to open it.
+6. **Open X-Ray view.** An exploded illustrative pump appears on a studio podium. The parts linked to the leading
+   hypothesis (impeller, volute) are marked *Suspected* and the alternative (wear ring) is marked separately. Use
+   the explode slider, see-through and labels, isolate a component, and check its evidence or ask about it.
+7. **Learn.** Work through the fouling lesson; each step highlights the parts it describes. **Practice:** confirm
+   the safety gate, then do the bearing exercise (pick the part, quiz, disassemble and reassemble in order) and
+   finish on the scored summary.
+8. **Draft work order.** A draft with evidence IDs and safety prerequisites; it triggers no control actions.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the technical note and [`docs/PITCH.md`](docs/PITCH.md) for slides and the video script.
+## Data notes
+* **Scan.** `Equipment Room.ply`: 1,676,481 splats, all valid (`data/processed/integrity_report.md`). The originally
+  distributed `Industrial Boiler Room.ply` was corrupt from record 502,483 onward, identically in the PLY, RAR and
+  ZIP copies. That report is kept in `docs/integrity_original_boiler_room.md`.
+* **Labels.** Geometry proposes clusters and the vision model names them; 258 objects remain "other equipment"
+  rather than being guessed. The review layer (`config/scene_annotations.json`) records 4 corrections, each tagged
+  `human-verified` with a note: the pump set fragments were merged, and a pallet truck, a pressure washer and a
+  chair that the model had called pumps were relabelled.
+* **Mapping** is class-aware and procedural, as the brief allows. It prefers objects along the demo route, and
+  every binding states its method and confidence.
+* **Scale** is treated as approximately metric (ceiling 2.05 units); it was not surveyed.
+* **The X-Ray pump** is a procedural teaching model. It is not from the scan, not an OEM drawing and not a Valmet
+  product. Learn and Practice content is conceptual, sits behind explicit safety gates and has no connection to any
+  control system. All asset data is synthetic.
 
-## ⚠ Scan integrity (read before judging coverage)
-
-The supplied `Industrial Boiler Room.ply` declares 1,506,136 splats. Its size matches the header exactly, but
-**records from #502,483 onward are random bytes**. The same corruption appears in the direct `.ply`, the two-part RAR
-extraction and the ZIP copy (all have the same SHA-256). We use only the valid **502,483 splats (33.4 %)**. That is the
-door-side section of the room with the pump set, pallet truck, cage, wall piping and circulation pumps. We do not
-repair or invent the rest. The full report is in [`data/processed/integrity_report.md`](data/processed/integrity_report.md).
-Every stage re-runs unchanged on a repaired file.
-
-## Honesty notes
-
-* **Labels.** Geometry proposes clusters, the VLM names them from renders, and a small review layer
-  (`config/scene_annotations.json`) records **2** human corrections. The VLM had called a pallet truck a pump, and the
-  real pump set was split into 5 fragments. Both are shown as `human-verified` in the UI. All other labels are
-  automatic, and 54 stay "other equipment" with low confidence rather than being guessed.
-* **Mapping.** The brief allows procedural mapping. Ours is class-aware with per-binding confidence, and a weak match
-  ("class fallback") lowers diagnosis confidence.
-* **Scale.** The scene is treated as approximately metric (ceiling 2.04 units, standard-size door). Scale is not surveyed.
-* **Navigation scope.** The partial scan holds one well-reconstructed floor zone (5.5 m² walkable at a 0.2 m robot
-  radius). A raised area 0.62 m higher is detected, but no stairs or ramp connect to it, so it is excluded rather than
-  driven through.
-* **X-Ray model.** The pump is procedurally generated for education. It is not from the scan, not an OEM drawing and
-  not a Valmet product. Learn and Practice content is conceptual: no operational repair procedure, explicit safety gates,
-  no connection to real controls.
-* All asset data is synthetic (builder pack). Asset cards in the RAG corpus are generated from workbook rows because the
-  `.md` files listed in `RAG_Corpus_Index` were not in the package.
+Docs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (technical note) · [`docs/PITCH.md`](docs/PITCH.md) (slides and video script).

@@ -198,7 +198,9 @@ class Copilot:
             keep = [i for i in ids if i in allowed]
             bad.extend(i for i in ids if i not in allowed)
             return f"[{', '.join(keep)}]" if keep else ""
-        return re.sub(r"\[([^\[\]\n]{2,80})\]", repl, text), bad
+        out = re.sub(r"\[([^\[\]\n]{2,80})\]", repl, text)
+        out = re.sub(r"[ \t]+([.,;:])", r"\1", re.sub(r"[ \t]{2,}", " ", out))
+        return out, bad
 
     def template_summary(self, ev: dict) -> str:
         a = ev["asset"]
@@ -228,12 +230,13 @@ class Copilot:
         slim = {k: v for k, v in ev.items() if k != "telemetry"}
         slim["telemetry"] = [{k: s[k] for k in s if k != "series"} for s in ev["telemetry"]["signals"]]
         sys_prompt = (
-            "You are an industrial field-service copilot. Use ONLY the evidence JSON. Follow DOC-RAG-GUIDE: name the "
-            "asset, cite evidence IDs in square brackets exactly as given (e.g. [EVT-00037], [CASE-025], "
-            "[DOC-PROCESS_PUMP-CORE], [Telemetry_Sample_3d]), state confidence, clearly separate 'Observation' from "
-            "'Hypothesis', and end with the next SAFE verification step. Never give disassembly or repair "
-            "instructions; recommend verification and escalation (DOC-FIELD-SAFETY). Max 170 words. Plain text, "
-            "use short labelled lines: Observation:, Evidence:, Hypothesis:, Uncertainty:, Next safe step:.")
+            "You are a field-service copilot talking to a technician who has just reached the machine. Use ONLY the "
+            "evidence JSON. Follow DOC-RAG-GUIDE. Write plain, calm English: no snake_case or ALL_CAPS codes in the prose "
+            "(say 'process pump', 'fouling', 'attention required'); evidence IDs go only in square brackets, exactly as "
+            "given, e.g. [EVT-00037], [CASE-025], [DOC-PROCESS_PUMP-CORE], [Telemetry_Sample_3d]. Use exactly these five "
+            "labelled lines, each one or two short sentences: 'Observation:', 'Evidence:', 'Hypothesis:', 'Uncertainty:', "
+            "'Next safe step:'. Give confidence as a percentage. Never give disassembly or repair instructions; recommend "
+            "verification and escalation (DOC-FIELD-SAFETY). At most 130 words.")
         user = (f"Question: {question or 'Diagnose this device for the arriving technician.'}\n\nEVIDENCE JSON:\n"
                 + json.dumps(slim, default=str)[:24000])
         try:

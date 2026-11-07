@@ -1,8 +1,9 @@
 // Layer C: X-Ray inspection — procedurally generated, clearly *illustrative* end-suction centrifugal pump.
 // Every mesh is tagged with a component id from backend/xray/knowledge/pump_components.json.
 import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 
-const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, metalness: 0.55, roughness: 0.38, ...o });
 
 function volute() {
   // spiral casing: tube along a growing spiral + discharge nozzle
@@ -179,135 +180,137 @@ function bearingHousing() {
   return g;
 }
 
+// id, builder, assembled position (x along shaft), explode direction, finish
 const PART_DEFS = [
-  // id, builder, assembled position (x along shaft), explode offset, colour
-  ["baseplate", () => new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.08, 0.62), null), [-0.35, -0.48, 0], [0, -0.35, 0], 0x334155],
-  ["motor", motor, [-0.98, 0, 0], [-0.6, 0.12, 0], 0x1d4ed8],
-  ["coupling", coupling, [-0.55, 0, 0], [-0.25, 0.45, 0], 0x64748b],
-  ["shaft", () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 1.05, 20), null); m.rotation.z = Math.PI / 2; return m; }, [-0.05, 0, 0], [0, 0.0, 0.55], 0xd1d5db],
-  ["bearing_housing", bearingHousing, [-0.2, 0, 0], [-0.05, 0.62, 0], 0x475569],
-  ["bearing_outboard", () => bearing(0.075), [-0.38, 0, 0], [-0.25, 0.25, 0.42], 0xcbd5e1],
-  ["bearing_inboard", () => bearing(0.08), [-0.02, 0, 0], [0.05, 0.25, 0.42], 0xcbd5e1],
-  ["seal", () => { const g = new THREE.Group(); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.07, 32), null); a.rotation.z = Math.PI / 2; const s = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 8, 24), null); s.rotation.y = Math.PI / 2; s.position.x = -0.05; g.add(a, s); return g; }, [0.18, 0, 0], [0.3, 0.3, 0.3], 0x10b981],
-  ["impeller", impeller, [0.4, 0, 0], [0.55, 0.05, 0.42], 0xb45309],
-  ["wear_ring", () => { const m = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 10, 40), null); m.rotation.y = Math.PI / 2; return m; }, [0.5, 0, 0], [0.75, 0.32, 0.42], 0xf59e0b],
-  ["casing", volute, [0.45, 0, 0], [0.85, 0.0, -0.45], 0x9f1239],
+  ["baseplate", () => new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.08, 0.62), null), [-0.35, -0.48, 0], [0, 0, 0], "graphite"],
+  ["motor", motor, [-0.98, 0, 0], [-0.62, 0.1, 0], "paint"],
+  ["coupling", coupling, [-0.55, 0, 0], [-0.22, 0.48, 0], "steel"],
+  ["shaft", () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 1.05, 24), null); m.rotation.z = Math.PI / 2; return m; }, [-0.05, 0, 0], [0, 0, 0.6], "polished"],
+  ["bearing_housing", bearingHousing, [-0.2, 0, 0], [-0.05, 0.62, 0], "cast"],
+  ["bearing_outboard", () => bearing(0.075), [-0.38, 0, 0], [-0.25, 0.26, 0.45], "polished"],
+  ["bearing_inboard", () => bearing(0.08), [-0.02, 0, 0], [0.05, 0.26, 0.45], "polished"],
+  ["seal", () => { const g = new THREE.Group(); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.07, 32), null); a.rotation.z = Math.PI / 2; const s = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 8, 24), null); s.rotation.y = Math.PI / 2; s.position.x = -0.05; g.add(a, s); return g; }, [0.18, 0, 0], [0.3, 0.3, 0.3], "carbon"],
+  ["impeller", impeller, [0.4, 0, 0], [0.55, 0.05, 0.42], "bronze"],
+  ["wear_ring", () => { const m = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 10, 40), null); m.rotation.y = Math.PI / 2; return m; }, [0.5, 0, 0], [0.75, 0.32, 0.42], "bronze"],
+  ["casing", volute, [0.45, 0, 0], [0.85, 0, -0.45], "cast"],
 ];
+const FINISH = {
+  cast: { color: 0xb9bec6, metalness: 0.75, roughness: 0.42 },
+  paint: { color: 0x2b3038, metalness: 0.3, roughness: 0.5, clearcoat: 0.6, clearcoatRoughness: 0.3 },
+  steel: { color: 0x9aa1aa, metalness: 0.9, roughness: 0.3 },
+  polished: { color: 0xe4e7eb, metalness: 1.0, roughness: 0.16 },
+  graphite: { color: 0x3a3f47, metalness: 0.4, roughness: 0.65 },
+  carbon: { color: 0x22262c, metalness: 0.2, roughness: 0.5 },
+  bronze: { color: 0xb08d57, metalness: 0.9, roughness: 0.3 },
+};
+const SUSPECT = new THREE.Color(0xff453a);
+const SELECT = new THREE.Color(0x0a84ff);
 
 export class XRay {
-  constructor(kb) {
+  constructor(kb, renderer) {
     this.kb = kb;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x070b14);
-    this.scene.fog = new THREE.Fog(0x070b14, 6, 14);
+    this.scene.background = this._backdrop();
     this.root = new THREE.Group();
-    this.root.position.x = -0.7;   // keep the exploded assembly clear of the right-hand panel
+    this.root.position.set(-0.25, 0.525, 0);
     this.scene.add(this.root);
     this.parts = new Map();
-    this.explode = 0;        // 0 assembled .. 1 exploded
-    this.target = 0;
-    this.ghost = false;
-    this.hidden = new Set();
+    this.explode = 0; this.target = 0;
+    this.ghost = false; this.hidden = new Set(); this.flagged = new Set(); this.alt = new Set(); this.selected = null;
+    this.labelsOn = false;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this._lights();
-    this._grid();
+    this._podium();
     this._build();
   }
 
-  _lights() {
-    this.scene.add(new THREE.HemisphereLight(0xbcd7ff, 0x0b1020, 1.1));
-    const key = new THREE.DirectionalLight(0xffffff, 2.2);
-    key.position.set(2, 3, 2.5);
-    this.scene.add(key);
-    const rim = new THREE.DirectionalLight(0x38bdf8, 1.4);
-    rim.position.set(-3, 1.5, -2);
-    this.scene.add(rim);
+  _backdrop() {
+    const c = document.createElement("canvas"); c.width = 4; c.height = 512;
+    const g = c.getContext("2d"), grad = g.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, "#07080a"); grad.addColorStop(0.45, "#151920"); grad.addColorStop(1, "#2a313b");
+    g.fillStyle = grad; g.fillRect(0, 0, 4, 512);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    return t;
   }
 
-  _grid() {
-    const grid = new THREE.GridHelper(8, 32, 0x1e3a5f, 0x0f2440);
-    grid.position.y = -0.53;
-    this.scene.add(grid);
+  _lights() {
+    const key = new THREE.SpotLight(0xffffff, 22, 12, Math.PI / 6, 0.7, 1.5);
+    key.position.set(0.5, 5, 2.5);
+    key.target.position.set(0, 0, 0);
+    this.scene.add(key, key.target);
+    this.scene.add(new THREE.HemisphereLight(0xdfe7f2, 0x1a1e24, 0.6));
+  }
+
+  _podium() {
+    const mat = new THREE.MeshStandardMaterial({ color: 0x5d6571, metalness: 0.25, roughness: 0.6 });
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.14, 0.08, 128), mat);
+    disc.position.y = -0.04;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(2.09, 0.004, 6, 160), new THREE.MeshBasicMaterial({ color: 0xd7dce3 }));
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 0.002;
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(30, 64), new THREE.MeshStandardMaterial({ color: 0x2a313b, roughness: 0.9 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.081;
+    this.scene.add(disc, rim, floor);
+    this.podium = disc;
   }
 
   _build() {
-    for (const [id, build, pos, off, color] of PART_DEFS) {
+    PART_DEFS.forEach(([id, build, pos, off, finish], i) => {
       const obj = build();
-      const mat = M(color);
-      const accent = M(0xf97316, { emissive: 0x7c2d12, emissiveIntensity: 0.4 });
-      obj.traverse((m) => {
-        if (m.isMesh) {
-          m.material = m.userData.accent ? accent : mat;
-          m.userData.componentId = id;
-        }
-      });
-      if (obj.isMesh) obj.userData.componentId = id;
+      const mat = new THREE.MeshPhysicalMaterial({ ...FINISH[finish], emissive: 0x000000 });
+      const accent = new THREE.MeshPhysicalMaterial({ color: 0xff9f0a, metalness: 0.3, roughness: 0.4 });
+      obj.traverse((m) => { if (m.isMesh) { m.material = m.userData.accent ? accent : mat; m.userData.componentId = id; } });
       const holder = new THREE.Group();
       holder.add(obj);
       holder.position.set(...pos);
       this.root.add(holder);
       const comp = this.kb.components.find((c) => c.id === id);
-      this.parts.set(id, { holder, obj, base: new THREE.Vector3(...pos), off: new THREE.Vector3(...off), mat, color, comp });
-    }
+      const el = document.createElement("div");
+      el.className = "ptag";
+      el.innerHTML = `<i>${String(i + 1).padStart(2, "0")}</i>${comp?.name ?? id}`;
+      const label = new CSS2DObject(el);
+      label.visible = false;
+      this.root.add(label);
+      this.parts.set(id, { holder, obj, base: new THREE.Vector3(...pos), off: new THREE.Vector3(...off), mat, comp, label, el, n: i + 1 });
+    });
   }
 
-  pickables() {
-    const out = [];
-    for (const [id, p] of this.parts) if (!this.hidden.has(id)) p.obj.traverse((m) => m.isMesh && out.push(m));
-    return out;
-  }
-
-  setExplode(v) { this.target = v; }
-
+  order() { return PART_DEFS.map((d) => d[0]); }
+  pickables() { const out = []; for (const [id, p] of this.parts) if (!this.hidden.has(id)) p.obj.traverse((m) => m.isMesh && out.push(m)); return out; }
+  setExplode(v) { this.target = Math.max(0, Math.min(1, v)); }
   setGhost(on) {
     this.ghost = on;
     for (const id of ["casing", "bearing_housing", "motor"]) {
-      const p = this.parts.get(id);
-      p.mat.transparent = on;
-      p.mat.opacity = on ? 0.18 : 1;
-      p.mat.depthWrite = !on;
+      const m = this.parts.get(id).mat;
+      m.transparent = on; m.opacity = on ? 0.16 : 1; m.depthWrite = !on; m.needsUpdate = true;
     }
   }
-
-  setHidden(ids) {
-    this.hidden = new Set(ids);
-    for (const [id, p] of this.parts) p.holder.visible = !this.hidden.has(id);
-  }
-
-  highlight(ids, { selected = null } = {}) {
-    const set = new Set(ids);
-    for (const [id, p] of this.parts) {
-      const on = set.has(id);
-      const sel = id === selected;
-      p.mat.emissive = new THREE.Color(sel ? 0x38bdf8 : on ? 0xf43f5e : 0x000000);
-      p.mat.emissiveIntensity = sel ? 0.7 : on ? 0.55 : 0;
-    }
-    this.flagged = set;
-  }
+  setHidden(ids) { this.hidden = new Set(ids); for (const [id, p] of this.parts) p.holder.visible = !this.hidden.has(id); }
+  isolate(id) { this.setHidden(id ? this.order().filter((x) => x !== id) : []); }
+  setLabels(on) { this.labelsOn = on; }
+  highlight(lead = [], { alt = [], selected = null } = {}) { this.flagged = new Set(lead); this.alt = new Set(alt); this.selected = selected; }
 
   update(dt, t) {
-    this.explode += (this.target - this.explode) * Math.min(1, dt * 3.2);
-    const e = this.explode;
-    const ease = e * e * (3 - 2 * e);
-    for (const p of this.parts.values()) {
+    this.explode += (this.target - this.explode) * Math.min(1, dt * 4);
+    const e = this.explode, ease = e * e * (3 - 2 * e);
+    for (const [id, p] of this.parts) {
       p.holder.position.copy(p.base).addScaledVector(p.off, ease);
+      let col = null, k = 0;
+      if (id === this.selected) { col = SELECT; k = 0.22; }
+      else if (this.flagged.has(id)) { col = SUSPECT; k = 0.1 + 0.12 * (0.5 + 0.5 * Math.sin(t * 2.4)); }
+      else if (this.alt.has(id)) { col = new THREE.Color(0xff9f0a); k = 0.08; }
+      p.mat.emissive.copy(col || new THREE.Color(0)); p.mat.emissiveIntensity = k;
+      const box = new THREE.Box3().setFromObject(p.holder);
+      const c = box.getCenter(new THREE.Vector3()); this.root.worldToLocal(c);
+      p.label.position.set(c.x, c.y + (box.max.y - box.min.y) / 2 + 0.06, c.z);
+      p.label.visible = (this.labelsOn || id === this.selected || this.flagged.has(id)) && !this.hidden.has(id) && ease > 0.5;
+      p.el.classList.toggle("sus", this.flagged.has(id));
     }
-    // gently spin rotating parts when assembled to show the drive train
-    const spin = (1 - ease) * dt * 2.5;
-    for (const id of ["impeller", "shaft", "coupling"]) {
-      const p = this.parts.get(id);
-      p.obj.rotation.x += spin;
-    }
-    if (this.flagged) {
-      for (const id of this.flagged) {
-        const p = this.parts.get(id);
-        if (p) p.mat.emissiveIntensity = 0.35 + 0.3 * (0.5 + 0.5 * Math.sin(t * 5));
-      }
-    }
+    const spin = (1 - ease) * dt * 2.2;
+    for (const id of ["impeller", "shaft", "coupling"]) this.parts.get(id).obj.rotation.x += spin;
   }
 
-  partCenter(id) {
-    const p = this.parts.get(id);
-    const box = new THREE.Box3().setFromObject(p.holder);
-    return box.getCenter(new THREE.Vector3());
-  }
+  partCenter(id) { return new THREE.Box3().setFromObject(this.parts.get(id).holder).getCenter(new THREE.Vector3()); }
 }

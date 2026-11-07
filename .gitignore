@@ -9,3 +9,4 @@ web/public/data/qa.splat
 web/public/data/tiny.splat
 .DS_Store
 .env
+web/public/static/*.wasm

@@ -11,10 +11,12 @@ const eye = (q.get("eye") || "0,1.6,-3").split(",").map(Number);
 const tgt = (q.get("t") || "0,1,1").split(",").map(Number);
 camera.position.set(...eye); camera.lookAt(...tgt);
 scene.add(new SparkRenderer({ renderer }));
-const splat = new SplatMesh({ url: q.get("splat") || "/data/scene.splat" });
+const src = q.get("splat") || window.__SPLAT || "./data/tiny.splat";
+const bytes = new Uint8Array(await (await fetch(src)).arrayBuffer());
+const splat = new SplatMesh({ fileBytes: bytes, fileType: "splat", fileName: "scene.splat" });
 scene.add(splat);
 if (q.get("boxes") !== "0") {
-  const data = await (await fetch("/data/scene_objects.json")).json();
+  const data = await (await fetch("./data/scene_objects.json")).json();
   for (const o of data.objects) {
     const g = new THREE.BoxGeometry(...o.size);
     const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: o.kind === "structure" ? 0xff4444 : 0xffcc00 }));

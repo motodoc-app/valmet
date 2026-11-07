@@ -3,19 +3,51 @@
   "merge_regions": [
     {
       "name": "Pump set on concrete plinth (behind pallet truck)",
-      "region_min": [-4.5, 0.25, -0.75],
-      "region_max": [-3.75, 0.95, 0.05],
+      "region_min": [
+        2.05,
+        0.08,
+        2.85
+      ],
+      "region_max": [
+        2.8,
+        0.95,
+        3.25
+      ],
       "label": "pump-motor unit",
       "category": "rotating",
-      "note": "Fragments merged after visual check against the boiler-room reference video (pump + motor on plinth behind the pink pallet truck)."
+      "note": "Fragments merged after a visual check against the boiler-room reference video: pump and motor on a plinth behind the pink pallet truck."
     }
   ],
   "relabel_near": [
     {
-      "point": [-3.4, 0.54, -0.35],
+      "point": [
+        2.06,
+        0.56,
+        2.7
+      ],
       "label": "trolley / cart",
       "category": "logistics",
-      "note": "Pink hand pallet truck; VLM proposed 'pump-motor unit' (0.79) — corrected in review."
+      "note": "Pink hand pallet truck. The vision model proposed 'pump-motor unit' (0.86); corrected in review."
+    },
+    {
+      "point": [
+        -0.45,
+        0.43,
+        -1.5
+      ],
+      "label": "other equipment",
+      "category": "other",
+      "note": "Portable pressure washer with hose reel. The vision model proposed 'pump-motor unit' (0.84); corrected in review."
+    },
+    {
+      "point": [
+        1.88,
+        0.48,
+        -1.37
+      ],
+      "label": "other equipment",
+      "category": "other",
+      "note": "Wheeled stand or chair. The vision model proposed 'pump-motor unit' (0.78); corrected in review."
     }
   ]
 }

@@ -124,21 +124,19 @@ def canonicalize(arr: np.ndarray, props: list[str]) -> dict:
     p1 = p @ R1.T
     floor_y = float(np.median((sub @ R1.T)[np.abs(sub @ n + d) < 0.025][:, 1]))
 
-    # 3) Yaw: choose rotation about Y that makes wall/pipe structure axis-aligned
-    #    (maximises histogram sharpness of X and Z coordinates).
+    # 3) Yaw: the room's floor footprint is (close to) rectangular -> pick the rotation about Y that
+    #    minimises the robust (1–99 %) bounding-box area of floor + low-wall splats (rotating calipers, brute force).
     gg = (g @ R1.T)
-    band = gg[(gg[:, 1] > floor_y + 0.3) & (gg[:, 1] < floor_y + 2.0)]
-    band = band[rng.choice(len(band), min(150000, len(band)), replace=False)]
-    best_a, best_s = 0.0, -1.0
-    for a in np.radians(np.arange(0, 90, 0.5)):
+    foot = gg[(gg[:, 1] > floor_y - 0.05) & (gg[:, 1] < floor_y + 1.2)]
+    foot = foot[rng.choice(len(foot), min(200000, len(foot)), replace=False)]
+    best_a, best_s = 0.0, np.inf
+    for a in np.radians(np.arange(0, 90, 0.25)):
         c, s = np.cos(a), np.sin(a)
-        x = band[:, 0] * c + band[:, 2] * s
-        z = -band[:, 0] * s + band[:, 2] * c
-        hx, _ = np.histogram(x, bins=400)
-        hz, _ = np.histogram(z, bins=400)
-        sharp = float((hx.astype(float) ** 2).sum() + (hz.astype(float) ** 2).sum())
-        if sharp > best_s:
-            best_s, best_a = sharp, a
+        x = foot[:, 0] * c + foot[:, 2] * s
+        z = -foot[:, 0] * s + foot[:, 2] * c
+        area = float(np.ptp(np.percentile(x, [1, 99])) * np.ptp(np.percentile(z, [1, 99])))
+        if area < best_s:
+            best_s, best_a = area, a
     c, s = np.cos(best_a), np.sin(best_a)
     R2 = np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
 

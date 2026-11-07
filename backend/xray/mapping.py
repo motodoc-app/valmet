@@ -26,7 +26,9 @@ COMPATIBLE = {
 }
 
 
-def build_mapping(scene: dict, pack: BuilderPack, reachable_ids: set[str], overrides: dict | None = None) -> dict:
+def build_mapping(scene: dict, pack: BuilderPack, reachable_ids: set[str], overrides: dict | None = None,
+                  preferred: set[str] | None = None) -> dict:
+    preferred = preferred or set()
     overrides = overrides or {}
     objs = {o["id"]: o for o in scene["objects"] if o["kind"] == "object"}
     assets = pack.assets.to_dict("records")
@@ -70,7 +72,7 @@ def build_mapping(scene: dict, pack: BuilderPack, reachable_ids: set[str], overr
             continue
         for tier, w in ((0, 1.0), (1, 0.6)):
             c = candidates(a["asset_class"], tier, need_reachable=False)
-            c.sort(key=lambda o: (o["id"] not in reachable_ids, -o["confidence"]))
+            c.sort(key=lambda o: (o["id"] not in preferred, o["id"] not in reachable_ids, -o["confidence"]))
             if c:
                 bind(a, c[0], "class-aware" if tier == 0 else "class fallback", w)
                 break

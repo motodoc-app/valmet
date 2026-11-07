@@ -126,7 +126,7 @@ def integrity_report(path: Path) -> tuple[dict, np.ndarray, PlyHeader]:
 def write_report_md(report: dict, out: Path, extra: dict | None = None) -> None:
     extra = extra or {}
     lines = [
-        "# Scan integrity report — Industrial Boiler Room.ply",
+        f"# Scan integrity report — {report['file']}",
         "",
         f"* SHA-256: `{report['sha256']}`",
         f"* File size: {report['file_bytes']:,} bytes (header {report['header_bytes']} B, "

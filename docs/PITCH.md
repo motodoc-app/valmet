@@ -13,14 +13,14 @@ semantics. *Visual: the raw splat next to the same view with frames.*
 
 **3 · Semantic 3D extraction (30 %)**
 Plane fitting → recursive DBSCAN → pipe merging → oriented 3-D frames → VLM labels on renders → human review layer.
-**170 objects**, floor, ceiling and wall, each label with its confidence and source. *Visual: before/after, category chips.*
-Data-integrity finding: only 33.4 % of the supplied PLY is valid (record 502,483 onward is random bytes in every copy).
-The pipeline flags this instead of hiding it, and re-runs on a repaired file.
+**676 objects**, floor, ceiling and 4 walls, each label with its confidence and source. *Visual: before/after, category chips.*
+Data integrity: every scan is validated record by record. The first distributed file was 67 % corrupt; the pipeline
+flagged it, and then ran unchanged on the clean 1.68 M-splat `Equipment Room.ply`.
 
 **4 · Obstacle-aware navigation (25 %)**
-Multi-level height-field (main floor plus a raised area at +0.62 m) → clearance-aware A* → LOS smoothing →
-**independent validation** (min clearance 0.206 m ≥ 0.20 m robot radius, 0 collisions, about 12 ms). Live rerouting
-around a blocked walkway. Proximity framing within 1.2 m (87 objects and 16 assets along the route).
+Multi-level height-field → clearance-aware A* → LOS smoothing → **independent validation** (8.4 m across the room,
+min clearance ≥ 0.20 m robot radius, 0 collisions). Live rerouting around a blocked aisle in about 10–20 ms.
+Proximity framing within 1.2 m (208 objects and 19 assets along the route).
 *Visual: the nav grid overlay and the reroute ghost path.*
 
 **5 · Grounded diagnostics (20 %)**
@@ -46,10 +46,10 @@ or the training value. *These are assumptions to validate with Valmet, not measu
 | t | Screen | Voice-over |
 |---|---|---|
 | 0:00 | Title → splat scene | “This is Valmet's boiler-room scan. Raw splats know nothing. Here is what our pipeline turns it into.” |
-| 0:15 | Toggle frames all / assets; nav grid | “170 objects segmented and framed, floor and walls fitted, every label with its confidence and source. Green is where a robot can safely drive.” |
-| 0:40 | Integrity badge → report | “The supplied file is two-thirds corrupt from record 502,483 onward, in every copy. We report it and use only the valid third. The pipeline re-runs on a fixed file.” |
+| 0:15 | Toggle frames all / assets; nav grid | “676 objects segmented and framed, floor and walls fitted, every label with its confidence and source. Green is where a robot can safely drive.” |
+| 0:40 | About panel | “Every scan is validated record by record. The first file was two-thirds corrupt; we flagged it, and the same pipeline ran unchanged on the clean 1.7-million-splat scan.” |
 | 1:00 | Ask “Where is the faulty pump?” | “The copilot ranks assets by criticality, health and confidence: P-005, a production-critical pump showing a fouling signature.” |
-| 1:15 | “Send a technician…” → robot drives | “A* on the multi-level height-field, then validated: minimum clearance 0.206 m for a 0.2 m robot, zero collisions. Everything within 1.2 m gets framed and its status read from the workbook.” |
+| 1:15 | “Send a technician…” → robot drives | “A* on the multi-level height-field, then validated: minimum clearance at least the 0.2 m robot radius, zero collisions. Everything within 1.2 m gets framed and its status read from the workbook.” |
 | 1:50 | Block walkway → reroute | “Someone parks a trolley in the aisle. We replan in milliseconds from where the robot is now.” |
 | 2:10 | Arrival → diagnosis panel | “On arrival: observation, evidence, hypothesis, uncertainty and the next safe step. Every bracket is a real record: alarms, work orders, cases, documents. Unsupported citations are stripped automatically. Confidence is 0.52, and here is why.” |
 | 2:55 | ENTER X-RAY MODE → explode | “Now inside the machine. This model is illustrative, not from the scan. The parts linked to the leading hypothesis glow red: impeller and volute. The wear ring is the alternative.” |
