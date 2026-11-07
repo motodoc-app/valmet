@@ -354,7 +354,9 @@ export class Facility {
     let best = null;
     const o3 = ray.origin, d3 = ray.direction;
     for (const f of this.frames.values()) {
-      if (this._alpha(f) === 0 && !this._semShown(f.obj)) continue;
+      // every object stays clickable even when its frame is hidden (frames are only a visual aid);
+      // only parts cut away for a high camera are skipped
+      if (this.cutaway && f.obj.center[1] - f.obj.size[1] / 2 > this.cutY) continue;
       const o = f.obj, ox = o3.x - o.center[0], oy = o3.y - o.center[1], oz = o3.z - o.center[2];
       // rotate into the box frame (inverse of the yaw used when building)
       const lo = [ox * f.cs + oz * f.sn, oy, -ox * f.sn + oz * f.cs];

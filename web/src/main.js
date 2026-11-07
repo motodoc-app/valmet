@@ -112,7 +112,7 @@ export const S = {
   selected: null, target: null, diag: null, curve: null, route: null, prevRoute: null,
   robot: { moving: false, s: 0, len: 0, v: 0, dir: 1, rate: 1, done: true, arrived: false, follow: 0 }, blocks: [], seen: new Map(),
   firstSeen: null, seenBefore: new Set(),
-  cam: "chase", minimap: !LITE, frames: "assets", grid: false, tab: "overview", xSelected: null, xTab: "overview",
+  cam: "chase", minimap: !LITE, frames: "none", grid: false, tab: "overview", xSelected: null, xTab: "overview",
 };
 
 // ------------------------------------------------------------------ boot

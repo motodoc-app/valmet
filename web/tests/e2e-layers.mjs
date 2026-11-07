@@ -77,7 +77,7 @@ async function interactions(browser) {
     f.setSemantic(true); f.setShowMode(A.S.frames);
     return { want: o.id, id, off };
   });
-  ok("semantic: OBB picking finds non-asset objects", !!pick.id && pick.off === null, `${pick.id} (frames hidden, semantic off → ${pick.off})`);
+  ok("semantic: OBB picking finds non-asset objects, with or without visible frames", !!pick.id && !!pick.off, `${pick.id} (frames hidden, semantic off → ${pick.off})`);
   // show uncertain
   await p.click(".sem-legend [data-unc]");
   const unc = await p.evaluate(() => { const f = window.__app.fac, a = f.sem.style.array; let h = 0; for (let i = 1; i < a.length; i += 2) h += a[i]; return { h, n: f.categoryCounts().uncertain, on: f.showUncertain }; });

@@ -89,6 +89,8 @@ function strip(mode) {
 // ------------------------------------------------------------------ coach card
 let coach = null;
 function closeCoach() { coach?.remove(); coach = null; }
+// the first-visit card gets out of the way as soon as the user starts doing something elsewhere
+document.addEventListener("pointerdown", (e) => { if (coach && !e.target.closest(".gd-coach, .gd-strip")) closeCoach(); }, true);
 function openCoach(mode, force = false) {
   const g = guideFor(mode); if (!g) return;
   if (!force && (store.get(seenKey(mode)) || quiet() || document.body.classList.contains("touring"))) return;
