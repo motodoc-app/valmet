@@ -111,8 +111,10 @@ try {
   await p.keyboard.press("w"); await p.keyboard.press("a"); await sleep(150);
   ok("Keys: typing in the ask field does not move the camera", dist2((await cam(p)).t, c0.t) < 1e-6 && (await p.inputValue("#ask")) === "wa");
   await p.fill("#ask", ""); await p.evaluate(() => document.activeElement.blur());
-  await p.click('#navpad [data-np="reset"]'); await sleep(1300);
-  ok("Pad: Reset view flies home", await p.evaluate(() => window.__xr.camera.position.distanceTo(window.__app.home.pos) < 0.05));
+  await p.click('#navpad [data-np="reset"]');
+  // the fly-to advances per rendered frame, so wait for arrival rather than a fixed time (software GL is slow)
+  let home = false; for (let i = 0; i < 40 && !home; i++) { await sleep(250); home = await p.evaluate(() => window.__xr.camera.position.distanceTo(window.__app.home.pos) < 0.05); }
+  ok("Pad: Reset view flies home", home);
   await p.screenshot({ path: path.join(SHOTS, "ux-2-explore-pad.png") });
 
   // Plan: guide once, move pad, keys drive the proxy while moving, Done → check
