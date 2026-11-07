@@ -12,7 +12,7 @@ function bits(b64, n) {
   return out;
 }
 // exact Euclidean distance transform (Felzenszwalb & Huttenlocher), returns metres
-function edt(occ, W, H, res) {
+export function edt(occ, W, H, res) {
   const INF = 1e12, f = new Float64Array(Math.max(W, H)), d = new Float64Array(Math.max(W, H));
   const v = new Int32Array(Math.max(W, H)), z = new Float64Array(Math.max(W, H) + 1);
   const g = new Float64Array(W * H);
