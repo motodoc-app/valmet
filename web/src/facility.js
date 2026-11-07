@@ -32,6 +32,33 @@ export function roundedPath(pts, radius, isSafe = () => true) {
   return path;
 }
 
+// Compact hosted format (see scripts/export_static.py): columnar u16 xyz, u8 log-scale ×3, u8 rgba, u8 quaternion.
+// Expanded here to standard 32-byte .splat records for the splat engine.
+export function decodeXq16(b, n, m) {
+  const out = new Uint8Array(n * 32), dv = new DataView(out.buffer);
+  const src = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  const lo = m.lo, span = [m.hi[0] - m.lo[0], m.hi[1] - m.lo[1], m.hi[2] - m.lo[2]];
+  const sMin = m.log_scale_min, sSpan = m.log_scale_span;
+  const offS = 6 * n, offC = 9 * n, offR = 13 * n;
+  for (let i = 0; i < n; i++) {
+    const o = i * 32;
+    for (let a = 0; a < 3; a++) {
+      dv.setFloat32(o + a * 4, lo[a] + (src.getUint16((a * n + i) * 2, true) / 65535) * span[a], true);
+      dv.setFloat32(o + 12 + a * 4, Math.exp(sMin + (b[offS + a * n + i] / 255) * sSpan), true);
+    }
+    for (let a = 0; a < 4; a++) { out[o + 24 + a] = b[offC + a * n + i]; out[o + 28 + a] = b[offR + a * n + i]; }
+  }
+  return out;
+}
+
+let _dot;
+function dotTexture() {
+  if (_dot) return _dot;
+  const c = document.createElement("canvas"); c.width = c.height = 32;
+  const g = c.getContext("2d"); g.beginPath(); g.arc(16, 16, 15, 0, Math.PI * 2); g.fillStyle = "#fff"; g.fill();
+  return (_dot = new THREE.CanvasTexture(c));
+}
+
 export class Facility {
   constructor(scene, data) {
     this.scene = scene;
@@ -51,19 +78,80 @@ export class Facility {
     this.root.add(this.routeGroup, this.blockGroup, this.gridGroup);
   }
 
-  async loadSplats(urls, onProgress) {
+  /**
+   * Streams the scan chunk by chunk (most visually important splats first).
+   * Each chunk is shown at once as a cheap point cloud (no WASM, no workers), then upgraded to Gaussian splats.
+   * If the splat engine is unavailable or does not finish within `timeoutMs`, the point cloud simply stays,
+   * so the page can never hang on the scan. `onStatus({received, total, phase})` reports progress.
+   */
+  async loadScan(manifest, onStatus, { splats = true, timeoutMs = 45000 } = {}) {
     const qa = new URLSearchParams(location.search).get("splat");
-    if (qa) urls = [qa];
-    let done = 0;
-    const meshes = await Promise.all(urls.map(async (u) => {
-      const bytes = new Uint8Array(await (await fetch(u)).arrayBuffer());
-      onProgress?.(++done / urls.length);
-      const m = new SplatMesh({ fileBytes: bytes, fileType: "splat", fileName: "scene.splat" });
-      this.root.add(m);
-      this.splats.push(m);
-      return m;
-    }));
-    await Promise.all(meshes.map((m) => m.initialized));
+    const chunks = qa ? [{ url: qa }] : manifest.chunks;
+    const format = qa ? "splat" : manifest.splat_format;
+    const total = chunks.reduce((n, c) => n + (c.bytes || 0), 0);
+    let received = 0;
+    const report = (phase) => onStatus?.({ received, total, phase });
+    const fetchChunk = async (c) => {
+      const res = await fetch(c.url);
+      if (!res.ok) throw new Error(`${c.url}: HTTP ${res.status}`);
+      if (!res.body || !total) { const b = new Uint8Array(await res.arrayBuffer()); received += b.length; report("download"); return b; }
+      const reader = res.body.getReader(), parts = [];
+      let n = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value); n += value.length; received += value.length; report("download");
+      }
+      const out = new Uint8Array(n); let o = 0;
+      for (const p of parts) { out.set(p, o); o += p.length; }
+      return out;
+    };
+    // chunk 0 first (fast first picture), the rest in parallel afterwards
+    const first = await fetchChunk(chunks[0]);
+    const rest = Promise.all(chunks.slice(1).map(fetchChunk));
+    const show = async (bytes, c) => {
+      const splat = format === "xq16" ? decodeXq16(bytes, c.count, manifest) : bytes;
+      const preview = this._points(splat);
+      if (!splats) return;
+      try {
+        const m = new SplatMesh({ fileBytes: splat, fileType: "splat", fileName: "scene.splat" });
+        this.root.add(m);
+        this.splats.push(m);
+        await Promise.race([m.initialized, new Promise((_, rej) => setTimeout(() => rej(new Error("splat engine timeout")), timeoutMs))]);
+        preview.visible = false;          // splats are up: drop the preview for this chunk
+        this.splatMode = "splats";
+      } catch (e) {
+        console.warn("Gaussian splats unavailable, keeping point view:", e);
+        this.splatMode = "points";
+      }
+    };
+    report("render");
+    const firstShown = show(first, chunks[0]);
+    const others = (await rest).map((b, i) => show(b, chunks[i + 1]));
+    await Promise.all([firstShown, ...others]);
+    report("done");
+  }
+
+  // Lightweight point-cloud view of .splat records (used as instant preview and as the fallback renderer).
+  _points(splat) {
+    const n = splat.length / 32, dv = new DataView(splat.buffer, splat.byteOffset, splat.byteLength);
+    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+    let k = 0;
+    for (let i = 0; i < n; i++) {
+      const o = i * 32;
+      if (splat[o + 27] < 60) continue;                  // skip faint splats in the preview
+      pos[k * 3] = dv.getFloat32(o, true); pos[k * 3 + 1] = dv.getFloat32(o + 4, true); pos[k * 3 + 2] = dv.getFloat32(o + 8, true);
+      col[k * 3] = splat[o + 24] / 255; col[k * 3 + 1] = splat[o + 25] / 255; col[k * 3 + 2] = splat[o + 26] / 255;
+      k++;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos.subarray(0, k * 3), 3));
+    g.setAttribute("color", new THREE.BufferAttribute(col.subarray(0, k * 3), 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.028, vertexColors: true, sizeAttenuation: true, map: dotTexture(), alphaTest: 0.4, transparent: false }));
+    pts.material.color.setScalar(1);
+    pts.frustumCulled = false;
+    this.root.add(pts);
+    return pts;
   }
 
   colorFor(o) { return o.asset ? STATUS[o.asset.condition_state] ?? NEUTRAL : NEUTRAL; }

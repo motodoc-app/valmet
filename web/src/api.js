@@ -13,7 +13,7 @@ const unpack = (hex, n) => {
 const serverApi = {
   isStatic: false,
   health: () => fetch("/api/health").then(j),
-  manifest: async () => ({ splat_urls: ["./data/scene.splat"] }),
+  manifest: async () => ({ splat_format: "splat", chunks: [{ url: "./data/scene.splat" }] }),
   scene: () => fetch("/api/scene").then(j),
   grid: async () => { const g = await fetch("/api/nav/grid").then(j); const n = g.W * g.H; return { ...g, walkableMask: unpack(g.walkable, n), occupiedMask: unpack(g.occupied, n) }; },
   plan: (body) => post("/api/nav/plan", body),
@@ -37,7 +37,7 @@ export async function connect() {
   } catch { /* hosted demo: no server */ }
   if (api.isStatic) {
     const m = await staticApi.manifest();
-    staticApi.manifest = async () => ({ ...m, splat_urls: m.splat_chunks.map((c) => `./static/${c}`) });
+    staticApi.manifest = async () => ({ ...m, chunks: m.chunks.map((c) => ({ ...c, url: `./static/${c.file}` })) });
   }
   return api;
 }

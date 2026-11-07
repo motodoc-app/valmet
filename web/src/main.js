@@ -5,7 +5,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { SparkRenderer } from "@sparkjsdev/spark";
 import { api, connect } from "./api.js";
-import { Facility } from "./facility.js";
+import { Facility, decodeXq16 } from "./facility.js";
 import { XRay } from "./xray.js";
 import { initTraining } from "./training.js";
 import { icon } from "./icons.js";
@@ -46,8 +46,10 @@ $("#app").innerHTML = `
   <button data-rail="reset" title="Reset view">${icon("reset")}</button><hr>
   <button data-rail="full" title="Full screen">${icon("full")}</button><button data-rail="help" title="About this demo">${icon("help")}</button>
 </div>
-<div class="loading" id="loading"><div class="box">Loading the scan<div class="bar"><i></i></div><div id="loadPct" style="margin-top:10px"></div></div></div>`;
+<div class="scan-status hidden" id="scanStatus" role="status"></div>
+<div class="loading" id="loading"><div class="box">Starting<div class="bar"><i></i></div></div></div>`;
 
+const S0 = { sparkOk: false };
 // ------------------------------------------------------------------ renderer, scenes, cameras
 const canvas = $("canvas.gl");
 // Splats are already soft-edged: MSAA buys nothing but costs fill-rate. Cap the pixel ratio for steady frame times.
@@ -64,7 +66,8 @@ const fac = new THREE.Scene();
 fac.background = new THREE.Color(0x0a0b0d);
 fac.add(new THREE.HemisphereLight(0xffffff, 0x30343a, 1.4));
 const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(2, 4, 1); fac.add(sun);
-fac.add(new SparkRenderer({ renderer }));
+// If the splat engine cannot start (blocked WASM or workers), the scan falls back to a point cloud.
+try { fac.add(new SparkRenderer({ renderer })); S0.sparkOk = true; } catch (e) { console.warn("SparkRenderer unavailable", e); S0.sparkOk = false; }
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.03, 80);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
@@ -85,6 +88,7 @@ addEventListener("resize", () => {
 
 // ------------------------------------------------------------------ state
 export const S = {
+  sparkOk: S0.sparkOk,
   mode: "facility", data: null, fac: null, xray: null, kb: null, home: null,
   selected: null, target: null, diag: null, curve: null, route: null, prevRoute: null,
   robot: { moving: false, s: 0, speed: 0.45, len: 0 }, blocks: [], seen: new Map(),
@@ -103,11 +107,18 @@ async function boot() {
   camera.position.copy(S.home.pos); controls.target.copy(S.home.tgt);
   initTraining(S, { $, esc, cites, setMode, card: (h) => ($("#right").innerHTML = h), xCam, xControls, toast, icon, focusPart });
   renderLeft(); renderOverviewCard(); renderDock();
-  try {
-    await S.fac.loadSplats(manifest.splat_urls, (p) => ($("#loadPct").textContent = `${Math.round(p * 100)}%`));
-  } catch (e) { console.warn(e); }
+  // The interface is usable now; the scan streams in behind it and never blocks the page.
   $("#loading").style.opacity = 0;
   setTimeout(() => $("#loading")?.remove(), 700);
+  const pill = $("#scanStatus");
+  const mb = (x) => (x / 1e6).toFixed(1);
+  S.fac.loadScan(manifest, ({ received, total, phase }) => {
+    pill.classList.remove("hidden");
+    pill.textContent = phase === "done" ? "" : total ? `Loading scan · ${mb(received)} of ${mb(total)} MB` : "Loading scan…";
+    if (phase === "done") pill.classList.add("hidden");
+  }, { splats: S.sparkOk }).then(() => {
+    if (S.fac.splatMode === "points") toast("Showing the scan as a point cloud: this browser could not start the splat renderer.", 6000);
+  }).catch((e) => { pill.textContent = "The scan could not be loaded. Everything else still works."; console.warn(e); });
 }
 
 function homeView() {
@@ -814,6 +825,6 @@ renderer.setAnimationLoop(() => {
   }
 });
 
-window.__app = S; window.__renderer = renderer;
+window.__app = S; window.__renderer = renderer; window.__decodeXq16 = decodeXq16;
 Object.assign(window, { __dispatch: dispatch, __enterXRay: enterXRay, __setMode: setMode, __ask: ask, __block: blockAisle, __select: selectAsset });
 boot();

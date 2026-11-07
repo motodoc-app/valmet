@@ -87,17 +87,31 @@ def main(with_llm: bool = True) -> None:
     (OUT / "corpus.json").write_text(json.dumps(w.copilot.corpus.docs, default=str))
     (OUT / "xray.json").write_text(json.dumps(LIBRARY))
 
-    # split the web splat into ≤15 MB chunks (records are 32 B)
+    # Compact streaming format for the hosted demo (17 B/splat instead of 32 B, ~0.2 mm position precision):
+    # columnar u16 x/y/z quantised to the scene bounds, u8 log-scale ×3, u8 RGBA, u8 quaternion.
+    # The .splat file is sorted by visual importance, so chunk 0 alone already shows a recognisable room.
     src = config.WEB_PUBLIC / "scene.splat"
-    raw = np.fromfile(src, dtype=np.uint8)
-    per = CHUNK_BYTES // 32 * 32
-    names = []
-    for i in range(0, len(raw), per):
-        name = f"scene-{len(names)}.wasm"   # served as a binary type by the host; content is .splat records
-        raw[i:i + per].tofile(OUT / name)
-        names.append(name)
-    (OUT / "manifest.json").write_text(json.dumps({"splat_chunks": names, "splat_format": "splat",
-                                                   "llm": config.LLM_MODEL if with_llm else None}))
+    a = np.fromfile(src, dtype=np.uint8).reshape(-1, 32)
+    pos = a[:, 0:12].copy().view("<f4").reshape(-1, 3)
+    sc = a[:, 12:24].copy().view("<f4").reshape(-1, 3)
+    lo, hi = pos.min(0), pos.max(0)
+    q = np.round((pos - lo) / (hi - lo) * 65535).astype("<u2")
+    qs = np.clip(np.round((np.log(np.clip(sc, 1e-6, None)) + 12.0) / 12.0 * 255), 0, 255).astype(np.uint8)
+    for old in OUT.glob("scene-*.wasm"):
+        old.unlink()
+    bounds = [0, 300_000, 730_000, len(a)]
+    chunks = []
+    for i, (s0, s1) in enumerate(zip(bounds[:-1], bounds[1:])):
+        sl = slice(s0, min(s1, len(a)))
+        body = b"".join([q[sl, 0].tobytes(), q[sl, 1].tobytes(), q[sl, 2].tobytes(), qs[sl].T.copy().tobytes(),
+                         a[sl, 24:28].T.copy().tobytes(), a[sl, 28:32].T.copy().tobytes()])
+        name = f"scan-{i}.wasm"   # served as a binary type by the host; content is the compact format above
+        (OUT / name).write_bytes(body)
+        chunks.append({"file": name, "count": int(min(s1, len(a)) - s0), "bytes": len(body)})
+    names = [c["file"] for c in chunks]
+    (OUT / "manifest.json").write_text(json.dumps({
+        "splat_format": "xq16", "lo": lo.tolist(), "hi": hi.tolist(), "log_scale_min": -12.0, "log_scale_span": 12.0,
+        "chunks": chunks, "total": int(len(a)), "llm": config.LLM_MODEL if with_llm else None}))
     print("chunks", names)
 
 
