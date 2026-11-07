@@ -4,7 +4,7 @@ Status: design note, written on 2026-11-07. **Nothing in this document is built.
 
 ## 0. What the hackathon build uses
 
-* The only asset data source is the **synthetic** Valmet × Since AI builder pack (`builder_pack.xlsx`, 14 sheets).
+* The only asset data source is the **synthetic** Valmet × Since AI builder pack (`builder_pack.xlsx`, 16 sheets).
   All 30 assets have `data_classification = SYNTHETIC`, and every sheet has a `synthetic_record` column.
 * There is **no live plant data, no network connection to any plant system and no control connection**. The work-order
   endpoint returns a draft only (`"control_actions": "none (draft only)"` in `backend/xray/api.py`).

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -18,7 +19,13 @@ from .world import World
 
 app = FastAPI(title="Industrial X-Ray AI", version="0.1.0",
               description="Semantic 3D scene understanding + autonomous field-service copilot (Valmet × Since AI 2026)")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# CORS: the app is served same-origin (uvicorn mounts web/dist; the vite dev/preview server proxies /api), so no
+# cross-origin access is needed. By default only local development origins may call the API from another port;
+# XRAY_CORS_ORIGINS="https://a.example,https://b.example" allows named origins instead (never a wildcard by default).
+_cors = [o.strip() for o in os.environ.get("XRAY_CORS_ORIGINS", "").split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=_cors,
+                   allow_origin_regex=None if _cors else r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?",
+                   allow_methods=["GET", "POST"], allow_headers=["content-type"])
 
 _t0 = time.time()
 WORLD = World()

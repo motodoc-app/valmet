@@ -22,8 +22,13 @@ export function sparkline(series, w = 88, h = 26, hot = false) {
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline fill="none" stroke="${col}" stroke-width="1.25" points="${pts.map((p) => p.join(",")).join(" ")}"/><circle cx="${ex}" cy="${ey}" r="2" fill="${col}"/></svg>`;
 }
 
+// Pre-generated texts say "Confidence: 52%"; the number is an evidence score, not a probability, so show it as one.
+export const scoreWording = (text) => String(text ?? "").replace(/\b(overall )?confidence(?: is|:)?\s*(?:about\s*)?(\d{1,2})%/gi,
+  (m, o, n) => `${/^[A-Z]/.test(m) ? "E" : "e"}vidence score ${(n / 100).toFixed(2)} (not a probability)`);
+
 // Copilot answers use labelled lines (Observation / Evidence / Hypothesis / Uncertainty / Next safe step).
 export function narrative(text) {
+  text = scoreWording(text);
   const parts = String(text).split(/\n+|(?=(?:Observation|Evidence|Hypothesis|Uncertainty|Next safe step):)/).map((x) => x.trim()).filter(Boolean);
   return parts.map((p) => {
     const m = p.match(/^(Observation|Evidence|Hypothesis|Uncertainty|Next safe step):\s*(.*)$/s);
@@ -58,11 +63,12 @@ export function diagnosisHTML(d, tab = "overview", { xray = true, actions = "" }
   const nWo = d.work_order_count ?? d.work_orders.length, shownWo = Math.min(4, d.work_orders.length);
   const body = {
     overview: `${narrative(d.narrative.text)}
-      <p class="note" style="margin-top:8px">${d.narrative.invalid_citations?.length ? `${d.narrative.invalid_citations.length} unsupported citation(s) removed.` : "Every citation was checked against the evidence."} ${esc(narrativeSource(d.narrative))}.</p>
+      <p class="note" style="margin-top:8px">${d.narrative.invalid_citations?.length ? `${d.narrative.invalid_citations.length} unsupported citation(s) removed.` : "Every citation ID was checked against the evidence set (the check confirms the IDs exist, not that each sentence follows from them)."} ${esc(narrativeSource(d.narrative))}.</p>
       ${checks.length ? `<div class="section"><div class="label">Record checks: where the workbook disagrees</div>${checks.map((x) => `<p class="note">${cites(`${x.text} [${x.source}]`)}</p>`).join("")}</div>` : ""}
-      <div class="section"><div class="label"><span>Confidence</span><span style="color:var(--text)">${Math.round(c.overall * 100)}%</span></div>
+      <div class="section"><div class="label"><span>Confidence (evidence score)</span><span style="color:var(--text)">${score(c.overall)}</span></div>
         <div class="meter"><i style="width:${c.overall * 100}%"></i></div>
-        ${kv("Model confidence", c.model_confidence)}${kv("Evidence support", c.evidence_support)}${kv("Data-quality penalty", "−" + c.data_quality_penalty)}${kv("3D mapping", c.mapping_confidence)}</div>
+        ${kv("Model confidence", c.model_confidence)}${kv("Evidence support", c.evidence_support)}${kv("Data-quality penalty", "−" + c.data_quality_penalty)}${kv("3D mapping", c.mapping_confidence)}
+        <p class="note">A product of these four factors, not a calibrated probability.</p></div>
       <div class="section"><div class="label">Hypotheses</div>${d.hypotheses.map((h) => `<div class="hyp"><div>${esc(h.hypothesis)}<small>${h.rank === 1 ? "Leading" : "Alternative, not excluded"}</small></div>${xray && h.components.length ? `<button class="link" data-xcomp="${h.components.join(",")}">X-Ray ${icon("chev")}</button>` : ""}</div>`).join("")}</div>
       <div class="section"><div class="label">Next safe steps</div>${d.next_steps.map((s, i) => `<div class="step"><span class="k">${i + 1}</span><span>${esc(s.step)} <span class="cite" data-doc="${esc(s.source)}">${esc(s.source)}</span></span></div>`).join("")}</div>`,
     evidence: `<div class="label note" style="margin-bottom:4px">Last 12 h against own baseline and class peers</div>
@@ -93,14 +99,18 @@ export function narrativeSource(n) {
 /** One sentence anyone can read, before the engineering detail. */
 export function plainSummary(d) {
   const a = d.asset, lead = d.hypotheses[0]?.hypothesis, step = d.next_steps[0]?.step;
-  const pct = Math.round(d.confidence.overall * 100);
   const lc = (s) => esc(s.charAt(0).toLowerCase() + s.slice(1)).replace(/\.$/, "");
   const healthy = a.condition_state === "healthy";
   const state = { healthy: "running normally: the workbook shows no active fault", watch: "running, but shows early signs of a problem (watch)",
     degraded: "running in a degraded condition", attention_required: "not running as it should and needs attention" }[a.condition_state]
     || `in condition “${esc(String(a.condition_state).replaceAll("_", " "))}”`;
-  const cause = !lead ? "" : healthy || /^no active fault/i.test(lead) ? "" : ` The most likely cause is ${lc(lead)}.`;
+  // the issue comes from the workbook (Current_State); the copilot retrieves and explains it, it does not discover it
+  const issue = String(a.issue_summary || "").replace(/\.$/, "");
+  const alts = d.hypotheses.slice(1, 3).map((h) => lc(h.hypothesis));
+  const cause = !lead || healthy || /^no active fault/i.test(lead) ? ""
+    : ` The workbook records ${issue ? `“${esc(issue.charAt(0).toLowerCase() + issue.slice(1))}”` : "an issue"}; the leading explanation in the library is ${lc(lead)}${alts.length ? `, with ${alts.join(" or ")} not excluded` : ""}.`;
   const next = healthy ? ` Recommended: ${lc(String(a.recommended_next_check || "monitor"))}.` : step ? ` First, ${lc(step)}.` : "";
   const disagree = d.record_checks?.length ? ` Some workbook records disagree; the diagnosis lists them.` : "";
-  return `<b>In plain words:</b> ${esc(a.tag)} is ${state}.${cause}${next}${disagree} The copilot is ${pct}% confident in this reading, and every claim links to its source.`;
+  return `<b>In plain words:</b> ${esc(a.tag)} is ${state}.${cause}${next}${disagree} Evidence score ${score(d.confidence.overall)} (not a calibrated probability); every citation ID is checked against the evidence set.`;
 }
+const score = (x) => Number(x).toFixed(2);

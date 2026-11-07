@@ -291,7 +291,7 @@ class Copilot:
                 + (f" [{ev_ids}]" if ev_ids else "") + ". "
                 f"Hypothesis: {ev['hypotheses'][0]['hypothesis']} (similar historical cases"
                 + (f" [{case_ids}]" if case_ids else "") + "); alternatives are not excluded. "
-                f"Confidence {ev['confidence']['overall']:.2f} — reduced by {len(ev['data_quality'])} data-quality issue(s). "
+                f"Evidence score {ev['confidence']['overall']:.2f} (not a calibrated probability) — reduced by {len(ev['data_quality'])} data-quality issue(s). "
                 + "".join(f"Record check: {c['text']} [{c['source']}]. " for c in ev.get("record_checks", [])) +
                 f"Next safe step: {ev['next_steps'][1]['step']} [{ev['next_steps'][1]['source']}]. "
                 f"No physical work without permit and lockout/tagout [DOC-FIELD-SAFETY].")
@@ -309,7 +309,7 @@ class Copilot:
             "(say 'process pump', 'fouling', 'attention required'); evidence IDs go only in square brackets, exactly as "
             "given, e.g. [EVT-00037], [CASE-025], [DOC-PROCESS_PUMP-CORE], [Telemetry_Sample_3d]. Use exactly these five "
             "labelled lines, each one or two short sentences: 'Observation:', 'Evidence:', 'Hypothesis:', 'Uncertainty:', "
-            "'Next safe step:'. Give confidence as a percentage. Never give disassembly or repair instructions; recommend "
+            "'Next safe step:'. Give the confidence as an evidence score with two decimals (e.g. 0.52), never as a percentage or probability. The issue label comes from the workbook: say the records show it, never that you detected it. Never give disassembly or repair instructions; recommend "
             "verification and escalation (DOC-FIELD-SAFETY). Name the asset by its tag (P-005), not its asset ID. "
             "Cite telemetry statements with [Telemetry_Sample_3d] and "
             "the asset's condition with its asset ID. If record_checks lists records that disagree, say so under "
@@ -445,7 +445,7 @@ class Copilot:
             "recommend verification and escalation under site procedures and lockout/tagout [DOC-FIELD-SAFETY]; "
             "asked whether something is safe, say the tool cannot judge that and the decision belongs to site "
             "procedures and qualified personnel, then give the evidence. "
-            "Name assets by their tag (P-005, M-006) and cite fleet-table rows by their asset_id (one ID per bracket "
+            "The confidence value is an evidence score, not a probability; never present it as a percentage chance. The issue label (e.g. fouling) is recorded in the workbook: explain it, never claim you discovered it. Name assets by their tag (P-005, M-006) and cite fleet-table rows by their asset_id (one ID per bracket "
             "or comma-separated); the table's name is not an ID. Never name people, roles or teams that are not in "
             "the context. Do not offer to do more work and do not end with a question. "
             "The evidence lists only the latest work orders; work_order_count is the total on record, so never count the "

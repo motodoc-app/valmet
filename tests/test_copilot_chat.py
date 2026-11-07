@@ -109,6 +109,17 @@ def test_offline_answer_says_when_nothing_matches():
     assert "[DOC-APP-NAV]" in cp.answer("How does the robot plan routes?")["text"]
 
 
+def test_cors_is_local_only_by_default():
+    from fastapi.testclient import TestClient
+    c = TestClient(api.app)
+    pre = {"Access-Control-Request-Method": "POST"}
+    ok = c.options("/api/copilot/command", headers={"Origin": "http://localhost:5173", **pre})
+    assert ok.headers.get("access-control-allow-origin") == "http://localhost:5173"
+    bad = c.options("/api/copilot/command", headers={"Origin": "https://evil.example", **pre})
+    assert "access-control-allow-origin" not in bad.headers
+    assert "access-control-allow-origin" not in c.get("/api/health", headers={"Origin": "https://evil.example"}).headers
+
+
 def test_unknown_asset_is_404():
     from fastapi import HTTPException
     for f in (api.diagnose, api.asset, api.asset_telemetry, api.asset_documents):

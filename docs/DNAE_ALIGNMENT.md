@@ -59,8 +59,9 @@ into DNAe or a CMMS; a planner copies an approved draft into the CMMS by hand.
 The generic design is in [DATA_INTEGRATION.md](DATA_INTEGRATION.md) (adapters, provenance labels, staleness, security).
 For a DNAe site the candidates are, in order of least intrusion:
 
-1. **Exported files first.** A replay of recorded, exported data (CSV or similar) from the site, loaded instead of the
-   workbook and labelled `replay`. No connection to the control system at all. This is the recommended first pilot step.
+1. **An offline historian extract first.** A one-off export of recorded data (CSV or similar) for site-approved tags
+   and alarms, loaded instead of the workbook and labelled `replay`. No connection to the control system at all. This
+   is the recommended first pilot step.
 2. **DNAe's own integration interfaces.** The architecture page says TIF provides "horizontal communication interfaces
    for external systems". Which interface, which data and which access model a read-only external client may use is
    an open question for Valmet (section 6).
@@ -74,6 +75,18 @@ In every path the adapter maps external identifiers to our asset IDs through a r
 (`synthetic`, `replay` or `live`, observed and received time, quality) and turns stale or bad-quality values into
 data-quality issues, which already lower the diagnosis confidence (`dq_pen` in `Copilot.evidence`). The copilot,
 the API and the front end keep the same evidence schema.
+
+### The read-only boundary (applies to every path)
+
+| Rule | What it means |
+|---|---|
+| Allowlists approved by the site owner | Only tags, alarms and records on a list the site owner approved are read; anything else is not requested |
+| Start offline | First an offline historian extract; a live feed only after that pilot step is reviewed |
+| Read-only adapter in an industrial DMZ | One adapter, placed in the site's DMZ, reads and forwards; it has no write or method-call rights (for OPC UA: no Write, no Call) and the source enforces this |
+| The technician's browser never connects to the DCS | Browsers talk only to the Industrial X-Ray backend, which never sits in the control network |
+| People verify tag-to-asset bindings | Every mapping from a source tag to an asset and to a scene object is reviewed by a person before use; field confirmation by tag, QR or NFC |
+| Role-based access and audit | Site sign-in with roles (viewer, technician, planner); every read, mapping change and draft is logged |
+| No automated control path | No component, rule or language-model output can send a command, setpoint or acknowledgement to any plant system |
 
 ## 4. Out of scope, by design
 
@@ -89,7 +102,7 @@ the API and the front end keep the same evidence schema.
 
 * **Site and Valmet approval first.** Any connection needs written approval from the site's OT security owner and,
   where it touches DNAe, from Valmet. The site's own policy decides, not this document.
-* **Fit the site's zone model.** DNAe states ISA/IEC 62443 conformance (section 1). An external read-only client
+* **Fit the site's zone model.** Valmet states that DNAe follows ISA/IEC 62443-3-3 and 62443-4-1 (section 1). An external read-only client
   belongs in a separate zone, reached through an approved conduit (typically an industrial DMZ), with connections going
   out of the DMZ rather than into the control network. ISA/IEC 62443 is a reference for this design; we claim no
   compliance ourselves.
