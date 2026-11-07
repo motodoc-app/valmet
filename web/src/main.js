@@ -47,6 +47,7 @@ $("#app").innerHTML = `
   <button data-rail="full" title="Full screen">${icon("full")}</button><button data-rail="help" title="About this demo">${icon("help")}</button>
 </div>
 <div class="scan-status hidden" id="scanStatus" role="status"></div>
+<div class="minimap" id="minimap" aria-label="Mini-map"><div class="mm-h"><span>Room overview</span><span class="note">click to look</span></div><canvas></canvas></div>
 <div class="loading" id="loading"><div class="box">Starting<div class="bar"><i></i></div></div></div>`;
 
 const S0 = { sparkOk: false };
@@ -92,7 +93,7 @@ export const S = {
   mode: "facility", data: null, fac: null, xray: null, kb: null, home: null,
   selected: null, target: null, diag: null, curve: null, route: null, prevRoute: null,
   robot: { moving: false, s: 0, speed: 0.45, len: 0 }, blocks: [], seen: new Map(),
-  follow: true, frames: "all", grid: false, tab: "overview", xSelected: null, xTab: "overview",
+  cam: "chase", minimap: true, frames: "all", grid: false, tab: "overview", xSelected: null, xTab: "overview",
 };
 
 // ------------------------------------------------------------------ boot
@@ -107,6 +108,7 @@ async function boot() {
   camera.position.copy(S.home.pos); controls.target.copy(S.home.tgt);
   initTraining(S, { $, esc, cites, setMode, card: (h) => ($("#right").innerHTML = h), xCam, xControls, toast, icon, focusPart });
   renderLeft(); renderOverviewCard(); renderDock();
+  initMinimap().catch((e) => console.warn("mini-map", e));
   // The interface is usable now; the scan streams in behind it and never blocks the page.
   $("#loading").style.opacity = 0;
   setTimeout(() => $("#loading")?.remove(), 700);
@@ -348,9 +350,12 @@ function renderDock() {
     <div class="grp routeinfo"><div class="top"><span>Route</span><b id="rLen">${r ? r.length_m + " m" : "Not planned"}</b></div><div class="bar"><i id="rBar"></i></div>
       <small id="rMeta">${r ? `A* ${r.compute_ms} ms · min clearance ${r.validation.min_clearance_m} m · ${r.validation.collisions} collisions` : `Robot radius ${S.data.navigation.robot_radius_m} m · step limit ${S.data.navigation.max_step_m} m`}</small></div>
     <div class="grp"><div class="seg" role="group" aria-label="Frames">${["all", "assets", "none"].map((v) => `<button data-frames="${v}" class="${S.frames === v ? "on" : ""}">${{ all: "All frames", assets: "Assets", none: "Off" }[v]}</button>`).join("")}</div></div>
-    <div class="grp"><button class="tool ${S.grid ? "on" : ""}" data-d="grid"><span class="switch"></span>Floor map</button><button class="tool ${S.follow ? "on" : ""}" data-d="follow"><span class="switch"></span>Follow</button></div>`;
+    <div class="grp"><div class="seg" role="group" aria-label="Camera">${[["chase", "Chase"], ["broadcast", "Broadcast"], ["top", "Top"], ["free", "Free"]].map(([v, l]) => `<button data-cam="${v}" class="${S.cam === v ? "on" : ""}">${l}</button>`).join("")}</div></div>
+    <div class="grp"><button class="tool ${S.grid ? "on" : ""}" data-d="grid"><span class="switch"></span>Floor map</button><button class="tool ${S.minimap ? "on" : ""}" data-d="minimap"><span class="switch"></span>Mini-map</button></div>`;
 }
 $("#dock").addEventListener("click", async (e) => {
+  const cm = e.target.closest("[data-cam]");
+  if (cm) { setCamera(cm.dataset.cam); return renderDock(); }
   const f = e.target.closest("[data-frames]");
   if (f) { S.frames = f.dataset.frames; S.fac.setShowMode(S.frames); return renderDock(); }
   const d = e.target.closest("[data-d]")?.dataset.d;
@@ -358,7 +363,7 @@ $("#dock").addEventListener("click", async (e) => {
   if (d === "dispatch") { S.blocks = []; S.fac.setBlocks([]); S.prevRoute = null; S.fac.robot.position.set(...S.data.start); dispatch((S.selected?.asset || S.target.asset).asset_id); }
   if (d === "block") blockAisle();
   if (d === "grid") { S.grid = !S.grid; if (S.grid) S.fac.showGrid(await api.grid()); S.fac.gridGroup.visible = S.grid; renderDock(); }
-  if (d === "follow") { S.follow = !S.follow; renderDock(); }
+  if (d === "minimap") { S.minimap = !S.minimap; $("#minimap").classList.toggle("hidden", !S.minimap); renderDock(); }
   if (d === "assemble") { S.xray.setExplode(0); renderDock(); }
   if (d === "all") { S.xray.isolate(null); flyTo(xHome().pos, xHome().tgt, 1, xCam, xControls); if (S.xSelected) renderPartCard(); }
   if (d === "ghost") { S.xray.setGhost(!S.xray.ghost); renderDock(); }
@@ -465,7 +470,7 @@ function updateRobot(dt, t) {
   }
   transitClock += dt;
   if (transitDirty && transitClock > 0.4) { transitDirty = false; transitClock = 0; renderTransitCard(); }
-  if (S.follow) {
+  if (S.cam === "chase") {
     // chase camera follows a damped heading, so corners turn the view gently instead of snapping
     const yaw = robot.rotation.y;
     if (camYaw === null) camYaw = yaw;
@@ -475,6 +480,11 @@ function updateRobot(dt, t) {
     _v.set(p.x - fx * 2.6 + fz * 0.7, 1.9, p.z - fz * 2.6 - fx * 0.7);
     camera.position.lerp(_v, damp(3, dt));
     controls.target.lerp(_t.set(p.x + fx * 1.0, 0.5, p.z + fz * 1.0), damp(4, dt));
+  } else if (S.cam === "broadcast") {
+    // TV-style: a high camera on a fixed side of the room that pans with the robot, never rotating with it
+    const b = broadcastOffset();
+    camera.position.lerp(_v.set(p.x + b.x, b.y, p.z + b.z), damp(1.6, dt));
+    controls.target.lerp(_t.set(p.x, 0.2, p.z), damp(2.4, dt));
   }
   if (R.s >= R.len - 1e-3) { R.moving = false; R.v = 0; camYaw = null; arrive(); }
 }
@@ -482,13 +492,100 @@ function updateRobot(dt, t) {
 async function arrive() {
   const o = S.navObject, c = new THREE.Vector3(...o.center), r = S.fac.robot.position.clone();
   const dir = c.clone().sub(r).setY(0).normalize();
-  flyTo(r.clone().addScaledVector(dir, -1.3).setY(1.55), c.clone().setY(Math.max(0.35, c.y)));
+  if (S.cam === "chase" || S.cam === "free") flyTo(r.clone().addScaledVector(dir, -1.3).setY(1.55), c.clone().setY(Math.max(0.35, c.y)));
   S.selected = o;
   S.fac.setHighlighted([], { selected: o.id, target: o.id });
   renderDock(); renderLeft();
   toast(`Arrived at <b>${o.asset.tag}</b>. Diagnosis ready.`);
   S.diag = await S.diagPromise; S.tab = "overview";
   renderDiagnosis();
+}
+
+// ------------------------------------------------------------------ spectator cameras
+const roomBox = () => {
+  const b = S.data.bounds;
+  return { x0: b.min[0], x1: b.max[0], z0: b.min[2], z1: b.max[2], cx: (b.min[0] + b.max[0]) / 2, cz: (b.min[2] + b.max[2]) / 2 };
+};
+function broadcastOffset() {
+  // stand on the long side of the room, high and pulled back, like the main camera at a football match
+  const r = roomBox(), wide = r.x1 - r.x0 >= r.z1 - r.z0;
+  // ~45° down from just outside the long wall; the cut-away keeps the near wall from blocking the view
+  return wide ? new THREE.Vector3(0, 5.0, (r.z1 - r.z0) * 0.5 + 1.0) : new THREE.Vector3((r.x1 - r.x0) * 0.5 + 1.0, 5.0, 0);
+}
+function topView() {
+  const r = roomBox(), fov = (camera.fov * Math.PI) / 180;
+  const spanZ = (r.z1 - r.z0) * 1.08, spanX = ((r.x1 - r.x0) * 1.08) / camera.aspect;
+  const h = Math.max(spanZ, spanX) / (2 * Math.tan(fov / 2));
+  // a hair of +z offset keeps OrbitControls stable; screen right = +x, screen down = +z (same as the mini-map)
+  return { pos: new THREE.Vector3(r.cx, h, r.cz + 0.01), tgt: new THREE.Vector3(r.cx, 0, r.cz) };
+}
+export function setCamera(mode) {
+  S.cam = mode;
+  const high = mode === "broadcast" || mode === "top";
+  S.fac.setCutaway(high);
+  controls.minPolarAngle = 0;
+  camera.far = high ? 120 : 80; camera.updateProjectionMatrix();
+  if (mode === "top") { const v = topView(); flyTo(v.pos, v.tgt, 1.2); }
+  if (mode === "broadcast") { const p = S.fac.robot.position, b = broadcastOffset(); flyTo(new THREE.Vector3(p.x + b.x, b.y, p.z + b.z), new THREE.Vector3(p.x, 0.2, p.z), 1.2); }
+  if (mode === "chase" && !S.robot.moving) flyTo(S.home.pos, S.home.tgt, 1.0);
+}
+
+// ------------------------------------------------------------------ mini-map (2D, always shows the whole room)
+const MM = { w: 232, base: null, k: 1, h: 0, grid: null, t: 0 };
+async function initMinimap() {
+  const g = await api.grid();
+  MM.grid = g;
+  MM.k = MM.w / (g.W * g.res);
+  MM.h = Math.round(g.H * g.res * MM.k);
+  const base = document.createElement("canvas"); base.width = g.W; base.height = g.H;
+  const ctx = base.getContext("2d"), img = ctx.createImageData(g.W, g.H);
+  for (let i = 0; i < g.W * g.H; i++) {
+    const o = i * 4;
+    if (g.walkableMask[i]) img.data.set([236, 239, 243, 46], o);
+    else if (g.occupiedMask[i]) img.data.set([140, 148, 158, 110], o);
+  }
+  ctx.putImageData(img, 0, 0);
+  MM.base = base;
+  const cv = $("#minimap canvas");
+  cv.width = MM.w * 2; cv.height = MM.h * 2; cv.style.width = MM.w + "px"; cv.style.height = MM.h + "px";
+  cv.onclick = (e) => {             // click the map to look there from above
+    const r = cv.getBoundingClientRect(), x = MM.grid.x0 + (e.clientX - r.left) / MM.k, z = MM.grid.z0 + (e.clientY - r.top) / MM.k;
+    S.cam = "free"; renderDock();
+    flyTo(new THREE.Vector3(x, 4.5, z + 2.2), new THREE.Vector3(x, 0, z), 0.9);
+  };
+}
+const STATUS_CSS = { healthy: "#30d158", watch: "#ffd60a", degraded: "#ff9f0a", attention_required: "#ff453a" };
+function drawMinimap(dt) {
+  if (!S.minimap || !MM.base) return;
+  MM.t += dt; if (MM.t < 0.066) return; MM.t = 0;   // 15 fps is plenty for a map
+  const cv = $("#minimap canvas"), ctx = cv.getContext("2d"), g = MM.grid, k = MM.k * 2;
+  const X = (x) => (x - g.x0) * k, Z = (z) => (z - g.z0) * k;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(MM.base, 0, 0, cv.width, cv.height);
+  if (S.prevRoute) { ctx.setLineDash([4, 4]); ctx.strokeStyle = "rgba(160,166,176,.7)"; ctx.lineWidth = 1.5; ctx.beginPath(); S.prevRoute.forEach((p, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, X(p[0]), Z(p[2]))); ctx.stroke(); ctx.setLineDash([]); }
+  if (S.curve) {
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath();
+    for (let i = 0; i <= 80; i++) { const p = S.curve.getPointAt(i / 80); (i ? ctx.lineTo : ctx.moveTo).call(ctx, X(p.x), Z(p.z)); }
+    ctx.stroke();
+  }
+  for (const b of S.blocks) { ctx.fillStyle = "#ff9f0a"; ctx.fillRect(X(b.x) - 4, Z(b.z) - 4, 8, 8); }
+  for (const o of S.data.objects) {
+    if (!o.asset) continue;
+    const seen = S.seen.has(o.id), tgt = o.id === S.target.id;
+    ctx.fillStyle = STATUS_CSS[o.asset.condition_state] || "#ccc";
+    ctx.globalAlpha = seen || tgt ? 1 : 0.55;
+    ctx.beginPath(); ctx.arc(X(o.center[0]), Z(o.center[2]), tgt ? 5 : 3.2, 0, Math.PI * 2); ctx.fill();
+    if (tgt) { ctx.strokeStyle = "#ff453a"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(o.center[0]), Z(o.center[2]), 9, 0, Math.PI * 2); ctx.stroke(); }
+  }
+  ctx.globalAlpha = 1;
+  const r = S.fac.robot, rx = X(r.position.x), rz = Z(r.position.z);
+  ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(rx, rz, 1.2 * k, 0, Math.PI * 2); ctx.stroke();
+  ctx.save(); ctx.translate(rx, rz); ctx.rotate(-r.rotation.y + Math.PI);
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(5.5, 6); ctx.lineTo(-5.5, 6); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // camera footprint: where the main view is looking
+  const t = controls.target; ctx.strokeStyle = "rgba(10,132,255,.9)"; ctx.lineWidth = 1.5; ctx.strokeRect(X(t.x) - 5, Z(t.z) - 5, 10, 10);
 }
 
 // ------------------------------------------------------------------ camera tween
@@ -666,6 +763,7 @@ export function setMode(mode) {
   $("#value").classList.toggle("hidden", mode !== "value");
   $("#right").classList.toggle("hidden", mode === "value");
   $("#dock").classList.toggle("hidden", mode === "value");
+  $("#minimap").classList.toggle("hidden", mode !== "facility" || !S.minimap);
   if (mode === "value") renderValue();
   S.mode = mode;
   $$(".modes button").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
@@ -813,6 +911,7 @@ renderer.setAnimationLoop(() => {
   if (!S.fac) return;
   if (!["xray", "learn", "practice"].includes(S.mode)) {
     updateRobot(dt, t);
+    drawMinimap(dt);
     if (!S.robot.moving) S.fac.pulse(t, S.target.id);
     controls.update();
     renderer.render(fac, camera);

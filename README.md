@@ -73,6 +73,9 @@ python scripts/step2_semantics.py  # merge labels
 2. Press **/** and ask **“Where is the faulty pump?”**. The camera flies to **P-005**: fouling, health 44, production-critical.
 3. Ask **“Send a technician to inspect the faulty pump”**. The robot crosses the room, assets light up as it passes
    and the right card lists every asset it reads.
+   Switch the camera in the bottom bar: **Chase** (behind the robot), **Broadcast** (high TV-style side camera),
+   **Top** (whole room from above, ceiling cut away) or **Free**. The mini-map shows the robot, route, barriers and
+   every asset; click it to look at any spot.
 4. Press **Block aisle**. A barrier drops across the route ahead and the robot replans from where it is. The old
    route stays visible as a dashed line.
 5. **Arrival.** The diagnosis card has three tabs. *Overview* covers observation, evidence, hypothesis, uncertainty,

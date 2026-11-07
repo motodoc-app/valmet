@@ -51,6 +51,21 @@ export function decodeXq16(b, n, m) {
   return out;
 }
 
+// Split 32-byte .splat records into [["low", ...], ["high", ...]] at height `cut` (y is bytes 4..7).
+export function splitByHeight(splat, cut) {
+  const n = splat.length / 32, dv = new DataView(splat.buffer, splat.byteOffset, splat.byteLength);
+  let lowN = 0;
+  const isLow = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (dv.getFloat32(i * 32 + 4, true) <= cut) { isLow[i] = 1; lowN++; }
+  const low = new Uint8Array(lowN * 32), high = new Uint8Array((n - lowN) * 32);
+  let a = 0, b = 0;
+  for (let i = 0; i < n; i++) {
+    const rec = splat.subarray(i * 32, i * 32 + 32);
+    if (isLow[i]) { low.set(rec, a * 32); a++; } else { high.set(rec, b * 32); b++; }
+  }
+  return [["low", low], ["high", high]];
+}
+
 let _dot;
 function dotTexture() {
   if (_dot) return _dot;
@@ -69,6 +84,9 @@ export class Facility {
     this.highlight = new Set();
     this.showMode = "all";
     this.splats = [];
+    this.previews = [];
+    this.cutY = 1.7;          // metres above the floor
+    this.cutaway = false;
     this._buildFrames();
     this._buildRobot();
     this.routeGroup = new THREE.Group();
@@ -110,19 +128,31 @@ export class Facility {
     const first = await fetchChunk(chunks[0]);
     const rest = Promise.all(chunks.slice(1).map(fetchChunk));
     const show = async (bytes, c) => {
-      const splat = format === "xq16" ? decodeXq16(bytes, c.count, manifest) : bytes;
-      const preview = this._points(splat);
-      if (!splats) return;
-      try {
-        const m = new SplatMesh({ fileBytes: splat, fileType: "splat", fileName: "scene.splat" });
-        this.root.add(m);
-        this.splats.push(m);
-        await Promise.race([m.initialized, new Promise((_, rej) => setTimeout(() => rej(new Error("splat engine timeout")), timeoutMs))]);
-        preview.visible = false;          // splats are up: drop the preview for this chunk
-        this.splatMode = "splats";
-      } catch (e) {
-        console.warn("Gaussian splats unavailable, keeping point view:", e);
-        this.splatMode = "points";
+      const all = format === "xq16" ? decodeXq16(bytes, c.count, manifest) : bytes;
+      // split each chunk at the cut-away height: the upper part (ceiling, overhead pipes) can be hidden so
+      // high spectator cameras look straight into the room, like an architectural floor-plan cut
+      const parts = splitByHeight(all, this.cutY);
+      for (const [layer, splat] of parts) {
+        if (!splat.length) continue;
+        const preview = this._points(splat);
+        preview.userData.layer = layer;
+        preview.visible = layer === "low" || !this.cutaway;
+        this.previews.push(preview);
+        if (!splats) continue;
+        try {
+          const m = new SplatMesh({ fileBytes: splat, fileType: "splat", fileName: "scene.splat" });
+          m.userData.layer = layer;
+          m.visible = layer === "low" || !this.cutaway;
+          this.root.add(m);
+          this.splats.push(m);
+          await Promise.race([m.initialized, new Promise((_, rej) => setTimeout(() => rej(new Error("splat engine timeout")), timeoutMs))]);
+          preview.userData.replaced = true;   // splats are up: drop the preview for this part
+          preview.visible = false;
+          this.splatMode = "splats";
+        } catch (e) {
+          console.warn("Gaussian splats unavailable, keeping point view:", e);
+          this.splatMode = "points";
+        }
       }
     };
     report("render");
@@ -191,7 +221,8 @@ export class Facility {
 
   _alpha(f) {
     const o = f.obj, on = this.highlight.has(o.id) || o.id === this.sel || o.id === this.tgt;
-    const visible = this.showMode === "all" || (this.showMode === "assets" && !!o.asset) || on;
+    const above = this.cutaway && o.center[1] - o.size[1] / 2 > this.cutY;     // fully above the cut: hidden
+    const visible = !above && (this.showMode === "all" || (this.showMode === "assets" && !!o.asset) || on);
     return !visible ? 0 : on ? 1 : f.base;
   }
 
@@ -227,6 +258,16 @@ export class Facility {
       }
     }
     return best?.id ?? null;
+  }
+
+  /** Hide everything above the cut height (ceiling, overhead pipes and their frames) for high cameras. */
+  setCutaway(on) {
+    this.robot.userData.tag.visible = on;
+    if (this.cutaway === on) return;
+    this.cutaway = on;
+    for (const m of this.splats) m.visible = m.userData.layer === "low" || !on;
+    for (const p of this.previews) p.visible = !p.userData.replaced && (p.userData.layer === "low" || !on);
+    this.setShowMode(this.showMode);
   }
 
   setShowMode(mode) {
@@ -316,7 +357,15 @@ export class Facility {
     ring.position.y = 0.015;
     r.add(ring);
     r.position.set(...this.data.start);
-    r.userData = { light, ring };
+    // spectator marker: shown in the high Broadcast / Top views so the robot is easy to follow
+    const tagEl = document.createElement("div");
+    tagEl.className = "robot-tag";
+    tagEl.innerHTML = "<span></span>Inspection robot";
+    const tag = new CSS2DObject(tagEl);
+    tag.position.set(0, 1.15, 0);
+    tag.visible = false;
+    r.add(tag);
+    r.userData = { light, ring, tag };
     this.robot = r;
     this.root.add(r);
   }
