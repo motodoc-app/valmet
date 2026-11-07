@@ -127,7 +127,7 @@ function render() {
 }
 
 addRailButton({
-  id: "quality", icon: "check", title: "Scene understanding: what was recognised", sceneOnly: true,
+  id: "quality", icon: "check", title: "Scene understanding: what the scan analysis found, and how sure it is", sceneOnly: true,
   isOn: () => !!active,
   async onClick(A) {
     app = A;
